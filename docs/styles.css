@@ -665,11 +665,12 @@ code {
 }
 
 .text-muted {
-    color: #64748b; /* slate-500 - good contrast in light mode */
+    color: #64748b !important; /* slate-500 - good contrast in light mode */
 }
 
+html.dark .text-muted,
 .dark .text-muted {
-    color: #94a3b8; /* slate-400 - good contrast in dark mode */
+    color: #94a3b8 !important; /* slate-400 - good contrast in dark mode */
 }
 
 .mt-2 { margin-top: 0.5rem; }
