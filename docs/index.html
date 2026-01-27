@@ -1,292 +1,390 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skillix Hub - Cursor Skills 技能仓库</title>
+    <title>Skillix Hub - Cursor Skills Repository</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        primary: '#3B82F6',
-                        secondary: '#60A5FA',
-                        cta: '#F97316',
-                        background: '#F8FAFC',
-                        text: '#1E293B',
+                        border: 'hsl(var(--border))',
+                        input: 'hsl(var(--input))',
+                        ring: 'hsl(var(--ring))',
+                        background: 'hsl(var(--background))',
+                        foreground: 'hsl(var(--foreground))',
+                        primary: { DEFAULT: 'hsl(var(--primary))', foreground: 'hsl(var(--primary-foreground))' },
+                        secondary: { DEFAULT: 'hsl(var(--secondary))', foreground: 'hsl(var(--secondary-foreground))' },
+                        muted: { DEFAULT: 'hsl(var(--muted))', foreground: 'hsl(var(--muted-foreground))' },
+                        accent: { DEFAULT: 'hsl(var(--accent))', foreground: 'hsl(var(--accent-foreground))' },
+                        card: { DEFAULT: 'hsl(var(--card))', foreground: 'hsl(var(--card-foreground))' },
                     },
                     fontFamily: {
-                        sans: ['IBM Plex Sans', 'sans-serif'],
+                        sans: ['Inter', 'Noto Sans SC', 'sans-serif'],
                         mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    borderRadius: {
+                        lg: 'var(--radius)',
+                        md: 'calc(var(--radius) - 2px)',
+                        sm: 'calc(var(--radius) - 4px)',
                     }
                 }
             }
         }
     </script>
     <style>
+        :root {
+            --background: 0 0% 100%;
+            --foreground: 222.2 84% 4.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 222.2 84% 4.9%;
+            --primary: 222.2 47.4% 11.2%;
+            --primary-foreground: 210 40% 98%;
+            --secondary: 210 40% 96.1%;
+            --secondary-foreground: 222.2 47.4% 11.2%;
+            --muted: 210 40% 96.1%;
+            --muted-foreground: 215.4 16.3% 46.9%;
+            --accent: 210 40% 96.1%;
+            --accent-foreground: 222.2 47.4% 11.2%;
+            --border: 214.3 31.8% 91.4%;
+            --input: 214.3 31.8% 91.4%;
+            --ring: 222.2 84% 4.9%;
+            --radius: 0.5rem;
+        }
+        .dark {
+            --background: 222.2 84% 4.9%;
+            --foreground: 210 40% 98%;
+            --card: 222.2 84% 4.9%;
+            --card-foreground: 210 40% 98%;
+            --primary: 210 40% 98%;
+            --primary-foreground: 222.2 47.4% 11.2%;
+            --secondary: 217.2 32.6% 17.5%;
+            --secondary-foreground: 210 40% 98%;
+            --muted: 217.2 32.6% 17.5%;
+            --muted-foreground: 215 20.2% 65.1%;
+            --accent: 217.2 32.6% 17.5%;
+            --accent-foreground: 210 40% 98%;
+            --border: 217.2 32.6% 17.5%;
+            --input: 217.2 32.6% 17.5%;
+            --ring: 212.7 26.8% 83.9%;
+        }
         @media (prefers-reduced-motion: reduce) {
             * { animation: none !important; transition: none !important; }
         }
+        .lang-zh { display: block; }
+        .lang-en { display: none; }
+        [data-lang="en"] .lang-zh { display: none; }
+        [data-lang="en"] .lang-en { display: block; }
     </style>
 </head>
-<body class="bg-background text-text font-sans">
+<body class="bg-background text-foreground font-sans antialiased">
     <!-- Navbar -->
-    <nav class="fixed top-4 left-4 right-4 z-50 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-gray-200">
-        <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-            <a href="#" class="flex items-center gap-3 cursor-pointer">
-                <div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+    <header class="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div class="container flex h-14 max-w-screen-2xl items-center mx-auto px-4">
+            <div class="mr-4 flex">
+                <a href="#" class="mr-6 flex items-center space-x-2 cursor-pointer">
+                    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
                     </svg>
-                </div>
-                <span class="text-xl font-semibold">Skillix Hub</span>
-            </a>
-            <div class="hidden md:flex items-center gap-8">
-                <a href="#skills" class="text-gray-600 hover:text-primary transition-colors duration-200 cursor-pointer">技能列表</a>
-                <a href="#install" class="text-gray-600 hover:text-primary transition-colors duration-200 cursor-pointer">安装指南</a>
-                <a href="#contribute" class="text-gray-600 hover:text-primary transition-colors duration-200 cursor-pointer">贡献</a>
-                <a href="https://github.com/shetengteng/skillix-hub" target="_blank" class="flex items-center gap-2 bg-text text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-200 cursor-pointer">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <span class="font-bold">Skillix Hub</span>
+                </a>
+                <nav class="hidden md:flex items-center space-x-6 text-sm font-medium">
+                    <a href="#skills" class="transition-colors hover:text-foreground/80 text-foreground/60 cursor-pointer">
+                        <span class="lang-zh">技能</span>
+                        <span class="lang-en">Skills</span>
+                    </a>
+                    <a href="#install" class="transition-colors hover:text-foreground/80 text-foreground/60 cursor-pointer">
+                        <span class="lang-zh">安装</span>
+                        <span class="lang-en">Install</span>
+                    </a>
+                    <a href="#contribute" class="transition-colors hover:text-foreground/80 text-foreground/60 cursor-pointer">
+                        <span class="lang-zh">贡献</span>
+                        <span class="lang-en">Contribute</span>
+                    </a>
+                </nav>
+            </div>
+            <div class="flex flex-1 items-center justify-end space-x-2">
+                <!-- Language Toggle -->
+                <button id="langToggle" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 hover:bg-accent hover:text-accent-foreground h-9 px-3 cursor-pointer">
+                    <span class="lang-zh">EN</span>
+                    <span class="lang-en">中文</span>
+                </button>
+                <!-- Theme Toggle -->
+                <button id="themeToggle" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 hover:bg-accent hover:text-accent-foreground h-9 w-9 cursor-pointer">
+                    <svg class="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="4"/>
+                        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+                    </svg>
+                    <svg class="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                    <span class="sr-only">Toggle theme</span>
+                </button>
+                <!-- GitHub -->
+                <a href="https://github.com/shetengteng/skillix-hub" target="_blank" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 hover:bg-accent hover:text-accent-foreground h-9 w-9 cursor-pointer">
+                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="container mx-auto px-4 py-24 md:py-32">
+        <div class="flex flex-col items-center text-center space-y-8">
+            <div class="inline-flex items-center rounded-lg bg-muted px-3 py-1 text-sm font-medium">
+                <span class="lang-zh">开源 Cursor Skills 仓库</span>
+                <span class="lang-en">Open Source Cursor Skills Repository</span>
+            </div>
+            <h1 class="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
+                <span class="lang-zh">提升 AI 编程效率的<br/>技能工具集合</span>
+                <span class="lang-en">Skill Collection for<br/>AI Programming Efficiency</span>
+            </h1>
+            <p class="max-w-[42rem] leading-normal text-muted-foreground sm:text-xl sm:leading-8">
+                <span class="lang-zh">Skillix Hub 收集了高质量的 Cursor Skills，帮助你的 AI 助手更好地完成特定任务。一键安装，即刻提升开发效率。</span>
+                <span class="lang-en">Skillix Hub collects high-quality Cursor Skills to help your AI assistant better complete specific tasks. One-click installation for instant productivity boost.</span>
+            </p>
+            <div class="flex flex-wrap justify-center gap-4">
+                <a href="#skills" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8 cursor-pointer">
+                    <span class="lang-zh">浏览技能</span>
+                    <span class="lang-en">Browse Skills</span>
+                </a>
+                <a href="https://github.com/shetengteng/skillix-hub" target="_blank" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 px-8 cursor-pointer">
+                    <svg class="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                     </svg>
                     GitHub
                 </a>
             </div>
         </div>
-    </nav>
-
-    <!-- Hero Section -->
-    <section class="pt-32 pb-20 px-4">
-        <div class="max-w-4xl mx-auto text-center">
-            <div class="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-6">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
-                </svg>
-                开源 Cursor Skills 仓库
-            </div>
-            <h1 class="text-4xl md:text-5xl font-bold mb-6 leading-tight">
-                提升 AI 编程效率的<br>
-                <span class="text-primary">技能工具集合</span>
-            </h1>
-            <p class="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
-                Skillix Hub 收集了高质量的 Cursor Skills，帮助你的 AI 助手更好地完成特定任务。
-                一键安装，即刻提升开发效率。
-            </p>
-            
-            <!-- Search Bar -->
-            <div class="max-w-xl mx-auto mb-8">
-                <div class="relative">
-                    <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
-                    <input type="text" placeholder="搜索技能..." class="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all duration-200">
-                </div>
-            </div>
-            
-            <div class="flex flex-wrap justify-center gap-4">
-                <a href="#skills" class="bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-primary/90 transition-colors duration-200 cursor-pointer flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
-                    </svg>
-                    浏览技能
-                </a>
-                <a href="#install" class="bg-white text-text px-6 py-3 rounded-xl font-medium border border-gray-200 hover:border-primary hover:text-primary transition-colors duration-200 cursor-pointer flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                    </svg>
-                    安装指南
-                </a>
-            </div>
-        </div>
-    </section>
-
-    <!-- Stats Section -->
-    <section class="py-12 border-y border-gray-200 bg-white">
-        <div class="max-w-6xl mx-auto px-4">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-                <div>
-                    <div class="text-3xl font-bold text-primary mb-1">1+</div>
-                    <div class="text-gray-600">可用技能</div>
-                </div>
-                <div>
-                    <div class="text-3xl font-bold text-primary mb-1">9+</div>
-                    <div class="text-gray-600">支持框架</div>
-                </div>
-                <div>
-                    <div class="text-3xl font-bold text-primary mb-1">100%</div>
-                    <div class="text-gray-600">开源免费</div>
-                </div>
-                <div>
-                    <div class="text-3xl font-bold text-primary mb-1">MIT</div>
-                    <div class="text-gray-600">许可证</div>
-                </div>
-            </div>
-        </div>
     </section>
 
     <!-- Skills Section -->
-    <section id="skills" class="py-20 px-4">
-        <div class="max-w-6xl mx-auto">
-            <div class="text-center mb-12">
-                <h2 class="text-3xl font-bold mb-4">可用技能</h2>
-                <p class="text-gray-600 max-w-2xl mx-auto">精选高质量的 Cursor Skills，覆盖 API 文档、代码审查、UI/UX 设计等多个领域</p>
+    <section id="skills" class="container mx-auto px-4 py-16">
+        <div class="mx-auto flex max-w-[58rem] flex-col items-center space-y-4 text-center">
+            <h2 class="text-3xl font-bold leading-[1.1] sm:text-3xl md:text-5xl">
+                <span class="lang-zh">可用技能</span>
+                <span class="lang-en">Available Skills</span>
+            </h2>
+            <p class="max-w-[85%] leading-normal text-muted-foreground sm:text-lg sm:leading-7">
+                <span class="lang-zh">精选高质量的 Cursor Skills，覆盖 API 文档、代码审查、UI/UX 设计等多个领域</span>
+                <span class="lang-en">Curated high-quality Cursor Skills covering API documentation, code review, UI/UX design and more</span>
+            </p>
+        </div>
+        <div class="mx-auto grid justify-center gap-4 sm:grid-cols-2 md:max-w-[64rem] md:grid-cols-3 mt-12">
+            <!-- Skill Card -->
+            <div class="relative overflow-hidden rounded-lg border bg-card p-6 hover:shadow-md transition-shadow cursor-pointer group">
+                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-muted mb-4">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                </div>
+                <h3 class="font-bold">swagger-api-reader</h3>
+                <p class="text-sm text-muted-foreground mt-2">
+                    <span class="lang-zh">读取并缓存 Swagger/OpenAPI 文档，支持浏览器认证，自动生成结构化 API 文档</span>
+                    <span class="lang-en">Read and cache Swagger/OpenAPI docs with browser auth support, auto-generate structured API documentation</span>
+                </p>
+                <div class="flex flex-wrap gap-1 mt-4">
+                    <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors">API</span>
+                    <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors">Swagger</span>
+                    <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors">
+                        <span class="lang-zh">文档</span>
+                        <span class="lang-en">Docs</span>
+                    </span>
+                </div>
             </div>
-            
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Skill Card: swagger-api-reader -->
-                <div class="bg-white rounded-2xl p-6 border border-gray-200 hover:border-primary hover:shadow-lg transition-all duration-200 cursor-pointer group">
-                    <div class="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors duration-200">
-                        <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                        </svg>
-                    </div>
-                    <h3 class="text-lg font-semibold mb-2">swagger-api-reader</h3>
-                    <p class="text-gray-600 text-sm mb-4">读取并缓存 Swagger/OpenAPI 文档，支持浏览器认证，自动生成结构化 API 文档供模型使用</p>
-                    <div class="flex flex-wrap gap-2">
-                        <span class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg">API</span>
-                        <span class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg">Swagger</span>
-                        <span class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg">文档</span>
-                    </div>
+            <!-- Coming Soon -->
+            <div class="relative overflow-hidden rounded-lg border border-dashed bg-muted/50 p-6">
+                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-muted mb-4">
+                    <svg class="h-6 w-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                    </svg>
                 </div>
-                
-                <!-- Coming Soon Card -->
-                <div class="bg-gray-50 rounded-2xl p-6 border border-dashed border-gray-300">
-                    <div class="w-12 h-12 bg-gray-200 rounded-xl flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                        </svg>
-                    </div>
-                    <h3 class="text-lg font-semibold text-gray-400 mb-2">更多技能</h3>
-                    <p class="text-gray-400 text-sm mb-4">持续更新中，欢迎贡献你的技能</p>
-                    <a href="#contribute" class="text-primary text-sm font-medium hover:underline cursor-pointer">了解如何贡献 →</a>
-                </div>
+                <h3 class="font-bold text-muted-foreground">
+                    <span class="lang-zh">更多技能</span>
+                    <span class="lang-en">More Skills</span>
+                </h3>
+                <p class="text-sm text-muted-foreground mt-2">
+                    <span class="lang-zh">持续更新中，欢迎贡献你的技能</span>
+                    <span class="lang-en">Coming soon, contributions welcome</span>
+                </p>
             </div>
         </div>
     </section>
 
     <!-- Install Section -->
-    <section id="install" class="py-20 px-4 bg-white">
-        <div class="max-w-4xl mx-auto">
-            <div class="text-center mb-12">
-                <h2 class="text-3xl font-bold mb-4">安装指南</h2>
-                <p class="text-gray-600">两种方式安装技能，按需选择</p>
-            </div>
-            
-            <div class="grid md:grid-cols-2 gap-8">
-                <!-- Global Install -->
-                <div class="bg-background rounded-2xl p-6 border border-gray-200">
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                            <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="font-semibold">个人级安装</h3>
-                            <p class="text-sm text-gray-500">所有项目可用</p>
-                        </div>
+    <section id="install" class="container mx-auto px-4 py-16">
+        <div class="mx-auto flex max-w-[58rem] flex-col items-center space-y-4 text-center">
+            <h2 class="text-3xl font-bold leading-[1.1] sm:text-3xl md:text-5xl">
+                <span class="lang-zh">安装指南</span>
+                <span class="lang-en">Installation Guide</span>
+            </h2>
+            <p class="max-w-[85%] leading-normal text-muted-foreground sm:text-lg sm:leading-7">
+                <span class="lang-zh">两种方式安装技能，按需选择</span>
+                <span class="lang-en">Two installation methods, choose as needed</span>
+            </p>
+        </div>
+        <div class="mx-auto grid gap-6 md:max-w-[64rem] md:grid-cols-2 mt-12">
+            <!-- Global Install -->
+            <div class="rounded-lg border bg-card p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
                     </div>
-                    <div class="bg-text rounded-xl p-4 font-mono text-sm text-gray-300 overflow-x-auto">
-                        <div class="text-gray-500"># 克隆仓库</div>
-                        <div class="text-green-400">git clone https://github.com/shetengteng/skillix-hub.git</div>
-                        <div class="mt-2 text-gray-500"># 复制到 Cursor skills 目录</div>
-                        <div class="text-green-400">cp -r skillix-hub/swagger-api-reader ~/.cursor/skills/</div>
+                    <div>
+                        <h3 class="font-semibold">
+                            <span class="lang-zh">个人级安装</span>
+                            <span class="lang-en">Global Installation</span>
+                        </h3>
+                        <p class="text-sm text-muted-foreground">
+                            <span class="lang-zh">所有项目可用</span>
+                            <span class="lang-en">Available for all projects</span>
+                        </p>
                     </div>
                 </div>
-                
-                <!-- Project Install -->
-                <div class="bg-background rounded-2xl p-6 border border-gray-200">
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="w-10 h-10 bg-cta/10 rounded-lg flex items-center justify-center">
-                            <svg class="w-5 h-5 text-cta" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="font-semibold">项目级安装</h3>
-                            <p class="text-sm text-gray-500">仅当前项目可用</p>
-                        </div>
-                    </div>
-                    <div class="bg-text rounded-xl p-4 font-mono text-sm text-gray-300 overflow-x-auto">
-                        <div class="text-gray-500"># 在项目根目录</div>
-                        <div class="text-green-400">mkdir -p .cursor/skills</div>
-                        <div class="text-green-400">cp -r skillix-hub/swagger-api-reader .cursor/skills/</div>
-                    </div>
+                <div class="rounded-md bg-muted p-4 font-mono text-sm overflow-x-auto">
+                    <div class="text-muted-foreground"># Clone repository</div>
+                    <div>git clone https://github.com/shetengteng/skillix-hub.git</div>
+                    <div class="mt-2 text-muted-foreground"># Copy to Cursor skills</div>
+                    <div>cp -r skillix-hub/swagger-api-reader ~/.cursor/skills/</div>
                 </div>
             </div>
-            
-            <div class="mt-8 p-4 bg-primary/5 rounded-xl border border-primary/20">
-                <div class="flex items-start gap-3">
-                    <svg class="w-5 h-5 text-primary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <div class="text-sm">
-                        <span class="font-medium">提示：</span>
-                        <span class="text-gray-600">安装后记得运行 <code class="bg-white px-1.5 py-0.5 rounded text-primary font-mono text-xs">pip install -r scripts/requirements.txt</code> 安装依赖</span>
+            <!-- Project Install -->
+            <div class="rounded-lg border bg-card p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold">
+                            <span class="lang-zh">项目级安装</span>
+                            <span class="lang-en">Project Installation</span>
+                        </h3>
+                        <p class="text-sm text-muted-foreground">
+                            <span class="lang-zh">仅当前项目可用</span>
+                            <span class="lang-en">Available for current project only</span>
+                        </p>
                     </div>
                 </div>
+                <div class="rounded-md bg-muted p-4 font-mono text-sm overflow-x-auto">
+                    <div class="text-muted-foreground"># In project root</div>
+                    <div>mkdir -p .cursor/skills</div>
+                    <div>cp -r skillix-hub/swagger-api-reader .cursor/skills/</div>
+                </div>
+            </div>
+        </div>
+        <div class="mx-auto max-w-[64rem] mt-6">
+            <div class="rounded-lg border bg-muted/50 p-4 flex items-start gap-3">
+                <svg class="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <p class="text-sm text-muted-foreground">
+                    <span class="lang-zh">安装后记得运行 <code class="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm">pip install -r scripts/requirements.txt</code> 安装依赖</span>
+                    <span class="lang-en">After installation, run <code class="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm">pip install -r scripts/requirements.txt</code> to install dependencies</span>
+                </p>
             </div>
         </div>
     </section>
 
     <!-- Contribute Section -->
-    <section id="contribute" class="py-20 px-4">
-        <div class="max-w-4xl mx-auto text-center">
-            <h2 class="text-3xl font-bold mb-4">贡献你的技能</h2>
-            <p class="text-gray-600 mb-8 max-w-2xl mx-auto">
-                Skillix Hub 是一个开源项目，欢迎提交 PR 添加新的技能。
-                让我们一起打造更强大的 AI 编程助手！
+    <section id="contribute" class="container mx-auto px-4 py-16">
+        <div class="mx-auto flex max-w-[58rem] flex-col items-center space-y-4 text-center">
+            <h2 class="text-3xl font-bold leading-[1.1] sm:text-3xl md:text-5xl">
+                <span class="lang-zh">贡献你的技能</span>
+                <span class="lang-en">Contribute Your Skills</span>
+            </h2>
+            <p class="max-w-[85%] leading-normal text-muted-foreground sm:text-lg sm:leading-7">
+                <span class="lang-zh">Skillix Hub 是一个开源项目，欢迎提交 PR 添加新的技能</span>
+                <span class="lang-en">Skillix Hub is an open source project, PRs are welcome to add new skills</span>
             </p>
-            
-            <div class="bg-white rounded-2xl p-8 border border-gray-200 text-left mb-8">
-                <h3 class="font-semibold mb-4">Skill 结构规范</h3>
-                <div class="bg-background rounded-xl p-4 font-mono text-sm overflow-x-auto">
-                    <div class="text-gray-500">skill-name/</div>
-                    <div class="text-gray-500">├── <span class="text-primary">SKILL.md</span>              # 必需：主指令文件</div>
-                    <div class="text-gray-500">├── scripts/              # 可选：执行脚本</div>
-                    <div class="text-gray-500">│   ├── main.py</div>
-                    <div class="text-gray-500">│   └── requirements.txt</div>
-                    <div class="text-gray-500">└── templates/            # 可选：模板文件</div>
+        </div>
+        <div class="mx-auto max-w-[42rem] mt-12">
+            <div class="rounded-lg border bg-card p-6">
+                <h3 class="font-semibold mb-4">
+                    <span class="lang-zh">Skill 结构规范</span>
+                    <span class="lang-en">Skill Structure</span>
+                </h3>
+                <div class="rounded-md bg-muted p-4 font-mono text-sm">
+                    <div class="text-muted-foreground">skill-name/</div>
+                    <div>├── SKILL.md              <span class="text-muted-foreground"># <span class="lang-zh">必需：主指令文件</span><span class="lang-en">Required: Main instruction file</span></span></div>
+                    <div>├── scripts/              <span class="text-muted-foreground"># <span class="lang-zh">可选：执行脚本</span><span class="lang-en">Optional: Scripts</span></span></div>
+                    <div>│   ├── main.py</div>
+                    <div>│   └── requirements.txt</div>
+                    <div>└── templates/            <span class="text-muted-foreground"># <span class="lang-zh">可选：模板文件</span><span class="lang-en">Optional: Templates</span></span></div>
                 </div>
             </div>
-            
-            <a href="https://github.com/shetengteng/skillix-hub/pulls" target="_blank" class="inline-flex items-center gap-2 bg-cta text-white px-6 py-3 rounded-xl font-medium hover:bg-cta/90 transition-colors duration-200 cursor-pointer">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                </svg>
-                提交 Pull Request
-            </a>
+            <div class="flex justify-center mt-8">
+                <a href="https://github.com/shetengteng/skillix-hub/pulls" target="_blank" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8 cursor-pointer">
+                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                    </svg>
+                    <span class="lang-zh">提交 Pull Request</span>
+                    <span class="lang-en">Submit Pull Request</span>
+                </a>
+            </div>
         </div>
     </section>
 
     <!-- Footer -->
-    <footer class="py-12 px-4 border-t border-gray-200 bg-white">
-        <div class="max-w-6xl mx-auto">
-            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                        </svg>
-                    </div>
-                    <span class="font-semibold">Skillix Hub</span>
-                </div>
-                <div class="text-gray-500 text-sm">
-                    MIT License © 2026 shetengteng
-                </div>
-                <div class="flex items-center gap-4">
-                    <a href="https://github.com/shetengteng/skillix-hub" target="_blank" class="text-gray-400 hover:text-text transition-colors duration-200 cursor-pointer">
-                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                        </svg>
-                    </a>
-                </div>
+    <footer class="border-t py-6 md:py-0">
+        <div class="container flex flex-col items-center justify-between gap-4 md:h-16 md:flex-row mx-auto px-4">
+            <div class="flex items-center gap-2">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                <span class="font-semibold">Skillix Hub</span>
             </div>
+            <p class="text-center text-sm leading-loose text-muted-foreground">
+                MIT License © 2026 shetengteng
+            </p>
         </div>
     </footer>
+
+    <script>
+        // Theme Toggle
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        
+        // Check saved theme or system preference
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            html.classList.add('dark');
+        }
+        
+        themeToggle.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light';
+        });
+        
+        // Language Toggle
+        const langToggle = document.getElementById('langToggle');
+        const body = document.body;
+        
+        // Check saved language
+        if (localStorage.lang === 'en') {
+            body.setAttribute('data-lang', 'en');
+        }
+        
+        langToggle.addEventListener('click', () => {
+            const currentLang = body.getAttribute('data-lang');
+            if (currentLang === 'en') {
+                body.removeAttribute('data-lang');
+                localStorage.lang = 'zh';
+            } else {
+                body.setAttribute('data-lang', 'en');
+                localStorage.lang = 'en';
+            }
+        });
+    </script>
 </body>
 </html>
