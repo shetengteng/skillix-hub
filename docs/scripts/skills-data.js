@@ -21,10 +21,12 @@ const SKILLS_DATA = [
             { zh: '保存记忆', en: 'Save Memory' },
             { zh: '搜索记忆', en: 'Search Memory' },
             { zh: '查看记忆', en: 'View Memory' },
-            { zh: '删除记忆', en: 'Delete Memory' }
+            { zh: '删除记忆', en: 'Delete Memory' },
+            { zh: '导出记忆', en: 'Export Memory' },
+            { zh: '导入记忆', en: 'Import Memory' }
         ],
-        scripts: ['save_memory.py', 'search_memory.py', 'view_memory.py', 'delete_memory.py', 'utils.py'],
-        version: '1.0',
+        scripts: ['save_memory.py', 'search_memory.py', 'view_memory.py', 'delete_memory.py', 'export_memory.py', 'import_memory.py', 'utils.py'],
+        version: '1.1',
         author: 'shetengteng',
         repo: 'https://github.com/shetengteng/skillix-hub/tree/main/skills/memory'
     },

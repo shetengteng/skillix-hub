@@ -57,6 +57,9 @@ Memory Skill 为 Cursor 提供长期记忆能力，无需额外依赖。
 - **自动检索**：根据用户问题自动检索相关历史记忆
 - **智能保存**：自动判断对话价值并保存重要内容
 - **关键词匹配**：基于关键词 + 时间衰减的检索算法
+- **查看记忆**：查看今日/指定日期/最近的记忆
+- **删除记忆**：删除指定记忆或清空所有记忆
+- **导出导入**：备份和恢复记忆数据
 
 ### 使用示例
 
@@ -66,6 +69,18 @@ python3 ~/.cursor/skills/memory/scripts/save_memory.py '{"topic": "API 设计", 
 
 # 搜索记忆
 python3 ~/.cursor/skills/memory/scripts/search_memory.py "API 设计"
+
+# 查看今日记忆
+python3 ~/.cursor/skills/memory/scripts/view_memory.py today
+
+# 删除指定记忆
+python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"id": "2026-01-29-001"}'
+
+# 导出记忆
+python3 ~/.cursor/skills/memory/scripts/export_memory.py
+
+# 导入记忆
+python3 ~/.cursor/skills/memory/scripts/import_memory.py '{"input": "backup.json"}'
 ```
 
 ### 触发词
@@ -73,6 +88,8 @@ python3 ~/.cursor/skills/memory/scripts/search_memory.py "API 设计"
 - **检索触发**：继续、上次、之前、昨天、我们讨论过
 - **保存触发**：记住这个、save this
 - **跳过保存**：不要保存、don't save
+- **查看记忆**：查看今日记忆、查看最近记忆
+- **导出导入**：导出记忆、导入记忆
 
 ## 贡献
 

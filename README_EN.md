@@ -57,6 +57,9 @@ Memory Skill provides long-term memory capability for Cursor with zero external 
 - **Auto Retrieval**: Automatically retrieve relevant history based on user questions
 - **Smart Saving**: Automatically judge conversation value and save important content
 - **Keyword Matching**: Retrieval algorithm based on keywords + time decay
+- **View Memories**: View today's/specific date/recent memories
+- **Delete Memories**: Delete specific memories or clear all
+- **Export/Import**: Backup and restore memory data
 
 ### Usage Examples
 
@@ -66,6 +69,18 @@ python3 ~/.cursor/skills/memory/scripts/save_memory.py '{"topic": "API Design", 
 
 # Search memory
 python3 ~/.cursor/skills/memory/scripts/search_memory.py "API Design"
+
+# View today's memories
+python3 ~/.cursor/skills/memory/scripts/view_memory.py today
+
+# Delete specific memory
+python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"id": "2026-01-29-001"}'
+
+# Export memories
+python3 ~/.cursor/skills/memory/scripts/export_memory.py
+
+# Import memories
+python3 ~/.cursor/skills/memory/scripts/import_memory.py '{"input": "backup.json"}'
 ```
 
 ### Trigger Words
@@ -73,6 +88,8 @@ python3 ~/.cursor/skills/memory/scripts/search_memory.py "API Design"
 - **Retrieval Triggers**: continue, last time, before, yesterday, we discussed
 - **Save Triggers**: remember this, save this
 - **Skip Save**: don't save, skip saving
+- **View Memories**: view today's memories, view recent memories
+- **Export/Import**: export memories, import memories
 
 ## Contributing
 
