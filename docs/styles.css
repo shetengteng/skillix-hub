@@ -673,6 +673,110 @@ html.dark .text-muted,
     color: #94a3b8 !important; /* slate-400 - good contrast in dark mode */
 }
 
+/* --------------------------------------------------------------------------
+   Modal Styles
+   -------------------------------------------------------------------------- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 1rem;
+}
+
+.modal-content {
+    background-color: hsl(var(--card));
+    border-radius: var(--radius);
+    border: 1px solid hsl(var(--border));
+    padding: 1.5rem;
+    max-width: 32rem;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    animation: modal-enter 0.2s ease-out;
+}
+
+@keyframes modal-enter {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.modal-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: hsl(var(--muted-foreground));
+    padding: 0.25rem;
+    border-radius: var(--radius);
+    transition: background-color 0.2s;
+}
+
+.modal-close:hover {
+    background-color: hsl(var(--muted));
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.modal-header .icon-container {
+    margin-bottom: 0;
+}
+
+/* Badge Primary Variant */
+.badge-primary {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border: none;
+}
+
+/* Border utilities */
+.border-t {
+    border-top-width: 1px;
+}
+
+.border-border {
+    border-color: hsl(var(--border));
+}
+
+.pt-3 {
+    padding-top: 0.75rem;
+}
+
+.ml-2 {
+    margin-left: 0.5rem;
+}
+
+.list-disc {
+    list-style-type: disc;
+}
+
+.list-inside {
+    list-style-position: inside;
+}
+
+.bg-muted {
+    background-color: hsl(var(--muted));
+}
+
 .mt-2 { margin-top: 0.5rem; }
 .mt-4 { margin-top: 1rem; }
 .mt-6 { margin-top: 1.5rem; }

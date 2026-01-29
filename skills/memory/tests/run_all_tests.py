@@ -12,7 +12,9 @@ def main():
     test_files = [
         "test_utils.py",
         "test_save_memory.py",
-        "test_search_memory.py"
+        "test_search_memory.py",
+        "test_delete_memory.py",
+        "test_view_memory.py"
     ]
     
     total_passed = 0

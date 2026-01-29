@@ -91,6 +91,62 @@ python3 scripts/save_memory.py '{"topic": "主题", "key_info": ["要点1", "要
 
 脚本位置：`<skill_dir>/scripts/save_memory.py`
 
+## 查看流程
+
+当用户想查看记忆时，执行以下命令：
+
+### 查看今日记忆
+
+```bash
+python3 scripts/view_memory.py today
+```
+
+### 查看指定日期记忆
+
+```bash
+python3 scripts/view_memory.py "2026-01-29"
+```
+
+### 查看最近 N 天记忆
+
+```bash
+python3 scripts/view_memory.py recent 7
+```
+
+### 列出所有有记忆的日期
+
+```bash
+python3 scripts/view_memory.py list
+```
+
+脚本位置：`<skill_dir>/scripts/view_memory.py`
+
+## 删除流程
+
+当用户想删除记忆时，执行以下命令：
+
+### 删除指定记忆
+
+```bash
+python3 scripts/delete_memory.py '{"id": "2026-01-29-001"}'
+```
+
+### 删除指定日期的所有记忆
+
+```bash
+python3 scripts/delete_memory.py '{"date": "2026-01-29"}'
+```
+
+### 清空所有记忆
+
+```bash
+python3 scripts/delete_memory.py '{"clear_all": true, "confirm": true}'
+```
+
+**注意**：清空所有记忆需要 `confirm: true` 参数确认。
+
+脚本位置：`<skill_dir>/scripts/delete_memory.py`
+
 ## 用户交互命令
 
 | 命令 | 描述 |
@@ -99,7 +155,9 @@ python3 scripts/save_memory.py '{"topic": "主题", "key_info": ["要点1", "要
 | `不要保存` / `don't save` | 跳过本次对话保存 |
 | `搜索记忆: xxx` | 主动搜索历史记忆 |
 | `查看今日记忆` | 查看今天的记忆 |
+| `查看最近记忆` | 查看最近 7 天的记忆 |
 | `删除记忆: xxx` | 删除特定记忆 |
+| `清空所有记忆` | 清空所有记忆（需确认） |
 
 ## 配置说明
 
@@ -152,6 +210,8 @@ python3 scripts/save_memory.py '{"topic": "主题", "key_info": ["要点1", "要
 │   ├── scripts/
 │   │   ├── save_memory.py
 │   │   ├── search_memory.py
+│   │   ├── view_memory.py
+│   │   ├── delete_memory.py
 │   │   └── utils.py
 │   └── default_config.json
 └── memory-data/                 # 用户数据（永不覆盖）

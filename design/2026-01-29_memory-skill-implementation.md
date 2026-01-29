@@ -18,9 +18,11 @@
 ├── memory/                      # Skill 代码（可安全更新）
 │   ├── SKILL.md
 │   ├── scripts/
-│   │   ├── save_memory.py
-│   │   ├── search_memory.py
-│   │   └── utils.py
+│   │   ├── save_memory.py       # 保存记忆
+│   │   ├── search_memory.py     # 搜索记忆
+│   │   ├── view_memory.py       # 查看记忆
+│   │   ├── delete_memory.py     # 删除记忆
+│   │   └── utils.py             # 工具函数
 │   └── default_config.json
 └── memory-data/                 # 用户数据（永不覆盖）
     ├── daily/
@@ -382,6 +384,219 @@ if __name__ == "__main__":
     print(json.dumps(search_memories(query), ensure_ascii=False, indent=2))
 ```
 
+### 5.4 view_memory.py
+
+```python
+#!/usr/bin/env python3
+"""查看记忆"""
+
+import sys
+import json
+from datetime import datetime, timedelta
+from utils import get_data_dir, load_index, load_config, initialize_data_dir
+
+def view_memories_by_date(date: str = None, location: str = "project") -> dict:
+    """查看指定日期的记忆"""
+    config = load_config(location)
+    if not config.get("enabled", True):
+        return {"success": False, "message": "Memory Skill 已禁用"}
+    
+    initialize_data_dir(location)
+    data_dir = get_data_dir(location)
+    
+    if date is None:
+        date = datetime.now().strftime("%Y-%m-%d")
+    
+    index = load_index(location)
+    date_entries = [e for e in index.get("entries", []) if e.get("date") == date]
+    
+    if not date_entries:
+        return {"success": True, "date": date, "count": 0, "memories": []}
+    
+    # 获取详细内容
+    memories = []
+    daily_file = data_dir / "daily" / f"{date}.md"
+    lines = daily_file.read_text(encoding='utf-8').splitlines() if daily_file.exists() else []
+    
+    for entry in date_entries:
+        content = entry.get("summary", "")
+        line_range = entry.get("line_range", [])
+        if lines and line_range:
+            start, end = max(0, line_range[0] - 1), min(len(lines), line_range[1])
+            content = "\n".join(lines[start:end])
+        memories.append({
+            "id": entry.get("id"), "session": entry.get("session", 1),
+            "summary": entry.get("summary", ""), "tags": entry.get("tags", []),
+            "content": content
+        })
+    
+    return {"success": True, "date": date, "count": len(memories), "memories": memories}
+
+def view_recent_memories(days: int = 7, location: str = "project") -> dict:
+    """查看最近几天的记忆"""
+    config = load_config(location)
+    if not config.get("enabled", True):
+        return {"success": False, "message": "Memory Skill 已禁用"}
+    
+    index = load_index(location)
+    cutoff_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+    recent_entries = [e for e in index.get("entries", []) if e.get("date", "") >= cutoff_date]
+    
+    # 按日期分组
+    by_date = {}
+    for entry in recent_entries:
+        date = entry.get("date")
+        if date not in by_date:
+            by_date[date] = []
+        by_date[date].append({"id": entry.get("id"), "summary": entry.get("summary", "")})
+    
+    return {"success": True, "days": days, "total_count": len(recent_entries),
+            "by_date": [{"date": d, "memories": by_date[d]} for d in sorted(by_date.keys(), reverse=True)]}
+
+def list_all_dates(location: str = "project") -> dict:
+    """列出所有有记忆的日期"""
+    index = load_index(location)
+    date_counts = {}
+    for entry in index.get("entries", []):
+        date = entry.get("date")
+        date_counts[date] = date_counts.get(date, 0) + 1
+    return {"success": True, "total_dates": len(date_counts),
+            "dates": [{"date": d, "count": date_counts[d]} for d in sorted(date_counts.keys(), reverse=True)]}
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        result = view_memories_by_date()
+    elif sys.argv[1] == "today":
+        result = view_memories_by_date()
+    elif sys.argv[1] == "recent":
+        days = int(sys.argv[2]) if len(sys.argv) > 2 else 7
+        result = view_recent_memories(days)
+    elif sys.argv[1] == "list":
+        result = list_all_dates()
+    else:
+        result = view_memories_by_date(sys.argv[1])
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+```
+
+### 5.5 delete_memory.py
+
+```python
+#!/usr/bin/env python3
+"""删除记忆"""
+
+import sys
+import json
+from datetime import datetime
+from utils import get_data_dir, load_index, save_index, initialize_data_dir, load_config
+
+def delete_memory_by_id(memory_id: str, location: str = "project") -> dict:
+    """删除指定 ID 的记忆"""
+    config = load_config(location)
+    if not config.get("enabled", True):
+        return {"success": False, "message": "Memory Skill 已禁用"}
+    
+    initialize_data_dir(location)
+    data_dir = get_data_dir(location)
+    index = load_index(location)
+    entries = index.get("entries", [])
+    
+    # 查找并删除
+    target_entry = None
+    for i, entry in enumerate(entries):
+        if entry.get("id") == memory_id:
+            target_entry = entries.pop(i)
+            break
+    
+    if target_entry is None:
+        return {"success": False, "message": f"未找到记忆: {memory_id}"}
+    
+    index["entries"] = entries
+    save_index(index, location)
+    
+    # 标记文件中的内容为已删除
+    date = target_entry.get("date")
+    line_range = target_entry.get("line_range", [])
+    if date and line_range:
+        daily_file = data_dir / "daily" / f"{date}.md"
+        if daily_file.exists():
+            lines = daily_file.read_text(encoding='utf-8').splitlines()
+            start, end = max(0, line_range[0] - 1), min(len(lines), line_range[1])
+            for i in range(start, end):
+                lines[i] = f"<!-- DELETED: {lines[i]} -->"
+            daily_file.write_text('\n'.join(lines), encoding='utf-8')
+    
+    return {"success": True, "memory_id": memory_id, "message": f"记忆已删除: {memory_id}"}
+
+def delete_memories_by_date(date: str, location: str = "project") -> dict:
+    """删除指定日期的所有记忆"""
+    config = load_config(location)
+    if not config.get("enabled", True):
+        return {"success": False, "message": "Memory Skill 已禁用"}
+    
+    initialize_data_dir(location)
+    data_dir = get_data_dir(location)
+    index = load_index(location)
+    
+    original_count = len(index.get("entries", []))
+    index["entries"] = [e for e in index.get("entries", []) if e.get("date") != date]
+    deleted_count = original_count - len(index["entries"])
+    
+    if deleted_count == 0:
+        return {"success": False, "message": f"未找到日期 {date} 的记忆"}
+    
+    save_index(index, location)
+    
+    # 删除每日文件
+    daily_file = data_dir / "daily" / f"{date}.md"
+    if daily_file.exists():
+        daily_file.unlink()
+    
+    return {"success": True, "date": date, "deleted_count": deleted_count}
+
+def clear_all_memories(location: str = "project", confirm: bool = False) -> dict:
+    """清空所有记忆"""
+    if not confirm:
+        return {"success": False, "message": "清空所有记忆需要确认，请设置 confirm=true"}
+    
+    config = load_config(location)
+    if not config.get("enabled", True):
+        return {"success": False, "message": "Memory Skill 已禁用"}
+    
+    initialize_data_dir(location)
+    data_dir = get_data_dir(location)
+    index = load_index(location)
+    total_count = len(index.get("entries", []))
+    
+    index["entries"] = []
+    save_index(index, location)
+    
+    # 删除所有每日文件
+    daily_dir = data_dir / "daily"
+    files_deleted = 0
+    if daily_dir.exists():
+        for f in daily_dir.glob("*.md"):
+            f.unlink()
+            files_deleted += 1
+    
+    return {"success": True, "deleted_count": total_count, "files_deleted": files_deleted}
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print(json.dumps({"success": False, "message": "用法: python3 delete_memory.py '{\"id\": \"xxx\"}'"}, ensure_ascii=False))
+        sys.exit(1)
+    
+    data = json.loads(sys.argv[1])
+    if data.get("clear_all"):
+        result = clear_all_memories(confirm=data.get("confirm", False))
+    elif data.get("date"):
+        result = delete_memories_by_date(data["date"])
+    elif data.get("id"):
+        result = delete_memory_by_id(data["id"])
+    else:
+        result = {"success": False, "message": "请提供 id、date 或 clear_all 参数"}
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+```
+
 ## 6. 工作流程
 
 ### 检索流程
@@ -397,6 +612,47 @@ if __name__ == "__main__":
 对话结束 → 大模型判断是否值得保存 → 提取主题/关键信息/标签 
 → 运行 save_memory.py → 更新索引
 ```
+
+### 查看流程
+
+```
+用户请求查看记忆 → 运行 view_memory.py → 返回记忆列表/内容
+```
+
+**命令示例**：
+```bash
+# 查看今日记忆
+python3 view_memory.py today
+
+# 查看指定日期记忆
+python3 view_memory.py "2026-01-29"
+
+# 查看最近 7 天记忆
+python3 view_memory.py recent 7
+
+# 列出所有有记忆的日期
+python3 view_memory.py list
+```
+
+### 删除流程
+
+```
+用户请求删除记忆 → 运行 delete_memory.py → 更新索引 → 标记/删除文件
+```
+
+**命令示例**：
+```bash
+# 删除指定记忆
+python3 delete_memory.py '{"id": "2026-01-29-001"}'
+
+# 删除指定日期的所有记忆
+python3 delete_memory.py '{"date": "2026-01-29"}'
+
+# 清空所有记忆（需确认）
+python3 delete_memory.py '{"clear_all": true, "confirm": true}'
+```
+
+**注意**：清空所有记忆是危险操作，必须设置 `confirm: true` 才会执行。
 
 ## 7. Skill 指令
 
@@ -460,13 +716,18 @@ python3 save_memory.py '{"topic": "主题", "key_info": ["要点"], "tags": ["#t
 
 ## 8. 用户交互命令
 
-| 命令 | 描述 |
-|------|------|
-| `记住这个` / `save this` | 手动保存当前对话 |
-| `不要保存` / `don't save` | 跳过本次对话保存 |
-| `搜索记忆: xxx` | 主动搜索历史记忆 |
-| `查看今日记忆` | 查看今天的记忆 |
-| `删除记忆: xxx` | 删除特定记忆 |
+| 命令 | 描述 | 对应脚本 |
+|------|------|---------|
+| `记住这个` / `save this` | 手动保存当前对话 | `save_memory.py` |
+| `不要保存` / `don't save` | 跳过本次对话保存 | - |
+| `搜索记忆: xxx` | 主动搜索历史记忆 | `search_memory.py` |
+| `查看今日记忆` | 查看今天的记忆 | `view_memory.py today` |
+| `查看最近记忆` | 查看最近 7 天的记忆 | `view_memory.py recent 7` |
+| `查看 xxx 日期记忆` | 查看指定日期的记忆 | `view_memory.py "2026-01-29"` |
+| `列出所有记忆日期` | 列出所有有记忆的日期 | `view_memory.py list` |
+| `删除记忆: xxx` | 删除特定记忆 | `delete_memory.py '{"id": "xxx"}'` |
+| `删除 xxx 日期记忆` | 删除指定日期的所有记忆 | `delete_memory.py '{"date": "xxx"}'` |
+| `清空所有记忆` | 清空所有记忆（需确认） | `delete_memory.py '{"clear_all": true, "confirm": true}'` |
 
 ## 9. 使用示例
 

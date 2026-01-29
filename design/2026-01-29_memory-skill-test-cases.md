@@ -185,6 +185,121 @@ python3 ~/.cursor/skills/memory/scripts/search_memory.py "完全不存在的关�
 
 ---
 
+### 3.4 查看记忆测试
+
+#### 测试案例 20：查看今日记忆
+
+**操作**：
+```bash
+python3 ~/.cursor/skills/memory/scripts/view_memory.py today
+```
+
+**预期结果**：
+- 返回今日所有记忆
+- 包含 `count` 和 `memories` 字段
+- 每条记忆包含 `id`、`summary`、`content` 等信息
+
+#### 测试案例 21：查看指定日期记忆
+
+**操作**：
+```bash
+python3 ~/.cursor/skills/memory/scripts/view_memory.py "2026-01-29"
+```
+
+**预期结果**：
+- 返回指定日期的所有记忆
+- 日期不存在时返回空列表
+
+#### 测试案例 22：查看最近记忆
+
+**操作**：
+```bash
+python3 ~/.cursor/skills/memory/scripts/view_memory.py recent 7
+```
+
+**预期结果**：
+- 返回最近 7 天的记忆
+- 按日期分组，最近的在前
+
+#### 测试案例 23：列出所有日期
+
+**操作**：
+```bash
+python3 ~/.cursor/skills/memory/scripts/view_memory.py list
+```
+
+**预期结果**：
+- 返回所有有记忆的日期列表
+- 包含每个日期的记忆数量
+
+---
+
+### 3.5 删除记忆测试
+
+#### 测试案例 24：删除指定记忆
+
+**前置条件**：已保存记忆 `2026-01-29-001`
+
+**操作**：
+```bash
+python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"id": "2026-01-29-001"}'
+```
+
+**预期结果**：
+- 返回成功消息
+- 索引中删除该条目
+- 每日文件中标记为已删除
+
+#### 测试案例 25：删除不存在的记忆
+
+**操作**：
+```bash
+python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"id": "2099-01-01-999"}'
+```
+
+**预期结果**：
+- 返回 `"success": false`
+- 消息包含 "未找到"
+
+#### 测试案例 26：删除指定日期的所有记忆
+
+**前置条件**：2026-01-29 有多条记忆
+
+**操作**：
+```bash
+python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"date": "2026-01-29"}'
+```
+
+**预期结果**：
+- 返回成功消息，包含删除数量
+- 索引中删除该日期所有条目
+- 删除对应的每日文件
+
+#### 测试案例 27：清空所有记忆（无确认）
+
+**操作**：
+```bash
+python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"clear_all": true}'
+```
+
+**预期结果**：
+- 返回 `"success": false`
+- 消息要求确认
+
+#### 测试案例 28：清空所有记忆（有确认）
+
+**操作**：
+```bash
+python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"clear_all": true, "confirm": true}'
+```
+
+**预期结果**：
+- 返回成功消息
+- 索引清空
+- 所有每日文件删除
+
+---
+
 ## 5. 边界测试案例
 
 ### 5.1 数据边界
@@ -239,7 +354,9 @@ python3 run_all_tests.py
 | test_utils.py | 23 | 关键词提取、时间衰减、分数计算、配置管理 |
 | test_save_memory.py | 9 | 保存记忆、索引更新、会话编号 |
 | test_search_memory.py | 12 | 搜索记忆、分数排序、禁用状态 |
-| **总计** | **44** | |
+| test_delete_memory.py | 8 | 删除指定记忆、按日期删除、清空所有记忆 |
+| test_view_memory.py | 10 | 查看今日记忆、查看指定日期、查看最近记忆、列出日期 |
+| **总计** | **62** | |
 
 ---
 
@@ -281,6 +398,6 @@ python3 run_all_tests.py
 ## 9. 后续改进
 
 1. 添加更完善的中文分词支持
-2. 实现记忆删除功能
+2. ~~实现记忆删除功能~~ ✅ 已完成
 3. 添加记忆导出/导入功能
 4. 支持记忆标签筛选
