@@ -142,7 +142,34 @@
             </p>
         </div>
         <div class="grid-skills">
-            <!-- Skill Card -->
+            <!-- Memory Skill Card -->
+            <div class="card card-hover">
+                <div class="icon-container">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                    </svg>
+                </div>
+                <h3 class="font-bold">memory</h3>
+                <p class="text-sm text-muted mt-2">
+                    <span class="lang-zh">为 Cursor 提供长期记忆能力，自动记录对话并检索相关历史上下文，零外部依赖</span>
+                    <span class="lang-en">Long-term memory for Cursor, auto-record conversations and retrieve relevant history, zero external dependencies</span>
+                </p>
+                <div class="flex flex-wrap gap-1 mt-4">
+                    <span class="badge">
+                        <span class="lang-zh">记忆</span>
+                        <span class="lang-en">Memory</span>
+                    </span>
+                    <span class="badge">
+                        <span class="lang-zh">上下文</span>
+                        <span class="lang-en">Context</span>
+                    </span>
+                    <span class="badge">
+                        <span class="lang-zh">检索</span>
+                        <span class="lang-en">Retrieval</span>
+                    </span>
+                </div>
+            </div>
+            <!-- Swagger API Reader Card -->
             <div class="card card-hover">
                 <div class="icon-container">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -217,8 +244,10 @@
                 <div class="code-block">
                     <div class="comment"># Clone repository</div>
                     <div>git clone https://github.com/shetengteng/skillix-hub.git</div>
-                    <div class="mt-2 comment"># Copy to Cursor skills</div>
-                    <div>cp -r skillix-hub/swagger-api-reader ~/.cursor/skills/</div>
+                    <div class="mt-2 comment"># Copy Memory Skill</div>
+                    <div>cp -r skillix-hub/skills/memory ~/.cursor/skills/</div>
+                    <div class="mt-2 comment"># Copy Swagger API Reader</div>
+                    <div>cp -r skillix-hub/skills/swagger-api-reader ~/.cursor/skills/</div>
                 </div>
             </div>
             <!-- Project Install -->
@@ -243,7 +272,8 @@
                 <div class="code-block">
                     <div class="comment"># In project root</div>
                     <div>mkdir -p .cursor/skills</div>
-                    <div>cp -r skillix-hub/swagger-api-reader .cursor/skills/</div>
+                    <div>cp -r skillix-hub/skills/memory .cursor/skills/</div>
+                    <div>cp -r skillix-hub/skills/swagger-api-reader .cursor/skills/</div>
                 </div>
             </div>
         </div>

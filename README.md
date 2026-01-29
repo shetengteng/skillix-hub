@@ -13,7 +13,8 @@ Cursor Skill 是一种可复用的 AI 指令集，帮助 Cursor AI 更好地完�
 
 | Skill | 描述 |
 |-------|------|
-| [swagger-api-reader](./swagger-api-reader/) | 读取并缓存 Swagger/OpenAPI 文档，支持浏览器认证 |
+| [memory](./skills/memory/) | 为 Cursor 提供长期记忆能力，自动记录对话并检索相关历史上下文 |
+| [swagger-api-reader](./skills/swagger-api-reader/) | 读取并缓存 Swagger/OpenAPI 文档，支持浏览器认证 |
 
 ## 安装使用
 
@@ -23,10 +24,13 @@ Cursor Skill 是一种可复用的 AI 指令集，帮助 Cursor AI 更好地完�
 # 克隆仓库
 git clone https://github.com/shetengteng/skillix-hub.git
 
-# 复制到 Cursor skills 目录
-cp -r skillix-hub/swagger-api-reader ~/.cursor/skills/
+# 复制 Memory Skill 到 Cursor skills 目录
+cp -r skillix-hub/skills/memory ~/.cursor/skills/
 
-# 安装依赖
+# 复制 Swagger API Reader 到 Cursor skills 目录
+cp -r skillix-hub/skills/swagger-api-reader ~/.cursor/skills/
+
+# 安装 Swagger API Reader 依赖
 pip install -r ~/.cursor/skills/swagger-api-reader/scripts/requirements.txt
 ```
 
@@ -35,11 +39,40 @@ pip install -r ~/.cursor/skills/swagger-api-reader/scripts/requirements.txt
 ```bash
 # 在项目根目录
 mkdir -p .cursor/skills
-cp -r skillix-hub/swagger-api-reader .cursor/skills/
 
-# 安装依赖
+# 复制所需的 Skill
+cp -r skillix-hub/skills/memory .cursor/skills/
+cp -r skillix-hub/skills/swagger-api-reader .cursor/skills/
+
+# 安装依赖（如需要）
 pip install -r .cursor/skills/swagger-api-reader/scripts/requirements.txt
 ```
+
+## Memory Skill 使用说明
+
+Memory Skill 为 Cursor 提供长期记忆能力，无需额外依赖。
+
+### 核心功能
+
+- **自动检索**：根据用户问题自动检索相关历史记忆
+- **智能保存**：自动判断对话价值并保存重要内容
+- **关键词匹配**：基于关键词 + 时间衰减的检索算法
+
+### 使用示例
+
+```bash
+# 保存记忆
+python3 ~/.cursor/skills/memory/scripts/save_memory.py '{"topic": "API 设计", "key_info": ["使用 FastAPI"], "tags": ["#api"]}'
+
+# 搜索记忆
+python3 ~/.cursor/skills/memory/scripts/search_memory.py "API 设计"
+```
+
+### 触发词
+
+- **检索触发**：继续、上次、之前、昨天、我们讨论过
+- **保存触发**：记住这个、save this
+- **跳过保存**：不要保存、don't save
 
 ## 贡献
 
