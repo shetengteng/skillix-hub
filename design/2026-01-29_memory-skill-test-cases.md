@@ -300,6 +300,116 @@ python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"clear_all": true, "c
 
 ---
 
+### 3.6 导出记忆测试
+
+#### 测试案例 29：基本导出
+
+**前置条件**：已保存多条记忆
+
+**操作**：
+```bash
+python3 ~/.cursor/skills/memory/scripts/export_memory.py
+```
+
+**预期结果**：
+- 返回成功消息
+- 生成 `memory-export-{timestamp}.json` 文件
+- 文件包含所有记忆数据
+
+#### 测试案例 30：导出到指定文件
+
+**操作**：
+```bash
+python3 ~/.cursor/skills/memory/scripts/export_memory.py '{"output": "backup.json"}'
+```
+
+**预期结果**：
+- 生成 `backup.json` 文件
+- 文件内容完整
+
+#### 测试案例 31：按日期范围导出
+
+**操作**：
+```bash
+python3 ~/.cursor/skills/memory/scripts/export_memory.py '{"date_from": "2026-01-01", "date_to": "2026-01-15"}'
+```
+
+**预期结果**：
+- 只导出指定日期范围内的记忆
+- 统计信息正确
+
+#### 测试案例 32：导出不含内容
+
+**操作**：
+```bash
+python3 ~/.cursor/skills/memory/scripts/export_memory.py '{"include_content": false}'
+```
+
+**预期结果**：
+- `daily_files` 字段为空
+- 索引信息完整
+
+---
+
+### 3.7 导入记忆测试
+
+#### 测试案例 33：合并导入
+
+**前置条件**：已有现有记忆
+
+**操作**：
+```bash
+python3 ~/.cursor/skills/memory/scripts/import_memory.py '{"input": "backup.json"}'
+```
+
+**预期结果**：
+- 新记忆被添加
+- 现有记忆保留
+- 相同 ID 的记忆被跳过
+
+#### 测试案例 34：替换导入
+
+**操作**：
+```bash
+python3 ~/.cursor/skills/memory/scripts/import_memory.py '{"input": "backup.json", "mode": "replace"}'
+```
+
+**预期结果**：
+- 现有记忆被清空
+- 只保留导入的记忆
+
+#### 测试案例 35：覆盖冲突
+
+**操作**：
+```bash
+python3 ~/.cursor/skills/memory/scripts/import_memory.py '{"input": "backup.json", "overwrite": true}'
+```
+
+**预期结果**：
+- 相同 ID 的记忆被覆盖
+- 返回覆盖数量
+
+#### 测试案例 36：导入不存在的文件
+
+**操作**：
+```bash
+python3 ~/.cursor/skills/memory/scripts/import_memory.py '{"input": "nonexistent.json"}'
+```
+
+**预期结果**：
+- 返回 `"success": false`
+- 消息包含 "不存在"
+
+#### 测试案例 37：导入无效版本
+
+**操作**：导入 `version: "99.0"` 的文件
+
+**预期结果**：
+- 返回 `"success": false`
+- 消息包含 "版本"
+
+---
+
 ## 5. 边界测试案例
 
 ### 5.1 数据边界
@@ -356,7 +466,8 @@ python3 run_all_tests.py
 | test_search_memory.py | 12 | 搜索记忆、分数排序、禁用状态 |
 | test_delete_memory.py | 8 | 删除指定记忆、按日期删除、清空所有记忆 |
 | test_view_memory.py | 10 | 查看今日记忆、查看指定日期、查看最近记忆、列出日期 |
-| **总计** | **62** | |
+| test_export_import_memory.py | 17 | 导出记忆、导入记忆、合并/替换模式、往返测试 |
+| **总计** | **79** | |
 
 ---
 
@@ -399,5 +510,5 @@ python3 run_all_tests.py
 
 1. 添加更完善的中文分词支持
 2. ~~实现记忆删除功能~~ ✅ 已完成
-3. 添加记忆导出/导入功能
+3. ~~添加记忆导出/导入功能~~ ✅ 已完成
 4. 支持记忆标签筛选

@@ -740,3 +740,366 @@ python3 save_memory.py '{"topic": "主题", "key_info": ["要点"], "tags": ["#t
 [AI 响应]:
 基于昨天的讨论，我们决定使用 FastAPI 替换 Flask。接下来需要...
 ```
+
+## 10. 导出/导入功能设计
+
+### 10.1 功能概述
+
+导出/导入功能允许用户：
+- **导出**：将记忆数据备份为 JSON 文件，便于迁移或存档
+- **导入**：从 JSON 文件恢复记忆数据，支持合并或覆盖模式
+
+### 10.2 导出格式
+
+导出文件采用 JSON 格式，包含完整的记忆数据和元信息：
+
+```json
+{
+  "version": "1.0",
+  "exported_at": "2026-01-29T15:30:00Z",
+  "source": {
+    "location": "project",
+    "project_path": "/path/to/project"
+  },
+  "statistics": {
+    "total_memories": 25,
+    "date_range": {
+      "start": "2026-01-01",
+      "end": "2026-01-29"
+    },
+    "total_keywords": 150
+  },
+  "index": {
+    "version": "1.0",
+    "entries": [
+      {
+        "id": "2026-01-29-001",
+        "date": "2026-01-29",
+        "session": 1,
+        "keywords": ["api", "design"],
+        "summary": "API 设计讨论",
+        "tags": ["#api", "#design"],
+        "line_range": [3, 35]
+      }
+    ]
+  },
+  "daily_files": {
+    "2026-01-29": "# 2026-01-29 对话记忆\n\n## Session 1 - 10:30:45\n..."
+  }
+}
+```
+
+### 10.3 脚本设计
+
+#### export_memory.py
+
+```python
+#!/usr/bin/env python3
+"""导出记忆数据"""
+
+import sys
+import json
+from datetime import datetime
+from pathlib import Path
+from utils import get_data_dir, load_index, load_config, initialize_data_dir
+
+def export_memories(
+    output_path: str = None,
+    location: str = "project",
+    date_from: str = None,
+    date_to: str = None,
+    include_content: bool = True
+) -> dict:
+    """
+    导出记忆数据
+    
+    Args:
+        output_path: 输出文件路径（默认为 memory-export-{timestamp}.json）
+        location: 数据位置 ("project" 或 "global")
+        date_from: 起始日期（可选）
+        date_to: 结束日期（可选）
+        include_content: 是否包含完整内容（默认 True）
+        
+    Returns:
+        导出结果
+    """
+    config = load_config(location)
+    if not config.get("enabled", True):
+        return {"success": False, "message": "Memory Skill 已禁用"}
+    
+    initialize_data_dir(location)
+    data_dir = get_data_dir(location)
+    index = load_index(location)
+    entries = index.get("entries", [])
+    
+    # 过滤日期范围
+    if date_from:
+        entries = [e for e in entries if e.get("date", "") >= date_from]
+    if date_to:
+        entries = [e for e in entries if e.get("date", "") <= date_to]
+    
+    # 收集每日文件内容
+    daily_files = {}
+    if include_content:
+        dates = set(e.get("date") for e in entries)
+        daily_dir = data_dir / "daily"
+        for date in dates:
+            daily_file = daily_dir / f"{date}.md"
+            if daily_file.exists():
+                daily_files[date] = daily_file.read_text(encoding='utf-8')
+    
+    # 构建导出数据
+    export_data = {
+        "version": "1.0",
+        "exported_at": datetime.now().isoformat(),
+        "source": {
+            "location": location,
+            "project_path": str(get_project_root()) if location == "project" else None
+        },
+        "statistics": {
+            "total_memories": len(entries),
+            "date_range": {
+                "start": min(e.get("date") for e in entries) if entries else None,
+                "end": max(e.get("date") for e in entries) if entries else None
+            },
+            "total_keywords": len(set(kw for e in entries for kw in e.get("keywords", [])))
+        },
+        "index": {
+            "version": index.get("version", "1.0"),
+            "entries": entries
+        },
+        "daily_files": daily_files
+    }
+    
+    # 生成输出路径
+    if output_path is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_path = f"memory-export-{timestamp}.json"
+    
+    # 写入文件
+    output_file = Path(output_path)
+    with open(output_file, 'w', encoding='utf-8') as f:
+        json.dump(export_data, f, ensure_ascii=False, indent=2)
+    
+    return {
+        "success": True,
+        "output_file": str(output_file.absolute()),
+        "total_memories": len(entries),
+        "total_files": len(daily_files),
+        "message": f"已导出 {len(entries)} 条记忆到 {output_file}"
+    }
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        data = json.loads(sys.argv[1])
+        result = export_memories(
+            output_path=data.get("output"),
+            location=data.get("location", "project"),
+            date_from=data.get("date_from"),
+            date_to=data.get("date_to"),
+            include_content=data.get("include_content", True)
+        )
+    else:
+        result = export_memories()
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+```
+
+#### import_memory.py
+
+```python
+#!/usr/bin/env python3
+"""导入记忆数据"""
+
+import sys
+import json
+from datetime import datetime
+from pathlib import Path
+from utils import get_data_dir, load_index, save_index, load_config, initialize_data_dir
+
+def import_memories(
+    input_path: str,
+    location: str = "project",
+    mode: str = "merge",
+    overwrite_existing: bool = False
+) -> dict:
+    """
+    导入记忆数据
+    
+    Args:
+        input_path: 输入文件路径
+        location: 目标位置 ("project" 或 "global")
+        mode: 导入模式 ("merge" 合并, "replace" 替换)
+        overwrite_existing: 是否覆盖已存在的记忆
+        
+    Returns:
+        导入结果
+    """
+    config = load_config(location)
+    if not config.get("enabled", True):
+        return {"success": False, "message": "Memory Skill 已禁用"}
+    
+    # 读取导入文件
+    input_file = Path(input_path)
+    if not input_file.exists():
+        return {"success": False, "message": f"文件不存在: {input_path}"}
+    
+    try:
+        with open(input_file, 'r', encoding='utf-8') as f:
+            import_data = json.load(f)
+    except json.JSONDecodeError as e:
+        return {"success": False, "message": f"JSON 解析错误: {e}"}
+    
+    # 验证版本
+    if import_data.get("version") != "1.0":
+        return {"success": False, "message": f"不支持的导出版本: {import_data.get('version')}"}
+    
+    initialize_data_dir(location)
+    data_dir = get_data_dir(location)
+    
+    imported_entries = import_data.get("index", {}).get("entries", [])
+    daily_files = import_data.get("daily_files", {})
+    
+    if mode == "replace":
+        # 替换模式：清空现有数据
+        index = {"version": "1.0", "updated_at": None, "entries": []}
+        # 删除现有每日文件
+        daily_dir = data_dir / "daily"
+        if daily_dir.exists():
+            for f in daily_dir.glob("*.md"):
+                f.unlink()
+    else:
+        # 合并模式：加载现有索引
+        index = load_index(location)
+    
+    # 获取现有 ID 集合
+    existing_ids = set(e.get("id") for e in index.get("entries", []))
+    
+    # 导入记忆
+    imported_count = 0
+    skipped_count = 0
+    
+    for entry in imported_entries:
+        entry_id = entry.get("id")
+        if entry_id in existing_ids:
+            if overwrite_existing:
+                # 移除旧条目
+                index["entries"] = [e for e in index["entries"] if e.get("id") != entry_id]
+            else:
+                skipped_count += 1
+                continue
+        
+        index["entries"].append(entry)
+        imported_count += 1
+    
+    # 保存索引
+    save_index(index, location)
+    
+    # 导入每日文件
+    files_imported = 0
+    daily_dir = data_dir / "daily"
+    daily_dir.mkdir(parents=True, exist_ok=True)
+    
+    for date, content in daily_files.items():
+        daily_file = daily_dir / f"{date}.md"
+        if daily_file.exists() and not overwrite_existing:
+            continue
+        daily_file.write_text(content, encoding='utf-8')
+        files_imported += 1
+    
+    return {
+        "success": True,
+        "imported_count": imported_count,
+        "skipped_count": skipped_count,
+        "files_imported": files_imported,
+        "mode": mode,
+        "message": f"已导入 {imported_count} 条记忆，跳过 {skipped_count} 条"
+    }
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print(json.dumps({
+            "success": False,
+            "message": "用法: python3 import_memory.py '{\"input\": \"path/to/file.json\"}'"
+        }, ensure_ascii=False, indent=2))
+        sys.exit(1)
+    
+    data = json.loads(sys.argv[1])
+    if not data.get("input"):
+        print(json.dumps({"success": False, "message": "缺少必需参数: input"}, ensure_ascii=False))
+        sys.exit(1)
+    
+    result = import_memories(
+        input_path=data["input"],
+        location=data.get("location", "project"),
+        mode=data.get("mode", "merge"),
+        overwrite_existing=data.get("overwrite", False)
+    )
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+```
+
+### 10.4 工作流程
+
+#### 导出流程
+
+```
+用户请求导出 → 运行 export_memory.py → 生成 JSON 文件
+```
+
+**命令示例**：
+```bash
+# 导出所有记忆
+python3 export_memory.py
+
+# 导出到指定文件
+python3 export_memory.py '{"output": "backup.json"}'
+
+# 导出指定日期范围
+python3 export_memory.py '{"date_from": "2026-01-01", "date_to": "2026-01-15"}'
+
+# 仅导出索引（不含内容）
+python3 export_memory.py '{"include_content": false}'
+```
+
+#### 导入流程
+
+```
+用户请求导入 → 运行 import_memory.py → 更新索引和文件
+```
+
+**命令示例**：
+```bash
+# 合并导入（默认）
+python3 import_memory.py '{"input": "backup.json"}'
+
+# 替换导入（清空现有数据）
+python3 import_memory.py '{"input": "backup.json", "mode": "replace"}'
+
+# 合并导入并覆盖冲突
+python3 import_memory.py '{"input": "backup.json", "overwrite": true}'
+
+# 导入到全局位置
+python3 import_memory.py '{"input": "backup.json", "location": "global"}'
+```
+
+### 10.5 用户交互命令
+
+| 命令 | 描述 | 对应脚本 |
+|------|------|---------|
+| `导出记忆` / `export memories` | 导出所有记忆 | `export_memory.py` |
+| `导出记忆到 xxx` | 导出到指定文件 | `export_memory.py '{"output": "xxx"}'` |
+| `导入记忆 xxx` | 从文件导入记忆 | `import_memory.py '{"input": "xxx"}'` |
+| `替换导入 xxx` | 替换模式导入 | `import_memory.py '{"input": "xxx", "mode": "replace"}'` |
+
+### 10.6 使用场景
+
+1. **备份恢复**：定期导出记忆作为备份，系统重装后可恢复
+2. **项目迁移**：将项目级记忆导出，在新项目中导入
+3. **团队共享**：导出通用知识记忆，团队成员导入使用
+4. **版本控制**：将导出文件纳入 Git 管理，追踪记忆变化
+
+### 10.7 注意事项
+
+1. **隐私保护**：导出文件可能包含敏感信息，注意存储安全
+2. **版本兼容**：导入时会检查版本号，不兼容版本将拒绝导入
+3. **冲突处理**：默认合并模式下，相同 ID 的记忆会被跳过
+4. **文件大小**：大量记忆导出可能生成较大文件，建议分段导出

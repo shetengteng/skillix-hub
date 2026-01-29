@@ -147,6 +147,48 @@ python3 scripts/delete_memory.py '{"clear_all": true, "confirm": true}'
 
 脚本位置：`<skill_dir>/scripts/delete_memory.py`
 
+## 导出/导入流程
+
+### 导出记忆
+
+将记忆数据导出为 JSON 文件，便于备份或迁移。
+
+```bash
+# 导出所有记忆（默认文件名）
+python3 scripts/export_memory.py
+
+# 导出到指定文件
+python3 scripts/export_memory.py '{"output": "backup.json"}'
+
+# 导出指定日期范围
+python3 scripts/export_memory.py '{"date_from": "2026-01-01", "date_to": "2026-01-15"}'
+
+# 仅导出索引（不含内容）
+python3 scripts/export_memory.py '{"include_content": false}'
+```
+
+脚本位置：`<skill_dir>/scripts/export_memory.py`
+
+### 导入记忆
+
+从 JSON 文件导入记忆数据。
+
+```bash
+# 合并导入（默认，保留现有数据）
+python3 scripts/import_memory.py '{"input": "backup.json"}'
+
+# 替换导入（清空现有数据后导入）
+python3 scripts/import_memory.py '{"input": "backup.json", "mode": "replace"}'
+
+# 合并导入并覆盖冲突
+python3 scripts/import_memory.py '{"input": "backup.json", "overwrite": true}'
+
+# 导入到全局位置
+python3 scripts/import_memory.py '{"input": "backup.json", "location": "global"}'
+```
+
+脚本位置：`<skill_dir>/scripts/import_memory.py`
+
 ## 用户交互命令
 
 | 命令 | 描述 |
@@ -158,6 +200,8 @@ python3 scripts/delete_memory.py '{"clear_all": true, "confirm": true}'
 | `查看最近记忆` | 查看最近 7 天的记忆 |
 | `删除记忆: xxx` | 删除特定记忆 |
 | `清空所有记忆` | 清空所有记忆（需确认） |
+| `导出记忆` / `export memories` | 导出所有记忆到 JSON 文件 |
+| `导入记忆 xxx` / `import memories xxx` | 从 JSON 文件导入记忆 |
 
 ## 配置说明
 
@@ -212,6 +256,8 @@ python3 scripts/delete_memory.py '{"clear_all": true, "confirm": true}'
 │   │   ├── search_memory.py
 │   │   ├── view_memory.py
 │   │   ├── delete_memory.py
+│   │   ├── export_memory.py
+│   │   ├── import_memory.py
 │   │   └── utils.py
 │   └── default_config.json
 └── memory-data/                 # 用户数据（永不覆盖）

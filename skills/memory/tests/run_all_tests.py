@@ -14,7 +14,8 @@ def main():
         "test_save_memory.py",
         "test_search_memory.py",
         "test_delete_memory.py",
-        "test_view_memory.py"
+        "test_view_memory.py",
+        "test_export_import_memory.py"
     ]
     
     total_passed = 0
