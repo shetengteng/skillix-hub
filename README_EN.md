@@ -18,7 +18,30 @@ Cursor Skill is a reusable AI instruction set that helps Cursor AI better comple
 
 ## Installation
 
-### Method 1: Global Installation (Available for all projects)
+### Method 1: Install via Cursor Natural Language (Recommended)
+
+Simply tell Cursor AI in natural language to install the desired Skill:
+
+**Global Installation** (Available for all projects):
+```
+Please install memory skill from https://github.com/shetengteng/skillix-hub, I want it available for all my projects
+```
+
+**Project Installation** (Available for current project only):
+```
+Please install memory skill from https://github.com/shetengteng/skillix-hub to current project
+```
+
+Cursor AI will automatically clone the repository, copy files, and install dependencies.
+
+**Update Skill**:
+```
+Please update memory skill from https://github.com/shetengteng/skillix-hub
+```
+
+### Method 2: Manual Command Line Installation
+
+#### Global Installation (Available for all projects)
 
 ```bash
 # Clone repository
@@ -34,7 +57,7 @@ cp -r skillix-hub/skills/swagger-api-reader ~/.cursor/skills/
 pip install -r ~/.cursor/skills/swagger-api-reader/scripts/requirements.txt
 ```
 
-### Method 2: Project Installation (Available for current project only)
+#### Project Installation (Available for current project only)
 
 ```bash
 # In project root
