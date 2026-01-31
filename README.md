@@ -16,8 +16,9 @@ AI Skill 是一种可复用的 AI 指令集，帮助 AI 编程助手更好地完
 | Skill | 描述 |
 |-------|------|
 | [memory](./skills/memory/) | 为 AI 助手提供长期记忆能力，自动记录对话并检索相关历史上下文 |
-| [behavior-prediction](./skills/behavior-prediction/) | 学习用户行为模式，预测下一步动作并提供智能建议 |
+| [behavior-prediction](./skills/behavior-prediction/) | 学习用户行为模式，记录会话内容，预测下一步操作并提供智能建议 |
 | [swagger-api-reader](./skills/swagger-api-reader/) | 读取并缓存 Swagger/OpenAPI 文档，支持浏览器认证 |
+| [uniapp-mp-generator](./skills/uniapp-mp-generator/) | uni-app 小程序代码生成器，根据需求文档自动生成 Vue3 页面、API、Store 等代码 |
 
 ## 安装使用
 
@@ -131,54 +132,88 @@ python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "disa
 - **导出导入**：导出记忆、导入记忆
 - **自动记忆**：启用自动记忆检索、禁用自动记忆检索
 
-## Behavior Prediction Skill 使用说明
+## Behavior Prediction Skill V2 使用说明
 
-Behavior Prediction Skill 学习用户的行为模式，当用户执行动作 A 后，自动预测并建议下一个可能的动作 B。
+Behavior Prediction Skill V2 学习用户的行为模式，记录会话内容，预测下一步操作并提供智能建议。
 
 ### 核心功能
 
-- **行为记录**：自动记录用户在 AI 助手中执行的动作
-- **模式学习**：分析行为序列，发现 A → B 的关联模式
-- **智能预测**：当用户执行动作 A 时，预测并建议动作 B
-- **开放式类型**：支持自动识别和注册新的动作类型
+- **会话记录**：会话结束时记录完整会话内容
+- **模式学习**：提取工作流程、偏好、项目模式
+- **智能预测**：基于模式预测下一步操作
+- **用户画像**：综合分析生成用户画像
+- **自动执行**：高置信度预测时支持自动执行
 
 ### 使用示例
 
 ```bash
-# 启用自动行为记录（推荐）
-python3 ~/.cursor/skills/behavior-prediction/scripts/setup_auto_record.py '{"action": "enable"}'
+# 会话开始时初始化
+python3 ~/.cursor/skills/behavior-prediction/scripts/hook.py --init
 
-# 检查自动行为记录状态
-python3 ~/.cursor/skills/behavior-prediction/scripts/setup_auto_record.py '{"action": "check"}'
+# 会话结束时记录
+python3 ~/.cursor/skills/behavior-prediction/scripts/hook.py --finalize '{
+  "session_summary": {
+    "topic": "API 开发",
+    "workflow_stages": ["design", "implement", "test"]
+  },
+  "operations": {"files": {"created": ["user.py"], "modified": [], "deleted": []}, "commands": []},
+  "conversation": {"user_messages": [], "message_count": 5},
+  "time": {"start": "2026-01-31T10:00:00Z", "end": "2026-01-31T10:30:00Z"}
+}'
 
-# 禁用自动行为记录
-python3 ~/.cursor/skills/behavior-prediction/scripts/setup_auto_record.py '{"action": "disable"}'
+# 获取预测
+python3 ~/.cursor/skills/behavior-prediction/scripts/get_predictions.py '{"current_stage": "implement"}'
 
-# 记录动作
-python3 ~/.cursor/skills/behavior-prediction/scripts/record_action.py '{"type": "create_file", "tool": "Write", "details": {"file_path": "test.py"}}'
+# 查看用户画像
+python3 ~/.cursor/skills/behavior-prediction/scripts/user_profile.py
 
-# 获取统计数据
-python3 ~/.cursor/skills/behavior-prediction/scripts/get_statistics.py '{"current_action": "edit_file"}'
+# 更新用户画像
+python3 ~/.cursor/skills/behavior-prediction/scripts/user_profile.py '{"action": "update"}'
 
-# 获取所有统计概览
-python3 ~/.cursor/skills/behavior-prediction/scripts/get_statistics.py
-
-# 会话结束处理
-python3 ~/.cursor/skills/behavior-prediction/scripts/finalize_session.py '{"actions_summary": [...]}'
-
-# 检查上次会话
-python3 ~/.cursor/skills/behavior-prediction/scripts/check_last_session.py
-
-# 获取数据摘要
-python3 ~/.cursor/skills/behavior-prediction/scripts/check_last_session.py '{"action": "summary"}'
+# 查看行为模式
+python3 ~/.cursor/skills/behavior-prediction/scripts/extract_patterns.py
 ```
 
 ### 触发词
 
-- **自动记录**：启用自动行为记录、禁用自动行为记录、检查自动行为记录状态
 - **查看模式**：查看我的行为模式、查看行为统计
+- **查看画像**：查看用户画像、更新用户画像
 - **预测**：预测下一步
-- **清除**：清除行为记录
+
+## uni-app 小程序代码生成器使用说明
+
+uni-app 小程序代码生成器根据需求文档自动生成符合项目规范的代码。
+
+### 核心功能
+
+- **页面生成**：自动生成 Vue3 页面（列表、详情、表单）
+- **API 生成**：生成 CRUD 接口文件
+- **Store 生成**：生成 Pinia 状态管理
+- **组件生成**：生成卡片、筛选等组件
+- **Schema 生成**：生成数据库集合定义
+
+### 使用方式
+
+提供需求文档，AI 会自动生成代码：
+
+```markdown
+# 学生管理模块
+
+## 数据字段
+- name: 姓名（必填，字符串）
+- phone: 电话（必填，字符串）
+- status: 状态（必填，枚举：active/inactive）
+
+## 页面列表
+- 学生列表页
+- 学生详情页
+- 新增学生页
+```
+
+### 触发词
+
+- **生成代码**：帮我生成 xxx 模块
+- **根据需求**：根据需求文档生成代码
 
 ## 贡献
 

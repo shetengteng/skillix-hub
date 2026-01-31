@@ -1,18 +1,40 @@
 {
-  "version": "1.0",
+  "version": "2.0",
   "enabled": true,
-  "prediction": {
-    "enabled": true,
-    "suggest_threshold": 0.5,
-    "auto_execute_threshold": 0.95,
-    "max_suggestions": 3
-  },
   "recording": {
     "enabled": true,
     "retention_days": 90
   },
-  "learning": {
+  "patterns": {
+    "extraction_enabled": true,
+    "min_sessions_for_pattern": 3
+  },
+  "profile": {
+    "auto_update": true,
+    "update_interval_sessions": 10
+  },
+  "prediction": {
     "enabled": true,
-    "min_samples_for_prediction": 3
+    "suggest_threshold": 0.5,
+    "max_suggestions": 3,
+    "auto_execute": {
+      "enabled": true,
+      "threshold": 0.85,
+      "allowed_actions": [
+        "run_test",
+        "run_lint",
+        "git_status",
+        "git_add"
+      ],
+      "forbidden_actions": [
+        "delete_file",
+        "git_push",
+        "git_reset",
+        "deploy",
+        "rm",
+        "drop"
+      ],
+      "require_confirmation_below": 0.95
+    }
   }
 }

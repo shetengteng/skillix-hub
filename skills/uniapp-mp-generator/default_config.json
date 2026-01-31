@@ -1,0 +1,97 @@
+{
+  "version": "1.0.0",
+  "name": "uniapp-mp-generator",
+  "description": "uni-app 小程序代码生成器",
+  
+  "projectType": "uniapp-mp",
+  "framework": "vue3",
+  "uiLibrary": "sard-uniapp",
+  "backend": "emas",
+  
+  "defaults": {
+    "pageSize": 20,
+    "dateFormat": "YYYY-MM-DD HH:mm:ss",
+    "componentPrefix": "Tt",
+    "collectionPrefix": "pkb",
+    
+    "apiReturnFormat": {
+      "success": "boolean",
+      "data": "any",
+      "list": "array",
+      "error": "string?"
+    },
+    
+    "statusOptions": [
+      { "label": "启用", "value": "active" },
+      { "label": "停用", "value": "inactive" }
+    ]
+  },
+  
+  "templates": {
+    "page": {
+      "list": "templates/page/list.vue",
+      "detail": "templates/page/detail.vue",
+      "form": "templates/page/form.vue"
+    },
+    "api": {
+      "getList": "templates/api/getList.js",
+      "getDetail": "templates/api/getDetail.js",
+      "create": "templates/api/create.js",
+      "update": "templates/api/update.js",
+      "delete": "templates/api/delete.js"
+    },
+    "component": {
+      "card": "templates/component/Card.vue",
+      "filter": "templates/component/Filter.vue"
+    },
+    "store": "templates/store/index.js",
+    "schema": "templates/schema/collection.js"
+  },
+  
+  "fieldTypes": {
+    "string": {
+      "jsDocType": "{string}",
+      "inputComponent": "sar-input",
+      "defaultValue": "''"
+    },
+    "number": {
+      "jsDocType": "{number}",
+      "inputComponent": "sar-input[type=number]",
+      "defaultValue": "0"
+    },
+    "boolean": {
+      "jsDocType": "{boolean}",
+      "inputComponent": "sar-switch",
+      "defaultValue": "false"
+    },
+    "date": {
+      "jsDocType": "{string}",
+      "inputComponent": "sar-datetime-picker-popout",
+      "defaultValue": "''"
+    },
+    "enum": {
+      "jsDocType": "{string}",
+      "inputComponent": "sar-radio-group",
+      "defaultValue": "''"
+    },
+    "array": {
+      "jsDocType": "{Array}",
+      "inputComponent": "custom",
+      "defaultValue": "[]"
+    },
+    "textarea": {
+      "jsDocType": "{string}",
+      "inputComponent": "sar-textarea",
+      "defaultValue": "''"
+    }
+  },
+  
+  "namingConventions": {
+    "component": "PascalCase",
+    "page": "kebab-case",
+    "api": "camelCase",
+    "store": "camelCase",
+    "constant": "UPPER_SNAKE_CASE",
+    "collection": "{prefix}-{name}s"
+  }
+}

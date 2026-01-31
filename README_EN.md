@@ -16,8 +16,9 @@ AI Skill is a reusable AI instruction set that helps AI programming assistants b
 | Skill | Description |
 |-------|-------------|
 | [memory](./skills/memory/) | Long-term memory for AI assistants, auto-record conversations and retrieve relevant history |
-| [behavior-prediction](./skills/behavior-prediction/) | Learn user behavior patterns, predict next actions and provide smart suggestions |
+| [behavior-prediction](./skills/behavior-prediction/) | Learn user behavior patterns, record sessions, predict next actions and provide smart suggestions |
 | [swagger-api-reader](./skills/swagger-api-reader/) | Read and cache Swagger/OpenAPI docs with browser auth support |
+| [uniapp-mp-generator](./skills/uniapp-mp-generator/) | uni-app mini-program code generator, auto-generate Vue3 pages, API, Store from requirements |
 
 ## Installation
 
@@ -131,44 +132,88 @@ python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "disa
 - **Export/Import**: export memories, import memories
 - **Auto Memory**: enable memory auto retrieve, disable memory auto retrieve
 
-## Behavior Prediction Skill Usage
+## Behavior Prediction Skill V2 Usage
 
-Behavior Prediction Skill learns user behavior patterns. When user performs action A, it automatically predicts and suggests the next likely action B.
+Behavior Prediction Skill V2 learns user behavior patterns, records session content, predicts next actions and provides smart suggestions.
 
 ### Core Features
 
-- **Behavior Recording**: Automatically record user actions in AI assistant
-- **Pattern Learning**: Analyze action sequences, discover A → B associations
-- **Smart Prediction**: When user performs action A, predict and suggest action B
-- **Open Types**: Support automatic recognition and registration of new action types
+- **Session Recording**: Record complete session content at session end
+- **Pattern Learning**: Extract workflow, preferences, project patterns
+- **Smart Prediction**: Predict next actions based on patterns
+- **User Profile**: Generate comprehensive user profile
+- **Auto Execute**: Support auto-execution for high-confidence predictions
 
 ### Usage Examples
 
 ```bash
-# Record action
-python3 ~/.cursor/skills/behavior-prediction/scripts/record_action.py '{"type": "create_file", "tool": "Write", "details": {"file_path": "test.py"}}'
+# Initialize at session start
+python3 ~/.cursor/skills/behavior-prediction/scripts/hook.py --init
 
-# Get statistics
-python3 ~/.cursor/skills/behavior-prediction/scripts/get_statistics.py '{"current_action": "edit_file"}'
+# Record at session end
+python3 ~/.cursor/skills/behavior-prediction/scripts/hook.py --finalize '{
+  "session_summary": {
+    "topic": "API Development",
+    "workflow_stages": ["design", "implement", "test"]
+  },
+  "operations": {"files": {"created": ["user.py"], "modified": [], "deleted": []}, "commands": []},
+  "conversation": {"user_messages": [], "message_count": 5},
+  "time": {"start": "2026-01-31T10:00:00Z", "end": "2026-01-31T10:30:00Z"}
+}'
 
-# Get all statistics overview
-python3 ~/.cursor/skills/behavior-prediction/scripts/get_statistics.py
+# Get predictions
+python3 ~/.cursor/skills/behavior-prediction/scripts/get_predictions.py '{"current_stage": "implement"}'
 
-# Session finalization
-python3 ~/.cursor/skills/behavior-prediction/scripts/finalize_session.py '{"actions_summary": [...]}'
+# View user profile
+python3 ~/.cursor/skills/behavior-prediction/scripts/user_profile.py
 
-# Check last session
-python3 ~/.cursor/skills/behavior-prediction/scripts/check_last_session.py
+# Update user profile
+python3 ~/.cursor/skills/behavior-prediction/scripts/user_profile.py '{"action": "update"}'
 
-# Get data summary
-python3 ~/.cursor/skills/behavior-prediction/scripts/check_last_session.py '{"action": "summary"}'
+# View behavior patterns
+python3 ~/.cursor/skills/behavior-prediction/scripts/extract_patterns.py
 ```
 
 ### Trigger Words
 
 - **View Patterns**: view my behavior patterns, view behavior statistics
+- **View Profile**: view user profile, update user profile
 - **Predict**: predict next step
-- **Clear**: clear behavior records
+
+## uni-app Mini Program Code Generator Usage
+
+uni-app mini-program code generator automatically generates code that conforms to project standards from requirements documents.
+
+### Core Features
+
+- **Page Generation**: Auto-generate Vue3 pages (list, detail, form)
+- **API Generation**: Generate CRUD interface files
+- **Store Generation**: Generate Pinia state management
+- **Component Generation**: Generate card, filter components
+- **Schema Generation**: Generate database collection definitions
+
+### Usage
+
+Provide requirements document, AI will auto-generate code:
+
+```markdown
+# Student Management Module
+
+## Data Fields
+- name: Name (required, string)
+- phone: Phone (required, string)
+- status: Status (required, enum: active/inactive)
+
+## Pages
+- Student list page
+- Student detail page
+- Add student page
+```
+
+### Trigger Words
+
+- **Generate Code**: help me generate xxx module
+- **From Requirements**: generate code from requirements document
 
 ## Contributing
 
