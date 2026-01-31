@@ -79,8 +79,8 @@ const SKILLS_DATA = [
         name: 'behavior-prediction',
         icon: 'chart',
         description: {
-            zh: '学习用户行为模式，当用户执行动作 A 后，自动预测并建议下一个可能的动作 B，支持多种 AI 助手',
-            en: 'Learn user behavior patterns, predict next actions after action A and provide smart suggestions, supports multiple AI assistants'
+            zh: '学习用户行为模式，记录会话内容，预测下一步操作并提供智能建议，支持多种 AI 助手',
+            en: 'Learn user behavior patterns, record sessions, predict next actions and provide smart suggestions, supports multiple AI assistants'
         },
         tags: [
             { zh: '预测', en: 'Prediction' },
@@ -89,15 +89,15 @@ const SKILLS_DATA = [
             { zh: '通用', en: 'Universal' }
         ],
         features: [
-            { zh: '行为记录', en: 'Behavior Recording' },
+            { zh: '会话记录', en: 'Session Recording' },
             { zh: '模式学习', en: 'Pattern Learning' },
             { zh: '智能预测', en: 'Smart Prediction' },
-            { zh: '统计分析', en: 'Statistics Analysis' },
-            { zh: '开放式类型', en: 'Open Types' },
-            { zh: '会话管理', en: 'Session Management' }
+            { zh: '用户画像', en: 'User Profile' },
+            { zh: '自动执行', en: 'Auto Execute' },
+            { zh: '工作流程分析', en: 'Workflow Analysis' }
         ],
-        scripts: ['record_action.py', 'get_statistics.py', 'finalize_session.py', 'check_last_session.py', 'utils.py'],
-        version: '1.0',
+        scripts: ['hook.py', 'record_session.py', 'extract_patterns.py', 'user_profile.py', 'get_predictions.py', 'setup_rule.py', 'utils.py'],
+        version: '2.0',
         author: 'shetengteng',
         repo: 'https://github.com/shetengteng/skillix-hub/tree/main/skills/behavior-prediction',
         useCases: [
@@ -105,48 +105,117 @@ const SKILLS_DATA = [
                 title: { zh: '安装 Behavior Prediction Skill', en: 'Install Behavior Prediction Skill' },
                 userInput: { zh: '帮我从 https://github.com/shetengteng/skillix-hub 安装 behavior-prediction skill', en: 'Please install behavior-prediction skill from https://github.com/shetengteng/skillix-hub' },
                 aiResponse: { 
-                    zh: '✅ Behavior Prediction Skill 安装成功！\n\n👉 下一步：说「启用自动行为记录」\n\n这样 AI 会自动学习你的操作习惯，在适当时候提供智能建议。', 
-                    en: '✅ Behavior Prediction Skill installed!\n\n👉 Next step: Say "enable behavior auto record"\n\nThis will let AI learn your habits and provide smart suggestions.' 
+                    zh: '✅ Behavior Prediction Skill V2 安装成功！\n\n👉 下一步：说「启用行为预测规则」\n\n这样 AI 会自动记录你的工作流程，学习你的习惯，并在适当时机提供智能建议。', 
+                    en: '✅ Behavior Prediction Skill V2 installed!\n\n👉 Next step: Say "enable behavior prediction rule"\n\nThis will let AI record your workflow, learn your habits, and provide smart suggestions at appropriate times.' 
                 }
             },
             {
-                title: { zh: '启用自动行为记录', en: 'Enable Auto Behavior Record' },
-                userInput: { zh: '启用自动行为记录', en: 'Enable behavior auto record' },
+                title: { zh: '启用行为预测规则', en: 'Enable Behavior Prediction Rule' },
+                userInput: { zh: '启用行为预测规则', en: 'Enable behavior prediction rule' },
                 aiResponse: { 
-                    zh: '✅ 自动行为记录已启用！\n\n现在 AI 会自动：\n• 记录你的每次操作\n• 学习你的行为模式\n• 在适当时候提供预测建议\n\n使用一段时间后，说「查看我的行为模式」查看学习结果。', 
-                    en: '✅ Auto behavior recording enabled!\n\nNow AI will automatically:\n• Record your actions\n• Learn your behavior patterns\n• Provide prediction suggestions\n\nAfter using for a while, say "view my behavior patterns" to see the results.' 
+                    zh: '✅ 行为预测规则已启用！\n\n📄 规则文件: ~/.cursor/rules/behavior-prediction.mdc\n\n规则已生效，AI 会自动：\n• 会话开始时加载你的行为模式\n• 会话结束时记录并学习你的工作流程\n• 在适当时机提供智能预测建议\n\n你可以说"禁用行为预测规则"来关闭此功能。', 
+                    en: '✅ Behavior prediction rule enabled!\n\n📄 Rule file: ~/.cursor/rules/behavior-prediction.mdc\n\nRule is now active, AI will automatically:\n• Load your behavior patterns at session start\n• Record and learn your workflow at session end\n• Provide smart predictions at appropriate times\n\nYou can say "disable behavior prediction rule" to turn this off.' 
+                }
+            },
+            {
+                title: { zh: '会话结束时的自动记录', en: 'Auto Recording at Session End' },
+                userInput: { zh: '谢谢，今天就到这里', en: 'Thanks, that\'s all for today' },
+                aiResponse: { 
+                    zh: '好的！已记录本次会话。\n\n📝 会话摘要：\n- 主题: API 用户模块开发\n- 工作流程: design → implement → test → commit\n- 技术: Python, FastAPI, pytest\n\n基于你的习惯，下次你可能想要：\n→ 继续完善文档 (60%)\n\n再见！', 
+                    en: 'OK! Session recorded.\n\n📝 Session Summary:\n- Topic: API User Module Development\n- Workflow: design → implement → test → commit\n- Tech: Python, FastAPI, pytest\n\nBased on your habits, next time you might want to:\n→ Continue improving docs (60%)\n\nGoodbye!' 
                 }
             },
             {
                 title: { zh: '智能预测下一步', en: 'Smart Next Step Prediction' },
-                userInput: { zh: '（用户刚创建了一个新文件 user.py）', en: '(User just created a new file user.py)' },
+                userInput: { zh: '（用户刚完成了代码实现）', en: '(User just completed code implementation)' },
                 aiResponse: { 
-                    zh: '预测建议：\n\n根据你的历史行为模式，创建文件后你通常会：\n\n1. **编辑文件** (85% 概率) - 添加初始代码\n2. **运行测试** (10% 概率) - 验证文件创建\n3. **创建相关文件** (5% 概率) - 如 test_user.py\n\n需要我帮你开始编辑 user.py 吗？', 
-                    en: 'Prediction Suggestion:\n\nBased on your behavior patterns, after creating a file you usually:\n\n1. **Edit file** (85% probability) - Add initial code\n2. **Run tests** (10% probability) - Verify file creation\n3. **Create related files** (5% probability) - Like test_user.py\n\nWould you like me to help you start editing user.py?' 
+                    zh: '✨ 基于你的习惯，你可能想要：\n→ 运行测试 (置信度: 85%)\n\n要执行 pytest 吗？', 
+                    en: '✨ Based on your habits, you might want to:\n→ Run tests (Confidence: 85%)\n\nWould you like to run pytest?' 
                 }
             },
             {
                 title: { zh: '查看行为模式', en: 'View Behavior Patterns' },
                 userInput: { zh: '查看我的行为模式', en: 'View my behavior patterns' },
                 aiResponse: { 
-                    zh: '你的行为模式分析：\n\n**Top 5 常见序列：**\n1. 创建文件 → 编辑文件 (92%)\n2. 编辑文件 → 运行测试 (78%)\n3. 运行测试 → 修复代码 (65%)\n4. 修复代码 → 运行测试 (88%)\n5. 提交代码 → 推送远程 (95%)\n\n**今日统计：**\n- 总动作数: 47\n- 最频繁: 编辑文件 (23次)', 
-                    en: 'Your Behavior Pattern Analysis:\n\n**Top 5 Common Sequences:**\n1. Create file → Edit file (92%)\n2. Edit file → Run tests (78%)\n3. Run tests → Fix code (65%)\n4. Fix code → Run tests (88%)\n5. Commit code → Push remote (95%)\n\n**Today\'s Stats:**\n- Total actions: 47\n- Most frequent: Edit file (23 times)' 
+                    zh: '📊 你的行为模式分析\n\n**基本统计：**\n- 活跃天数: 15 天\n- 总会话数: 42 次\n- 平均会话时长: 25 分钟\n\n**常见工作流程：**\n1. design → implement (78%)\n2. implement → test (85%)\n3. test → commit (65%)\n\n**技术偏好：**\n- 语言: Python, TypeScript\n- 框架: FastAPI, Vue\n- 工具: pytest, ruff\n\n**工作风格：**\n- 测试驱动 (35%)\n- 注重规划 (25%)', 
+                    en: '📊 Your Behavior Pattern Analysis\n\n**Basic Stats:**\n- Active days: 15\n- Total sessions: 42\n- Avg session duration: 25 min\n\n**Common Workflows:**\n1. design → implement (78%)\n2. implement → test (85%)\n3. test → commit (65%)\n\n**Tech Preferences:**\n- Languages: Python, TypeScript\n- Frameworks: FastAPI, Vue\n- Tools: pytest, ruff\n\n**Work Style:**\n- Test-driven (35%)\n- Planning-focused (25%)' 
+                }
+            },
+            {
+                title: { zh: '查看用户画像', en: 'View User Profile' },
+                userInput: { zh: '查看用户画像', en: 'View user profile' },
+                aiResponse: { 
+                    zh: '👤 用户画像\n\n**统计数据：**\n- 总会话数: 50\n- 活跃天数: 30\n\n**偏好设置：**\n- 常见阶段: implement, test, commit\n- 常用技术: python, fastapi, pytest\n\n**工作风格：**\n- 规划倾向: 0.3\n- 测试驱动: 0.6\n- 文档关注: 0.2', 
+                    en: '👤 User Profile\n\n**Statistics:**\n- Total sessions: 50\n- Active days: 30\n\n**Preferences:**\n- Common stages: implement, test, commit\n- Common tech: python, fastapi, pytest\n\n**Work Style:**\n- Planning tendency: 0.3\n- Test-driven: 0.6\n- Documentation focus: 0.2' 
                 }
             },
             {
                 title: { zh: '预测下一步', en: 'Predict Next Step' },
                 userInput: { zh: '预测下一步', en: 'Predict next step' },
                 aiResponse: { 
-                    zh: '基于当前上下文预测：\n\n你刚刚完成了 **编辑文件** 操作。\n\n**最可能的下一步：**\n✅ 运行测试 (置信度: 78%)\n\n**其他可能：**\n- 继续编辑 (15%)\n- 提交代码 (5%)\n- 查看文档 (2%)\n\n需要我帮你运行测试吗？', 
-                    en: 'Prediction Based on Current Context:\n\nYou just completed **Edit file** operation.\n\n**Most Likely Next Step:**\n✅ Run tests (Confidence: 78%)\n\n**Other Possibilities:**\n- Continue editing (15%)\n- Commit code (5%)\n- View docs (2%)\n\nWould you like me to run the tests?' 
+                    zh: '基于当前上下文预测：\n\n你刚刚完成了 **实现** 阶段。\n\n**最可能的下一步：**\n✅ 运行测试 (置信度: 85%)\n\n**其他可能：**\n- 继续编辑 (10%)\n- 提交代码 (3%)\n- 查看文档 (2%)\n\n需要我帮你运行测试吗？', 
+                    en: 'Prediction Based on Current Context:\n\nYou just completed **implement** stage.\n\n**Most Likely Next Step:**\n✅ Run tests (Confidence: 85%)\n\n**Other Possibilities:**\n- Continue editing (10%)\n- Commit code (3%)\n- View docs (2%)\n\nWould you like me to run the tests?' 
                 }
             },
             {
-                title: { zh: '自动学习新模式', en: 'Auto Learn New Patterns' },
-                userInput: { zh: '（用户连续执行：创建模型 → 生成迁移 → 运行迁移）', en: '(User executes: Create model → Generate migration → Run migration)' },
+                title: { zh: '禁用行为预测规则', en: 'Disable Behavior Prediction Rule' },
+                userInput: { zh: '禁用行为预测规则', en: 'Disable behavior prediction rule' },
                 aiResponse: { 
-                    zh: '新模式学习完成！\n\n检测到新的行为序列：\n**创建模型 → 生成迁移 → 运行迁移**\n\n这个模式已被记录。下次你创建模型时，我会建议你生成和运行迁移。\n\n当前置信度: 33% (需要更多样本)\n达到 50% 后将自动建议。', 
-                    en: 'New Pattern Learned!\n\nDetected new behavior sequence:\n**Create model → Generate migration → Run migration**\n\nThis pattern has been recorded. Next time you create a model, I\'ll suggest generating and running migrations.\n\nCurrent confidence: 33% (needs more samples)\nWill auto-suggest after reaching 50%.' 
+                    zh: '✅ 行为预测规则已禁用！\n\n规则文件已移除，AI 将不再自动记录会话和预测行为。\n\n你可以随时说"启用行为预测规则"重新开启此功能。', 
+                    en: '✅ Behavior prediction rule disabled!\n\nRule file removed, AI will no longer auto-record sessions or predict behavior.\n\nYou can say "enable behavior prediction rule" anytime to turn this back on.' 
+                }
+            }
+        ]
+    },
+    {
+        id: 'uniapp-mp-generator',
+        name: 'uniapp-mp-generator',
+        icon: 'folder',
+        description: {
+            zh: '基于 uni-app 项目规范的小程序代码生成器，根据需求文档自动生成 Vue3 页面、API、Store 等代码',
+            en: 'uni-app mini-program code generator based on project standards, auto-generate Vue3 pages, API, Store code from requirements'
+        },
+        tags: [
+            { zh: '代码生成', en: 'Code Gen' },
+            { zh: 'uni-app', en: 'uni-app' },
+            { zh: '小程序', en: 'Mini Program' },
+            { zh: 'Vue3', en: 'Vue3' }
+        ],
+        features: [
+            { zh: 'Vue3 页面生成', en: 'Vue3 Page Generation' },
+            { zh: 'API 文件生成', en: 'API File Generation' },
+            { zh: 'Store 生成', en: 'Store Generation' },
+            { zh: 'Schema 定义', en: 'Schema Definition' },
+            { zh: '组件生成', en: 'Component Generation' },
+            { zh: '路由配置', en: 'Route Configuration' }
+        ],
+        scripts: [],
+        version: '1.0',
+        author: 'shetengteng',
+        repo: 'https://github.com/shetengteng/skillix-hub/tree/main/skills/uniapp-mp-generator',
+        useCases: [
+            {
+                title: { zh: '安装 uni-app 代码生成器', en: 'Install uni-app Code Generator' },
+                userInput: { zh: '帮我从 https://github.com/shetengteng/skillix-hub 安装 uniapp-mp-generator skill', en: 'Please install uniapp-mp-generator skill from https://github.com/shetengteng/skillix-hub' },
+                aiResponse: { 
+                    zh: '✅ uni-app 小程序代码生成器安装成功！\n\n这个 Skill 可以：\n• 根据需求文档生成 Vue3 页面\n• 自动创建 API 接口文件\n• 生成 Pinia Store\n• 创建数据库 Schema\n\n使用方式：提供需求文档，我会自动生成符合规范的代码。', 
+                    en: '✅ uni-app Mini Program Code Generator installed!\n\nThis Skill can:\n• Generate Vue3 pages from requirements\n• Auto-create API interface files\n• Generate Pinia Store\n• Create database Schema\n\nUsage: Provide requirements doc, I\'ll auto-generate standard-compliant code.' 
+                }
+            },
+            {
+                title: { zh: '生成课程管理模块', en: 'Generate Course Management Module' },
+                userInput: { zh: '帮我生成课程管理模块，包含课程列表、详情、新增页面', en: 'Help me generate course management module with list, detail, and add pages' },
+                aiResponse: { 
+                    zh: '好的，我来为你生成课程管理模块。\n\n📁 将创建以下文件：\n\npages/course/\n├── api/\n│   ├── getCourseList.js\n│   ├── getCourseDetail.js\n│   ├── createCourse.js\n│   ├── updateCourse.js\n│   └── deleteCourse.js\n├── components/\n│   └── CourseCard.vue\n├── index.vue\n└── sub/\n    ├── detail/index.vue\n    └── add/index.vue\n\n正在生成代码...', 
+                    en: 'OK, I\'ll generate the course management module for you.\n\n📁 Files to be created:\n\npages/course/\n├── api/\n│   ├── getCourseList.js\n│   ├── getCourseDetail.js\n│   ├── createCourse.js\n│   ├── updateCourse.js\n│   └── deleteCourse.js\n├── components/\n│   └── CourseCard.vue\n├── index.vue\n└── sub/\n    ├── detail/index.vue\n    └── add/index.vue\n\nGenerating code...' 
+                }
+            },
+            {
+                title: { zh: '根据需求文档生成代码', en: 'Generate Code from Requirements' },
+                userInput: { zh: '根据这个需求文档生成代码：\n# 学生管理\n## 数据字段\n- name: 姓名\n- phone: 电话\n- status: 状态', en: 'Generate code from this requirements doc:\n# Student Management\n## Data Fields\n- name: Name\n- phone: Phone\n- status: Status' },
+                aiResponse: { 
+                    zh: '分析需求文档完成！\n\n📋 模块信息：\n- 模块名: Student (学生)\n- 字段: name, phone, status\n\n正在生成：\n1. ✅ Schema 定义 (COLLECTIONS.STUDENTS)\n2. ✅ API 文件 (5 个 CRUD 接口)\n3. ✅ 列表页 (pages/student/index.vue)\n4. ✅ 详情页 (pages/student/sub/detail/index.vue)\n5. ✅ 表单页 (pages/student/sub/add/index.vue)\n6. ✅ 卡片组件 (StudentCard.vue)\n\n代码已生成完成！', 
+                    en: 'Requirements analysis complete!\n\n📋 Module Info:\n- Module: Student\n- Fields: name, phone, status\n\nGenerating:\n1. ✅ Schema definition (COLLECTIONS.STUDENTS)\n2. ✅ API files (5 CRUD endpoints)\n3. ✅ List page (pages/student/index.vue)\n4. ✅ Detail page (pages/student/sub/detail/index.vue)\n5. ✅ Form page (pages/student/sub/add/index.vue)\n6. ✅ Card component (StudentCard.vue)\n\nCode generation complete!' 
                 }
             }
         ]
@@ -218,7 +287,8 @@ const ICON_PATHS = {
     plus: 'M12 6v6m0 0v6m0-6h6m-6 0H6',
     globe: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
     folder: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z',
-    info: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+    info: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+    code: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4'
 };
 
 // 导出供 Vue 使用
