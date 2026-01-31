@@ -21,7 +21,9 @@ python3 userinput.py
 
 2. **无条件执行**：不需要判断是否需要执行，直接执行
 
-3. **执行位置**：在工作区根目录执行（`/Users/TerrellShe/Documents/personal/tt-projects/skillix-hub`）
+3. **执行位置**：在当前工作区根目录执行（即 Cursor 打开的项目根目录）
+
+4. **脚本查找**：在当前项目根目录下查找 `userinput.py` 脚本，如果不存在则跳过执行
 
 ### 执行流程
 
