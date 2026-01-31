@@ -79,9 +79,9 @@ Hook 返回用户的行为模式和偏好：
 
 ## 二、会话过程中
 
-### 2.1 记录动作（可选）
+### 2.1 记录动作（推荐）
 
-在执行工具调用后，**可以**调用 `--record` 记录动作。这有助于更准确地追踪用户行为。
+在执行工具调用后，**始终推荐**调用 `--record` 记录动作，以便更准确地追踪用户行为和提高预测准确性。
 
 ```bash
 python3 ~/.cursor/skills/behavior-prediction/scripts/hook.py --record '{
@@ -92,8 +92,8 @@ python3 ~/.cursor/skills/behavior-prediction/scripts/hook.py --record '{
 }'
 ```
 
-> **注意**：`--record` 是可选的。即使不调用，自动 finalize 机制也会在下次 `--init` 时保存会话。
-> 但调用 `--record` 可以记录更详细的动作信息，提高预测准确性。
+> **重要**：始终推荐调用 `--record`。虽然自动 finalize 机制会在下次 `--init` 时保存会话，
+> 但调用 `--record` 可以记录更详细的动作信息，显著提高预测准确性。
 
 ### 2.2 工作流程阶段识别
 
@@ -353,7 +353,7 @@ python3 ~/.cursor/skills/behavior-prediction/scripts/get_predictions.py '{"curre
 ## 六、注意事项
 
 1. **会话开始时调用 --init**：加载用户行为模式，同时自动 finalize 上一个未完成的会话
-2. **会话过程中可选调用 --record**：记录动作以提高预测准确性
+2. **会话过程中始终调用 --record**：记录动作以提高预测准确性（推荐）
 3. **会话结束自动处理**：不再需要用户手动说结束语，下次 --init 会自动保存
 4. **手动 --finalize 可选**：如果用户说了结束语，可以手动调用以提供更详细的摘要
 5. **主动预测**：根据行为模式，在适当时机主动提供建议
