@@ -253,6 +253,194 @@ WORKFLOW_STAGES = {
 }
 
 
+# ============================================================
+# Pending Session 管理（用于自动 finalize 未完成的会话）
+# ============================================================
+
+PENDING_SESSION_FILE = "pending_session.json"
+
+
+def get_pending_session_path() -> Path:
+    """获取 pending session 文件路径"""
+    return get_data_dir() / PENDING_SESSION_FILE
+
+
+def save_pending_session(session_data: dict):
+    """
+    保存当前会话为 pending 状态
+    
+    在 --init 时调用，记录会话开始信息
+    """
+    pending_file = get_pending_session_path()
+    pending_data = {
+        "session_start": get_timestamp(),
+        "project": detect_project_info(),
+        "actions": [],
+        "status": "pending"
+    }
+    pending_data.update(session_data)
+    save_json(pending_file, pending_data)
+
+
+def load_pending_session() -> Optional[dict]:
+    """
+    加载 pending session
+    
+    返回 None 如果没有 pending session
+    """
+    pending_file = get_pending_session_path()
+    if not pending_file.exists():
+        return None
+    
+    data = load_json(pending_file, None)
+    if data and data.get("status") == "pending":
+        return data
+    return None
+
+
+def add_action_to_pending_session(action: dict):
+    """
+    向 pending session 添加动作记录
+    
+    在 --record 时调用
+    """
+    pending_file = get_pending_session_path()
+    pending_data = load_json(pending_file, {
+        "session_start": get_timestamp(),
+        "actions": [],
+        "status": "pending"
+    })
+    
+    if "actions" not in pending_data:
+        pending_data["actions"] = []
+    
+    pending_data["actions"].append(action)
+    pending_data["last_action_time"] = get_timestamp()
+    save_json(pending_file, pending_data)
+
+
+def clear_pending_session():
+    """
+    清除 pending session（会话正常结束后调用）
+    """
+    pending_file = get_pending_session_path()
+    if pending_file.exists():
+        pending_file.unlink()
+
+
+def check_pending_session_timeout(timeout_hours: float = 2.0) -> bool:
+    """
+    检查 pending session 是否超时
+    
+    Args:
+        timeout_hours: 超时时间（小时），默认 2 小时
+    
+    Returns:
+        True 如果超时，False 如果未超时或没有 pending session
+    """
+    pending_data = load_pending_session()
+    if not pending_data:
+        return False
+    
+    # 获取最后活动时间
+    last_time_str = pending_data.get("last_action_time") or pending_data.get("session_start")
+    if not last_time_str:
+        return False
+    
+    try:
+        last_time = datetime.fromisoformat(last_time_str)
+        elapsed_hours = (datetime.now() - last_time).total_seconds() / 3600
+        return elapsed_hours >= timeout_hours
+    except:
+        return False
+
+
+def build_session_data_from_pending(pending_data: dict) -> dict:
+    """
+    从 pending session 构建完整的 session data（用于自动 finalize）
+    
+    Args:
+        pending_data: pending session 数据
+    
+    Returns:
+        可用于 finalize 的 session data
+    """
+    actions = pending_data.get("actions", [])
+    
+    # 提取文件操作
+    files_created = []
+    files_modified = []
+    files_deleted = []
+    commands = []
+    workflow_stages = set()
+    technologies = set()
+    
+    for action in actions:
+        action_type = action.get("type", "")
+        details = action.get("details", {})
+        context = action.get("context", {})
+        
+        # 文件操作
+        file_path = details.get("file_path", "")
+        if file_path:
+            if action_type == "create_file":
+                files_created.append(file_path)
+            elif action_type in ["edit_file", "write_code", "write_test", "refactor", "fix_bug"]:
+                files_modified.append(file_path)
+            elif action_type == "delete_file":
+                files_deleted.append(file_path)
+            
+            # 检测技术栈
+            if file_path.endswith(".py"):
+                technologies.add("python")
+            elif file_path.endswith((".js", ".ts", ".jsx", ".tsx")):
+                technologies.add("javascript")
+            elif file_path.endswith(".vue"):
+                technologies.add("vue")
+        
+        # 命令
+        command = details.get("command", "")
+        if command:
+            commands.append({
+                "command": command,
+                "exit_code": details.get("exit_code", 0)
+            })
+        
+        # 工作流阶段
+        stage = context.get("task_stage", "")
+        if stage:
+            workflow_stages.add(stage)
+    
+    # 构建 session data
+    session_data = {
+        "time": {
+            "start": pending_data.get("session_start", get_timestamp()),
+            "end": pending_data.get("last_action_time", get_timestamp())
+        },
+        "operations": {
+            "files": {
+                "created": files_created,
+                "modified": list(set(files_modified)),
+                "deleted": files_deleted
+            },
+            "commands": commands
+        },
+        "session_summary": {
+            "topic": "自动保存的会话",
+            "workflow_stages": list(workflow_stages) if workflow_stages else ["implement"],
+            "technologies_used": list(technologies),
+            "auto_finalized": True,
+            "action_count": len(actions)
+        },
+        "conversation": {
+            "message_count": 0,
+            "user_messages": []
+        }
+    }
+    
+    return session_data
+
+
 if __name__ == "__main__":
     print(f"Skill 目录: {SKILL_DIR}")
     print(f"数据目录: {DATA_DIR}")
