@@ -1,0 +1,1112 @@
+{
+  "sessions": [
+    {
+      "session_id": "sess_20260131_001",
+      "date": "2026-01-31",
+      "topic": "测试会话记录功能",
+      "tags": [
+        "#test",
+        "#v2"
+      ],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [
+        "Python",
+        "JSON"
+      ],
+      "duration_minutes": 30,
+      "message_count": 2
+    },
+    {
+      "session_id": "sess_20260131_002",
+      "date": "2026-01-31",
+      "topic": "测试",
+      "tags": [],
+      "workflow_stages": [
+        "implement"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260131_003",
+      "date": "2026-01-31",
+      "topic": "",
+      "tags": [],
+      "workflow_stages": [],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260131_004",
+      "date": "2026-01-31",
+      "topic": "测试会话",
+      "tags": [
+        "#test"
+      ],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [
+        "Python"
+      ],
+      "duration_minutes": 30,
+      "message_count": 1
+    },
+    {
+      "session_id": "sess_20260131_005",
+      "date": "2026-01-31",
+      "topic": "测试流程",
+      "tags": [],
+      "workflow_stages": [
+        "implement"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260131_006",
+      "date": "2026-01-31",
+      "topic": "测试会话 1",
+      "tags": [],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260131_007",
+      "date": "2026-01-31",
+      "topic": "测试会话 2",
+      "tags": [],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260131_008",
+      "date": "2026-01-31",
+      "topic": "测试会话 3",
+      "tags": [],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260131_009",
+      "date": "2026-01-31",
+      "topic": "测试",
+      "tags": [],
+      "workflow_stages": [
+        "implement"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260131_010",
+      "date": "2026-01-31",
+      "topic": "",
+      "tags": [],
+      "workflow_stages": [],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260131_011",
+      "date": "2026-01-31",
+      "topic": "测试会话",
+      "tags": [
+        "#test"
+      ],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [
+        "Python"
+      ],
+      "duration_minutes": 30,
+      "message_count": 1
+    },
+    {
+      "session_id": "sess_20260131_012",
+      "date": "2026-01-31",
+      "topic": "测试流程",
+      "tags": [],
+      "workflow_stages": [
+        "implement"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260131_013",
+      "date": "2026-01-31",
+      "topic": "测试会话 1",
+      "tags": [],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260131_014",
+      "date": "2026-01-31",
+      "topic": "测试会话 2",
+      "tags": [],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260131_015",
+      "date": "2026-01-31",
+      "topic": "测试会话 3",
+      "tags": [],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260131_016",
+      "date": "2026-01-31",
+      "topic": "测试",
+      "tags": [],
+      "workflow_stages": [
+        "implement"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260131_017",
+      "date": "2026-01-31",
+      "topic": "",
+      "tags": [],
+      "workflow_stages": [],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260131_018",
+      "date": "2026-01-31",
+      "topic": "测试会话",
+      "tags": [
+        "#test"
+      ],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [
+        "Python"
+      ],
+      "duration_minutes": 30,
+      "message_count": 1
+    },
+    {
+      "session_id": "sess_20260131_019",
+      "date": "2026-01-31",
+      "topic": "测试流程",
+      "tags": [],
+      "workflow_stages": [
+        "implement"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260131_020",
+      "date": "2026-01-31",
+      "topic": "测试会话 1",
+      "tags": [],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260131_021",
+      "date": "2026-01-31",
+      "topic": "测试会话 2",
+      "tags": [],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260131_022",
+      "date": "2026-01-31",
+      "topic": "测试会话 3",
+      "tags": [],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_001",
+      "date": "2026-02-01",
+      "topic": "开发 1",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_002",
+      "date": "2026-02-01",
+      "topic": "开发 2",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_003",
+      "date": "2026-02-01",
+      "topic": "开发 3",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_004",
+      "date": "2026-02-01",
+      "topic": "开发 4",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_005",
+      "date": "2026-02-01",
+      "topic": "开发 5",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_006",
+      "date": "2026-02-01",
+      "topic": "开发 6",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_007",
+      "date": "2026-02-01",
+      "topic": "开发 7",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_008",
+      "date": "2026-02-01",
+      "topic": "开发 8",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_009",
+      "date": "2026-02-01",
+      "topic": "开发 9",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_010",
+      "date": "2026-02-01",
+      "topic": "开发 10",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_011",
+      "date": "2026-02-01",
+      "topic": "测试",
+      "tags": [],
+      "workflow_stages": [
+        "implement"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_012",
+      "date": "2026-02-01",
+      "topic": "",
+      "tags": [],
+      "workflow_stages": [],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_013",
+      "date": "2026-02-01",
+      "topic": "测试会话",
+      "tags": [
+        "#test"
+      ],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [
+        "Python"
+      ],
+      "duration_minutes": 30,
+      "message_count": 1
+    },
+    {
+      "session_id": "sess_20260201_014",
+      "date": "2026-02-01",
+      "topic": "开发 1",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_015",
+      "date": "2026-02-01",
+      "topic": "开发 2",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_016",
+      "date": "2026-02-01",
+      "topic": "开发 3",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_017",
+      "date": "2026-02-01",
+      "topic": "开发 4",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_018",
+      "date": "2026-02-01",
+      "topic": "开发 5",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_019",
+      "date": "2026-02-01",
+      "topic": "开发 6",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_020",
+      "date": "2026-02-01",
+      "topic": "开发 7",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_021",
+      "date": "2026-02-01",
+      "topic": "开发 8",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_022",
+      "date": "2026-02-01",
+      "topic": "开发 9",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_023",
+      "date": "2026-02-01",
+      "topic": "开发 10",
+      "tags": [],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test",
+        "commit"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_024",
+      "date": "2026-02-01",
+      "topic": "测试",
+      "tags": [],
+      "workflow_stages": [
+        "implement"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_025",
+      "date": "2026-02-01",
+      "topic": "",
+      "tags": [],
+      "workflow_stages": [],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_026",
+      "date": "2026-02-01",
+      "topic": "测试会话",
+      "tags": [
+        "#test"
+      ],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [
+        "Python"
+      ],
+      "duration_minutes": 30,
+      "message_count": 1
+    },
+    {
+      "session_id": "sess_20260201_027",
+      "date": "2026-02-01",
+      "topic": "测试流程",
+      "tags": [],
+      "workflow_stages": [
+        "implement"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_028",
+      "date": "2026-02-01",
+      "topic": "测试会话 1",
+      "tags": [],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_029",
+      "date": "2026-02-01",
+      "topic": "测试会话 2",
+      "tags": [],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_030",
+      "date": "2026-02-01",
+      "topic": "测试会话 3",
+      "tags": [],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_031",
+      "date": "2026-02-01",
+      "topic": "测试",
+      "tags": [],
+      "workflow_stages": [],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_032",
+      "date": "2026-02-01",
+      "topic": "测试 1",
+      "tags": [],
+      "workflow_stages": [],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_033",
+      "date": "2026-02-01",
+      "topic": "测试 2",
+      "tags": [],
+      "workflow_stages": [],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_034",
+      "date": "2026-02-01",
+      "topic": "测试 3",
+      "tags": [],
+      "workflow_stages": [],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_035",
+      "date": "2026-02-01",
+      "topic": "测试 4",
+      "tags": [],
+      "workflow_stages": [],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_036",
+      "date": "2026-02-01",
+      "topic": "测试 5",
+      "tags": [],
+      "workflow_stages": [],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_037",
+      "date": "2026-02-01",
+      "topic": "测试",
+      "tags": [],
+      "workflow_stages": [],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_038",
+      "date": "2026-02-01",
+      "topic": "测试",
+      "tags": [],
+      "workflow_stages": [],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_039",
+      "date": "2026-02-01",
+      "topic": "测试",
+      "tags": [],
+      "workflow_stages": [],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_040",
+      "date": "2026-02-01",
+      "topic": "测试会话",
+      "tags": [],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 1
+    },
+    {
+      "session_id": "sess_20260201_041",
+      "date": "2026-02-01",
+      "topic": "测试",
+      "tags": [],
+      "workflow_stages": [],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_042",
+      "date": "2026-02-01",
+      "topic": "测试",
+      "tags": [],
+      "workflow_stages": [],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_043",
+      "date": "2026-02-01",
+      "topic": "测试主题",
+      "tags": [
+        "#test"
+      ],
+      "workflow_stages": [
+        "implement"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_044",
+      "date": "2026-02-01",
+      "topic": "测试 1",
+      "tags": [
+        "#test"
+      ],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [
+        "Python"
+      ],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_045",
+      "date": "2026-02-01",
+      "topic": "测试 2",
+      "tags": [
+        "#test"
+      ],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [
+        "Python"
+      ],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_046",
+      "date": "2026-02-01",
+      "topic": "测试 3",
+      "tags": [
+        "#test"
+      ],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [
+        "Python"
+      ],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_047",
+      "date": "2026-02-01",
+      "topic": "API 开发 1",
+      "tags": [
+        "#api"
+      ],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test"
+      ],
+      "technologies_used": [
+        "Python",
+        "FastAPI"
+      ],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_048",
+      "date": "2026-02-01",
+      "topic": "API 开发 2",
+      "tags": [
+        "#api"
+      ],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test"
+      ],
+      "technologies_used": [
+        "Python",
+        "FastAPI"
+      ],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_049",
+      "date": "2026-02-01",
+      "topic": "API 开发 3",
+      "tags": [
+        "#api"
+      ],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test"
+      ],
+      "technologies_used": [
+        "Python",
+        "FastAPI"
+      ],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_050",
+      "date": "2026-02-01",
+      "topic": "API 开发 4",
+      "tags": [
+        "#api"
+      ],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test"
+      ],
+      "technologies_used": [
+        "Python",
+        "FastAPI"
+      ],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_051",
+      "date": "2026-02-01",
+      "topic": "API 开发 5",
+      "tags": [
+        "#api"
+      ],
+      "workflow_stages": [
+        "design",
+        "implement",
+        "test"
+      ],
+      "technologies_used": [
+        "Python",
+        "FastAPI"
+      ],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_052",
+      "date": "2026-02-01",
+      "topic": "测试",
+      "tags": [],
+      "workflow_stages": [
+        "implement"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_053",
+      "date": "2026-02-01",
+      "topic": "",
+      "tags": [],
+      "workflow_stages": [],
+      "technologies_used": [],
+      "duration_minutes": 0,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_054",
+      "date": "2026-02-01",
+      "topic": "测试会话",
+      "tags": [
+        "#test"
+      ],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [
+        "Python"
+      ],
+      "duration_minutes": 30,
+      "message_count": 1
+    },
+    {
+      "session_id": "sess_20260201_055",
+      "date": "2026-02-01",
+      "topic": "测试流程",
+      "tags": [],
+      "workflow_stages": [
+        "implement"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_056",
+      "date": "2026-02-01",
+      "topic": "测试会话 1",
+      "tags": [],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_057",
+      "date": "2026-02-01",
+      "topic": "测试会话 2",
+      "tags": [],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_058",
+      "date": "2026-02-01",
+      "topic": "测试会话 3",
+      "tags": [],
+      "workflow_stages": [
+        "implement",
+        "test"
+      ],
+      "technologies_used": [],
+      "duration_minutes": 30,
+      "message_count": 0
+    },
+    {
+      "session_id": "sess_20260201_059",
+      "date": "2026-02-01",
+      "topic": "自动保存的会话",
+      "tags": [],
+      "workflow_stages": [
+        "test",
+        "implement"
+      ],
+      "technologies_used": [
+        "python"
+      ],
+      "duration_minutes": 0,
+      "message_count": 0
+    }
+  ],
+  "total_count": 81,
+  "updated_at": "2026-02-01T00:42:39.407562"
+}

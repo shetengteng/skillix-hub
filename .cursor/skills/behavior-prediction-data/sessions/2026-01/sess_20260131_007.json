@@ -1,0 +1,35 @@
+{
+  "session_id": "sess_20260131_007",
+  "version": "2.0",
+  "project": {
+    "path": "/Users/TerrellShe/Documents/personal/tt-projects/skillix-hub/skills/behavior-prediction",
+    "name": "behavior-prediction",
+    "type": "unknown",
+    "tech_stack": []
+  },
+  "time": {
+    "start": "2026-01-31T10:00:00Z",
+    "end": "2026-01-31T10:30:00Z",
+    "recorded_at": "2026-01-31T23:58:45.237203",
+    "duration_minutes": 30
+  },
+  "conversation": {
+    "user_messages": [],
+    "message_count": 0
+  },
+  "operations": {
+    "files": {
+      "created": [],
+      "modified": [],
+      "deleted": []
+    },
+    "commands": []
+  },
+  "summary": {
+    "topic": "测试会话 2",
+    "workflow_stages": [
+      "implement",
+      "test"
+    ]
+  }
+}

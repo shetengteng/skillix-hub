@@ -1,0 +1,64 @@
+{
+  "version": "2.0",
+  "patterns": [
+    {
+      "sequence": [
+        "implement",
+        "test"
+      ],
+      "count": 91,
+      "probability": 1.0,
+      "description": "implement → test"
+    },
+    {
+      "sequence": [
+        "design",
+        "implement"
+      ],
+      "count": 39,
+      "probability": 1.0,
+      "description": "design → implement"
+    },
+    {
+      "sequence": [
+        "test",
+        "commit"
+      ],
+      "count": 20,
+      "probability": 0.952,
+      "description": "test → commit"
+    }
+  ],
+  "stage_transitions": {
+    "implement": {
+      "test": {
+        "count": 91,
+        "probability": 1.0
+      }
+    },
+    "design": {
+      "implement": {
+        "count": 39,
+        "probability": 1.0
+      }
+    },
+    "test": {
+      "commit": {
+        "count": 20,
+        "probability": 0.952
+      },
+      "implement": {
+        "count": 1,
+        "probability": 0.048
+      }
+    }
+  },
+  "stage_counts": {
+    "implement": 105,
+    "test": 92,
+    "design": 39,
+    "commit": 20
+  },
+  "total_sessions": 105,
+  "updated_at": "2026-02-01T00:42:39.408494"
+}
