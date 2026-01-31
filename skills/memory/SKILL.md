@@ -65,9 +65,56 @@ python3 scripts/search_memory.py "用户问题中的关键词"
 
 ## 保存流程
 
-当对话结束时，判断是否值得保存：
+### 三层保障机制
 
-### 第一步：价值判断
+由于 AI 助手（如 Cursor）可能在任何时候被关闭，无法可靠地检测"对话结束"时刻。因此采用三层保障机制确保记忆数据完整性：
+
+| 层级 | 机制 | 触发时机 | 可靠性 |
+|------|------|----------|--------|
+| 第一层 | 实时保存 | 每次有价值的对话后立即保存 | ⭐⭐⭐⭐⭐ |
+| 第二层 | 会话结束处理 | 检测到结束信号时 | ⭐⭐⭐ |
+| 第三层 | 下次会话检查 | 新会话开始时 | ⭐⭐⭐⭐⭐ |
+
+### 第一层：实时保存（核心）
+
+**不等到对话结束**，而是在每次有价值的对话后立即保存。
+
+**触发条件**：
+- 用户表达了重要决策（"我们决定使用 FastAPI"）
+- 用户表达了偏好（"我喜欢用 TypeScript"）
+- 讨论了项目配置（"API 前缀是 /api/v2"）
+- 完成了复杂任务（详细的实现方案）
+
+**执行方式**：
+```bash
+python3 scripts/save_memory.py '{"topic": "主题", "key_info": ["要点1", "要点2"], "tags": ["#tag1", "#tag2"]}'
+```
+
+### 第二层：会话结束处理（可选）
+
+当检测到结束信号时，进行汇总保存。
+
+**结束信号**：
+- 用户说"谢谢"、"好的"、"结束"、"拜拜"
+- 用户说"thanks"、"done"、"bye"
+
+**注意**：此层是可选的，因为 AI 助手可能在任何时候被关闭，不保证能执行。
+
+### 第三层：下次会话检查（兜底）
+
+在每次新会话开始时，执行会话检查：
+
+```bash
+python3 scripts/check_session.py
+```
+
+**功能**：
+- 检查上次会话状态
+- 提供数据摘要供 AI 参考
+- 清理过期数据（如果配置了保留天数）
+- 返回最近记忆供上下文参考
+
+### 保存价值判断
 
 判断本次对话是否包含：
 - 重要决策（如技术选型、架构决定）
@@ -75,20 +122,12 @@ python3 scripts/search_memory.py "用户问题中的关键词"
 - 项目配置（如 API 设计、命名规范）
 - 待办计划（如下一步任务）
 
-### 第二步：提取信息
+### 提取信息
 
 如果值得保存，提取以下信息：
 - **主题**：对话的核心主题（一句话）
 - **关键信息**：重要的决策、偏好、配置等（列表形式）
 - **标签**：相关标签，以 # 开头
-
-### 第三步：执行保存
-
-运行以下命令保存记忆：
-
-```bash
-python3 scripts/save_memory.py '{"topic": "主题", "key_info": ["要点1", "要点2"], "tags": ["#tag1", "#tag2"]}'
-```
 
 脚本位置：`<skill_dir>/scripts/save_memory.py`
 
@@ -203,6 +242,7 @@ python3 scripts/import_memory.py '{"input": "backup.json", "location": "global"}
 | `清空所有记忆` | 清空所有记忆（需确认） |
 | `导出记忆` / `export memories` | 导出所有记忆到 JSON 文件 |
 | `导入记忆 xxx` / `import memories xxx` | 从 JSON 文件导入记忆 |
+| `检查会话状态` / `check session` | 检查会话状态和数据摘要 |
 | `启用自动记忆检索` / `enable memory auto retrieve` | 创建自动检索规则，让 AI 在对话开始时自动检索相关记忆 |
 | `禁用自动记忆检索` / `disable memory auto retrieve` | 移除自动检索规则 |
 | `更新自动记忆检索规则` / `update memory auto retrieve` | 更新自动检索规则到最新版本 |
@@ -295,6 +335,23 @@ python3 scripts/setup_auto_retrieve.py '{"action": "disable"}'
 [AI 响应]: (自动使用 TypeScript + 函数式风格)
 ```
 
+## 会话检查流程
+
+在每次新会话开始时，可以执行会话检查获取数据摘要：
+
+```bash
+# 检查会话状态
+python3 scripts/check_session.py
+
+# 只获取摘要
+python3 scripts/check_session.py '{"action": "summary"}'
+
+# 手动触发清理过期数据
+python3 scripts/check_session.py '{"action": "cleanup"}'
+```
+
+脚本位置：`<skill_dir>/scripts/check_session.py`
+
 ## 数据存储
 
 ### 目录结构
@@ -310,6 +367,8 @@ python3 scripts/setup_auto_retrieve.py '{"action": "disable"}'
 │   │   ├── delete_memory.py
 │   │   ├── export_memory.py
 │   │   ├── import_memory.py
+│   │   ├── check_session.py
+│   │   ├── setup_auto_retrieve.py
 │   │   └── utils.py
 │   └── default_config.json
 └── memory-data/                 # 用户数据（永不覆盖）

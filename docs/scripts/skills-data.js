@@ -33,6 +33,22 @@ const SKILLS_DATA = [
         repo: 'https://github.com/shetengteng/skillix-hub/tree/main/skills/memory',
         useCases: [
             {
+                title: { zh: '安装 Memory Skill', en: 'Install Memory Skill' },
+                userInput: { zh: '帮我从 https://github.com/shetengteng/skillix-hub 安装 memory skill', en: 'Please install memory skill from https://github.com/shetengteng/skillix-hub' },
+                aiResponse: { 
+                    zh: '正在安装 Memory Skill...\n\n1. 克隆仓库\n2. 复制 skills/memory 到 ~/.cursor/skills/\n3. 初始化数据目录\n\n✅ 安装完成！\n\n你可以说"启用自动记忆检索"来开启自动记忆功能。', 
+                    en: 'Installing Memory Skill...\n\n1. Clone repository\n2. Copy skills/memory to ~/.cursor/skills/\n3. Initialize data directory\n\n✅ Installation complete!\n\nYou can say "enable memory auto retrieve" to turn on auto memory.' 
+                }
+            },
+            {
+                title: { zh: '启用自动记忆', en: 'Enable Auto Memory' },
+                userInput: { zh: '启用自动记忆检索', en: 'Enable memory auto retrieve' },
+                aiResponse: { 
+                    zh: '已启用自动记忆规则！\n\n✅ 规则文件已创建: .cursor/rules/memory-auto-retrieve.mdc\n\n功能说明：\n- 对话开始时自动检索相关历史记忆\n- 有价值的内容会实时保存\n\n你可以随时说"禁用自动记忆检索"来关闭此功能。', 
+                    en: 'Auto memory rules enabled!\n\n✅ Rule file created: .cursor/rules/memory-auto-retrieve.mdc\n\nFeatures:\n- Auto retrieve relevant memories at conversation start\n- Valuable content saved in real-time\n\nYou can say "disable memory auto retrieve" anytime to turn this off.' 
+                }
+            },
+            {
                 title: { zh: '继续昨天的工作', en: 'Continue Yesterday\'s Work' },
                 userInput: { zh: '继续昨天的 API 重构工作', en: 'Continue yesterday\'s API refactoring work' },
                 aiResponse: { 
@@ -54,14 +70,6 @@ const SKILLS_DATA = [
                 aiResponse: { 
                     zh: '今日记忆（共 3 条）：\n\n1. [10:30] API 设计讨论\n   - 使用 FastAPI 框架\n   - RESTful 风格\n\n2. [14:15] 数据库选型\n   - 选择 PostgreSQL\n\n3. [16:45] 部署方案\n   - Docker + K8s', 
                     en: 'Today\'s memories (3 total):\n\n1. [10:30] API Design Discussion\n   - Use FastAPI framework\n   - RESTful style\n\n2. [14:15] Database Selection\n   - Choose PostgreSQL\n\n3. [16:45] Deployment Plan\n   - Docker + K8s' 
-                }
-            },
-            {
-                title: { zh: '启用自动记忆', en: 'Enable Auto Memory' },
-                userInput: { zh: '启用自动记忆检索', en: 'Enable memory auto retrieve' },
-                aiResponse: { 
-                    zh: '已启用自动记忆规则！\n\n现在每次对话开始时，我会自动检索相关历史记忆；对话结束时，会自动保存重要内容。\n\n你可以随时说"禁用自动记忆检索"来关闭此功能。', 
-                    en: 'Auto memory rules enabled!\n\nNow I will automatically retrieve relevant memories at the start of each conversation and save important content at the end.\n\nYou can say "disable memory auto retrieve" anytime to turn this off.' 
                 }
             }
         ]
@@ -94,35 +102,43 @@ const SKILLS_DATA = [
         repo: 'https://github.com/shetengteng/skillix-hub/tree/main/skills/behavior-prediction',
         useCases: [
             {
+                title: { zh: '安装 Behavior Prediction Skill', en: 'Install Behavior Prediction Skill' },
+                userInput: { zh: '帮我从 https://github.com/shetengteng/skillix-hub 安装 behavior-prediction skill', en: 'Please install behavior-prediction skill from https://github.com/shetengteng/skillix-hub' },
+                aiResponse: { 
+                    zh: '正在安装 Behavior Prediction Skill...\n\n1. 克隆仓库\n2. 复制 skills/behavior-prediction 到 ~/.cursor/skills/\n3. 初始化数据目录\n\n✅ 安装完成！\n\n该 Skill 会自动记录你的行为模式，无需额外配置。', 
+                    en: 'Installing Behavior Prediction Skill...\n\n1. Clone repository\n2. Copy skills/behavior-prediction to ~/.cursor/skills/\n3. Initialize data directory\n\n✅ Installation complete!\n\nThis skill will automatically record your behavior patterns, no extra config needed.' 
+                }
+            },
+            {
                 title: { zh: '智能预测下一步', en: 'Smart Next Step Prediction' },
                 userInput: { zh: '（用户刚创建了一个新文件 user.py）', en: '(User just created a new file user.py)' },
                 aiResponse: { 
-                    zh: '💡 预测建议：\n\n根据你的历史行为模式，创建文件后你通常会：\n\n1. **编辑文件** (85% 概率) - 添加初始代码\n2. **运行测试** (10% 概率) - 验证文件创建\n3. **创建相关文件** (5% 概率) - 如 test_user.py\n\n需要我帮你开始编辑 user.py 吗？', 
-                    en: '💡 Prediction Suggestion:\n\nBased on your behavior patterns, after creating a file you usually:\n\n1. **Edit file** (85% probability) - Add initial code\n2. **Run tests** (10% probability) - Verify file creation\n3. **Create related files** (5% probability) - Like test_user.py\n\nWould you like me to help you start editing user.py?' 
+                    zh: '预测建议：\n\n根据你的历史行为模式，创建文件后你通常会：\n\n1. **编辑文件** (85% 概率) - 添加初始代码\n2. **运行测试** (10% 概率) - 验证文件创建\n3. **创建相关文件** (5% 概率) - 如 test_user.py\n\n需要我帮你开始编辑 user.py 吗？', 
+                    en: 'Prediction Suggestion:\n\nBased on your behavior patterns, after creating a file you usually:\n\n1. **Edit file** (85% probability) - Add initial code\n2. **Run tests** (10% probability) - Verify file creation\n3. **Create related files** (5% probability) - Like test_user.py\n\nWould you like me to help you start editing user.py?' 
                 }
             },
             {
                 title: { zh: '查看行为模式', en: 'View Behavior Patterns' },
                 userInput: { zh: '查看我的行为模式', en: 'View my behavior patterns' },
                 aiResponse: { 
-                    zh: '📊 你的行为模式分析：\n\n**Top 5 常见序列：**\n1. 创建文件 → 编辑文件 (92%)\n2. 编辑文件 → 运行测试 (78%)\n3. 运行测试 → 修复代码 (65%)\n4. 修复代码 → 运行测试 (88%)\n5. 提交代码 → 推送远程 (95%)\n\n**今日统计：**\n- 总动作数: 47\n- 最频繁: 编辑文件 (23次)', 
-                    en: '📊 Your Behavior Pattern Analysis:\n\n**Top 5 Common Sequences:**\n1. Create file → Edit file (92%)\n2. Edit file → Run tests (78%)\n3. Run tests → Fix code (65%)\n4. Fix code → Run tests (88%)\n5. Commit code → Push remote (95%)\n\n**Today\'s Stats:**\n- Total actions: 47\n- Most frequent: Edit file (23 times)' 
+                    zh: '你的行为模式分析：\n\n**Top 5 常见序列：**\n1. 创建文件 → 编辑文件 (92%)\n2. 编辑文件 → 运行测试 (78%)\n3. 运行测试 → 修复代码 (65%)\n4. 修复代码 → 运行测试 (88%)\n5. 提交代码 → 推送远程 (95%)\n\n**今日统计：**\n- 总动作数: 47\n- 最频繁: 编辑文件 (23次)', 
+                    en: 'Your Behavior Pattern Analysis:\n\n**Top 5 Common Sequences:**\n1. Create file → Edit file (92%)\n2. Edit file → Run tests (78%)\n3. Run tests → Fix code (65%)\n4. Fix code → Run tests (88%)\n5. Commit code → Push remote (95%)\n\n**Today\'s Stats:**\n- Total actions: 47\n- Most frequent: Edit file (23 times)' 
                 }
             },
             {
                 title: { zh: '预测下一步', en: 'Predict Next Step' },
                 userInput: { zh: '预测下一步', en: 'Predict next step' },
                 aiResponse: { 
-                    zh: '🔮 基于当前上下文预测：\n\n你刚刚完成了 **编辑文件** 操作。\n\n**最可能的下一步：**\n✅ 运行测试 (置信度: 78%)\n\n**其他可能：**\n- 继续编辑 (15%)\n- 提交代码 (5%)\n- 查看文档 (2%)\n\n需要我帮你运行测试吗？', 
-                    en: '🔮 Prediction Based on Current Context:\n\nYou just completed **Edit file** operation.\n\n**Most Likely Next Step:**\n✅ Run tests (Confidence: 78%)\n\n**Other Possibilities:**\n- Continue editing (15%)\n- Commit code (5%)\n- View docs (2%)\n\nWould you like me to run the tests?' 
+                    zh: '基于当前上下文预测：\n\n你刚刚完成了 **编辑文件** 操作。\n\n**最可能的下一步：**\n✅ 运行测试 (置信度: 78%)\n\n**其他可能：**\n- 继续编辑 (15%)\n- 提交代码 (5%)\n- 查看文档 (2%)\n\n需要我帮你运行测试吗？', 
+                    en: 'Prediction Based on Current Context:\n\nYou just completed **Edit file** operation.\n\n**Most Likely Next Step:**\n✅ Run tests (Confidence: 78%)\n\n**Other Possibilities:**\n- Continue editing (15%)\n- Commit code (5%)\n- View docs (2%)\n\nWould you like me to run the tests?' 
                 }
             },
             {
                 title: { zh: '自动学习新模式', en: 'Auto Learn New Patterns' },
                 userInput: { zh: '（用户连续执行：创建模型 → 生成迁移 → 运行迁移）', en: '(User executes: Create model → Generate migration → Run migration)' },
                 aiResponse: { 
-                    zh: '🧠 新模式学习完成！\n\n检测到新的行为序列：\n**创建模型 → 生成迁移 → 运行迁移**\n\n这个模式已被记录。下次你创建模型时，我会建议你生成和运行迁移。\n\n当前置信度: 33% (需要更多样本)\n达到 50% 后将自动建议。', 
-                    en: '🧠 New Pattern Learned!\n\nDetected new behavior sequence:\n**Create model → Generate migration → Run migration**\n\nThis pattern has been recorded. Next time you create a model, I\'ll suggest generating and running migrations.\n\nCurrent confidence: 33% (needs more samples)\nWill auto-suggest after reaching 50%.' 
+                    zh: '新模式学习完成！\n\n检测到新的行为序列：\n**创建模型 → 生成迁移 → 运行迁移**\n\n这个模式已被记录。下次你创建模型时，我会建议你生成和运行迁移。\n\n当前置信度: 33% (需要更多样本)\n达到 50% 后将自动建议。', 
+                    en: 'New Pattern Learned!\n\nDetected new behavior sequence:\n**Create model → Generate migration → Run migration**\n\nThis pattern has been recorded. Next time you create a model, I\'ll suggest generating and running migrations.\n\nCurrent confidence: 33% (needs more samples)\nWill auto-suggest after reaching 50%.' 
                 }
             }
         ]
@@ -151,6 +167,14 @@ const SKILLS_DATA = [
         repo: 'https://github.com/shetengteng/skillix-hub/tree/main/skills/swagger-api-reader',
         useCases: [
             {
+                title: { zh: '安装 Swagger API Reader', en: 'Install Swagger API Reader' },
+                userInput: { zh: '帮我从 https://github.com/shetengteng/skillix-hub 安装 swagger-api-reader skill', en: 'Please install swagger-api-reader skill from https://github.com/shetengteng/skillix-hub' },
+                aiResponse: { 
+                    zh: '正在安装 Swagger API Reader...\n\n1. 克隆仓库\n2. 复制 skills/swagger-api-reader 到 ~/.cursor/skills/\n3. 安装依赖: pip install -r requirements.txt\n\n✅ 安装完成！\n\n你可以说"读取 API 文档"来开始使用。', 
+                    en: 'Installing Swagger API Reader...\n\n1. Clone repository\n2. Copy skills/swagger-api-reader to ~/.cursor/skills/\n3. Install deps: pip install -r requirements.txt\n\n✅ Installation complete!\n\nYou can say "read API docs" to start using.' 
+                }
+            },
+            {
                 title: { zh: '读取 API 文档', en: 'Read API Documentation' },
                 userInput: { zh: '帮我读取 https://api.example.com/swagger.json 的 API 文档', en: 'Help me read the API docs from https://api.example.com/swagger.json' },
                 aiResponse: { 
@@ -162,16 +186,16 @@ const SKILLS_DATA = [
                 title: { zh: '生成 API 文档', en: 'Generate API Documentation' },
                 userInput: { zh: '生成 users 模块的 API 文档', en: 'Generate API docs for users module' },
                 aiResponse: { 
-                    zh: '📄 Users 模块 API 文档\n\n**GET /users**\n获取用户列表\n- 参数: page, limit, search\n- 响应: UserList\n\n**POST /users**\n创建新用户\n- 请求体: CreateUserRequest\n- 响应: User\n\n**GET /users/{id}**\n获取用户详情\n- 参数: id (path)\n- 响应: User\n\n...\n\n文档已生成到 docs/api/users.md', 
-                    en: '📄 Users Module API Documentation\n\n**GET /users**\nGet user list\n- Params: page, limit, search\n- Response: UserList\n\n**POST /users**\nCreate new user\n- Body: CreateUserRequest\n- Response: User\n\n**GET /users/{id}**\nGet user details\n- Params: id (path)\n- Response: User\n\n...\n\nDocs generated to docs/api/users.md' 
+                    zh: 'Users 模块 API 文档\n\n**GET /users**\n获取用户列表\n- 参数: page, limit, search\n- 响应: UserList\n\n**POST /users**\n创建新用户\n- 请求体: CreateUserRequest\n- 响应: User\n\n**GET /users/{id}**\n获取用户详情\n- 参数: id (path)\n- 响应: User\n\n...\n\n文档已生成到 docs/api/users.md', 
+                    en: 'Users Module API Documentation\n\n**GET /users**\nGet user list\n- Params: page, limit, search\n- Response: UserList\n\n**POST /users**\nCreate new user\n- Body: CreateUserRequest\n- Response: User\n\n**GET /users/{id}**\nGet user details\n- Params: id (path)\n- Response: User\n\n...\n\nDocs generated to docs/api/users.md' 
                 }
             },
             {
                 title: { zh: '需要认证的 API', en: 'API Requiring Authentication' },
                 userInput: { zh: '读取需要登录的内部 API 文档', en: 'Read internal API docs that require login' },
                 aiResponse: { 
-                    zh: '检测到该 API 需要认证。\n\n🔐 正在启动浏览器认证...\n\n请在打开的浏览器窗口中完成登录，然后我会自动获取认证信息并读取 API 文档。\n\n（浏览器窗口已打开，等待登录...）\n\n✅ 认证成功！正在读取 API 文档...', 
-                    en: 'Detected that this API requires authentication.\n\n🔐 Starting browser authentication...\n\nPlease complete login in the opened browser window, then I\'ll automatically get auth info and read the API docs.\n\n(Browser window opened, waiting for login...)\n\n✅ Authentication successful! Reading API docs...' 
+                    zh: '检测到该 API 需要认证。\n\n正在启动浏览器认证...\n\n请在打开的浏览器窗口中完成登录，然后我会自动获取认证信息并读取 API 文档。\n\n（浏览器窗口已打开，等待登录...）\n\n✅ 认证成功！正在读取 API 文档...', 
+                    en: 'Detected that this API requires authentication.\n\nStarting browser authentication...\n\nPlease complete login in the opened browser window, then I\'ll automatically get auth info and read the API docs.\n\n(Browser window opened, waiting for login...)\n\n✅ Authentication successful! Reading API docs...' 
                 }
             }
         ]

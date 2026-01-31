@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "enabled": true,
+  "auto_save": true,
+  "auto_retrieve": true,
+  "storage": {
+    "location": "project-first",
+    "retention_days": -1
+  },
+  "retrieval": {
+    "max_candidates": 10,
+    "max_results": 3,
+    "search_scope_days": 30,
+    "time_decay_rate": 0.95,
+    "source_weight": {
+      "project": 1.0,
+      "global": 0.7
+    }
+  }
+}
