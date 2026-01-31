@@ -21,6 +21,23 @@
 
 ---
 
+## 更新后操作
+
+> **重要**：当用户更新 Skill 代码后（如执行 `更新 behavior-prediction skill`），请自动执行以下命令更新规则文件：
+
+```bash
+python3 <skill_dir>/scripts/setup_auto_record.py '{"action": "update"}'
+```
+
+更新完成后展示：
+```
+✅ Behavior Prediction Skill 已更新！
+
+规则文件也已同步更新到最新版本。
+```
+
+---
+
 ## 兼容性
 
 本 Skill 支持多种 AI 助手：

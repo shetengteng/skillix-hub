@@ -21,6 +21,23 @@
 
 ---
 
+## 更新后操作
+
+> **重要**：当用户更新 Skill 代码后（如执行 `更新 memory skill`），请自动执行以下命令更新规则文件：
+
+```bash
+python3 <skill_dir>/scripts/setup_auto_retrieve.py '{"action": "update"}'
+```
+
+更新完成后展示：
+```
+✅ Memory Skill 已更新！
+
+规则文件也已同步更新到最新版本。
+```
+
+---
+
 ## 核心原则
 
 - **零外部依赖**：只使用 Python 标准库
