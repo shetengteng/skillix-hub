@@ -16,6 +16,7 @@ AI Skill is a reusable AI instruction set that helps AI programming assistants b
 | Skill | Description |
 |-------|-------------|
 | [memory](./skills/memory/) | Long-term memory for AI assistants, auto-record conversations and retrieve relevant history |
+| [behavior-prediction](./skills/behavior-prediction/) | Learn user behavior patterns, predict next actions and provide smart suggestions |
 | [swagger-api-reader](./skills/swagger-api-reader/) | Read and cache Swagger/OpenAPI docs with browser auth support |
 
 ## Installation
@@ -129,6 +130,45 @@ python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "disa
 - **View Memories**: view today's memories, view recent memories
 - **Export/Import**: export memories, import memories
 - **Auto Memory**: enable memory auto retrieve, disable memory auto retrieve
+
+## Behavior Prediction Skill Usage
+
+Behavior Prediction Skill learns user behavior patterns. When user performs action A, it automatically predicts and suggests the next likely action B.
+
+### Core Features
+
+- **Behavior Recording**: Automatically record user actions in AI assistant
+- **Pattern Learning**: Analyze action sequences, discover A → B associations
+- **Smart Prediction**: When user performs action A, predict and suggest action B
+- **Open Types**: Support automatic recognition and registration of new action types
+
+### Usage Examples
+
+```bash
+# Record action
+python3 ~/.cursor/skills/behavior-prediction/scripts/record_action.py '{"type": "create_file", "tool": "Write", "details": {"file_path": "test.py"}}'
+
+# Get statistics
+python3 ~/.cursor/skills/behavior-prediction/scripts/get_statistics.py '{"current_action": "edit_file"}'
+
+# Get all statistics overview
+python3 ~/.cursor/skills/behavior-prediction/scripts/get_statistics.py
+
+# Session finalization
+python3 ~/.cursor/skills/behavior-prediction/scripts/finalize_session.py '{"actions_summary": [...]}'
+
+# Check last session
+python3 ~/.cursor/skills/behavior-prediction/scripts/check_last_session.py
+
+# Get data summary
+python3 ~/.cursor/skills/behavior-prediction/scripts/check_last_session.py '{"action": "summary"}'
+```
+
+### Trigger Words
+
+- **View Patterns**: view my behavior patterns, view behavior statistics
+- **Predict**: predict next step
+- **Clear**: clear behavior records
 
 ## Contributing
 

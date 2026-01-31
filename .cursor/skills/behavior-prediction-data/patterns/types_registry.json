@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "types": {
+    "create_file": {
+      "description": "",
+      "source": "predefined",
+      "first_seen": "2026-01-31",
+      "count": 1,
+      "last_seen": "2026-01-31"
+    },
+    "edit_file": {
+      "description": "",
+      "source": "predefined",
+      "first_seen": "2026-01-31",
+      "count": 1,
+      "last_seen": "2026-01-31"
+    },
+    "run_test": {
+      "description": "",
+      "source": "predefined",
+      "first_seen": "2026-01-31",
+      "count": 1,
+      "last_seen": "2026-01-31"
+    }
+  },
+  "updated_at": "2026-01-31T20:36:35.368480Z"
+}

@@ -223,6 +223,56 @@
                         </div>
                     </div>
                     
+                    <!-- Use Cases -->
+                    <div v-if="selectedSkill.useCases && selectedSkill.useCases.length > 0" class="mt-6">
+                        <h3 class="font-semibold mb-3">
+                            <span class="lang-zh">💬 使用案例</span>
+                            <span class="lang-en">💬 Use Cases</span>
+                        </h3>
+                        <div class="space-y-4">
+                            <div v-for="(useCase, index) in selectedSkill.useCases" :key="index" class="use-case-card">
+                                <div class="use-case-title">
+                                    <span class="use-case-number">{{ index + 1 }}</span>
+                                    <span class="lang-zh">{{ useCase.title.zh }}</span>
+                                    <span class="lang-en">{{ useCase.title.en }}</span>
+                                </div>
+                                <div class="use-case-dialog">
+                                    <div class="dialog-user">
+                                        <div class="dialog-avatar user-avatar">
+                                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                            </svg>
+                                        </div>
+                                        <div class="dialog-content">
+                                            <div class="dialog-label">
+                                                <span class="lang-zh">用户</span>
+                                                <span class="lang-en">User</span>
+                                            </div>
+                                            <div class="dialog-text">
+                                                <span class="lang-zh">{{ useCase.userInput.zh }}</span>
+                                                <span class="lang-en">{{ useCase.userInput.en }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="dialog-ai">
+                                        <div class="dialog-avatar ai-avatar">
+                                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                            </svg>
+                                        </div>
+                                        <div class="dialog-content">
+                                            <div class="dialog-label">
+                                                <span class="lang-zh">AI 助手</span>
+                                                <span class="lang-en">AI Assistant</span>
+                                            </div>
+                                            <pre class="dialog-text ai-response"><span class="lang-zh">{{ useCase.aiResponse.zh }}</span><span class="lang-en">{{ useCase.aiResponse.en }}</span></pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Actions -->
                     <div class="mt-6 flex gap-2">
                         <a :href="selectedSkill.repo" target="_blank" class="btn btn-primary">

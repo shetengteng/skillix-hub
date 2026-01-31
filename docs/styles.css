@@ -782,6 +782,8 @@ html.dark .text-muted,
 .mt-6 { margin-top: 1.5rem; }
 .mt-8 { margin-top: 2rem; }
 .mt-12 { margin-top: 3rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 0.75rem; }
 .mb-4 { margin-bottom: 1rem; }
 .mr-2 { margin-right: 0.5rem; }
 .gap-1 { gap: 0.25rem; }
@@ -797,3 +799,104 @@ html.dark .text-muted,
 .font-semibold { font-weight: 600; }
 .text-sm { font-size: 0.875rem; }
 .text-xs { font-size: 0.75rem; }
+.text-xl { font-size: 1.25rem; }
+.space-y-4 > * + * { margin-top: 1rem; }
+
+/* --------------------------------------------------------------------------
+   Use Cases Styles
+   -------------------------------------------------------------------------- */
+.use-case-card {
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    padding: 1rem;
+    background-color: hsl(var(--muted) / 0.3);
+}
+
+.use-case-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+    color: hsl(var(--foreground));
+}
+
+.use-case-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.use-case-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.dialog-user,
+.dialog-ai {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+}
+
+.dialog-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.user-avatar {
+    background-color: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+}
+
+.ai-avatar {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+}
+
+.dialog-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.dialog-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+    margin-bottom: 0.25rem;
+}
+
+.dialog-text {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: hsl(var(--foreground));
+}
+
+.dialog-text.ai-response {
+    background-color: hsl(var(--muted));
+    padding: 0.75rem;
+    border-radius: var(--radius);
+    white-space: pre-wrap;
+    font-family: inherit;
+    margin: 0;
+    overflow-x: auto;
+}
+
+/* Modal content wider for use cases */
+.modal-content {
+    max-width: 40rem;
+}
