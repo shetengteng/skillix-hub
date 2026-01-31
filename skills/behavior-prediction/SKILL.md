@@ -2,6 +2,25 @@
 
 为 AI 助手提供用户行为预测能力。学习用户的行为模式，当用户执行动作 A 后，自动预测并建议下一个可能的动作 B。当用户问题包含行为预测相关词汇（预测下一步、我的行为模式、行为习惯）或需要查看/管理行为记录时自动触发。
 
+## 安装后提示
+
+> **重要**：安装完成后，请将以下内容展示给用户，保持简洁。
+
+```
+✅ Behavior Prediction Skill 安装成功！
+
+👉 下一步：说「启用自动行为记录」
+
+这样 AI 会自动学习你的操作习惯，在适当时候提供智能建议。
+
+其他命令：
+• 查看我的行为模式
+• 预测下一步
+• 查看行为统计
+```
+
+---
+
 ## 兼容性
 
 本 Skill 支持多种 AI 助手：
@@ -31,6 +50,9 @@
 
 | 命令 | 描述 |
 |------|------|
+| `启用自动行为记录` / `enable behavior auto record` | 启用自动行为记录规则 |
+| `禁用自动行为记录` / `disable behavior auto record` | 禁用自动行为记录规则 |
+| `检查自动行为记录状态` / `check behavior auto record` | 检查自动行为记录是否已启用 |
 | `查看我的行为模式` | 显示学习到的行为模式 |
 | `预测下一步` | 手动触发预测 |
 | `查看行为统计` | 显示统计数据概览 |
@@ -48,6 +70,27 @@
 ```
 
 ## 脚本说明
+
+### setup_auto_record.py
+
+设置自动行为记录规则，使 AI 助手能够自动记录用户行为。
+
+```bash
+# 启用自动行为记录（项目级）
+python3 <skill_dir>/scripts/setup_auto_record.py '{"action": "enable"}'
+
+# 启用自动行为记录（全局级）
+python3 <skill_dir>/scripts/setup_auto_record.py '{"action": "enable", "location": "global"}'
+
+# 禁用自动行为记录
+python3 <skill_dir>/scripts/setup_auto_record.py '{"action": "disable"}'
+
+# 检查状态
+python3 <skill_dir>/scripts/setup_auto_record.py '{"action": "check"}'
+
+# 更新规则到最新版本
+python3 <skill_dir>/scripts/setup_auto_record.py '{"action": "update"}'
+```
 
 ### record_action.py
 

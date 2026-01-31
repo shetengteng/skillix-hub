@@ -145,6 +145,15 @@ Behavior Prediction Skill 学习用户的行为模式，当用户执行动作 A 
 ### 使用示例
 
 ```bash
+# 启用自动行为记录（推荐）
+python3 ~/.cursor/skills/behavior-prediction/scripts/setup_auto_record.py '{"action": "enable"}'
+
+# 检查自动行为记录状态
+python3 ~/.cursor/skills/behavior-prediction/scripts/setup_auto_record.py '{"action": "check"}'
+
+# 禁用自动行为记录
+python3 ~/.cursor/skills/behavior-prediction/scripts/setup_auto_record.py '{"action": "disable"}'
+
 # 记录动作
 python3 ~/.cursor/skills/behavior-prediction/scripts/record_action.py '{"type": "create_file", "tool": "Write", "details": {"file_path": "test.py"}}'
 
@@ -166,6 +175,7 @@ python3 ~/.cursor/skills/behavior-prediction/scripts/check_last_session.py '{"ac
 
 ### 触发词
 
+- **自动记录**：启用自动行为记录、禁用自动行为记录、检查自动行为记录状态
 - **查看模式**：查看我的行为模式、查看行为统计
 - **预测**：预测下一步
 - **清除**：清除行为记录

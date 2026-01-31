@@ -36,8 +36,8 @@ const SKILLS_DATA = [
                 title: { zh: '安装 Memory Skill', en: 'Install Memory Skill' },
                 userInput: { zh: '帮我从 https://github.com/shetengteng/skillix-hub 安装 memory skill', en: 'Please install memory skill from https://github.com/shetengteng/skillix-hub' },
                 aiResponse: { 
-                    zh: '正在安装 Memory Skill...\n\n1. 克隆仓库\n2. 复制 skills/memory 到 ~/.cursor/skills/\n3. 初始化数据目录\n\n✅ 安装完成！\n\n你可以说"启用自动记忆检索"来开启自动记忆功能。', 
-                    en: 'Installing Memory Skill...\n\n1. Clone repository\n2. Copy skills/memory to ~/.cursor/skills/\n3. Initialize data directory\n\n✅ Installation complete!\n\nYou can say "enable memory auto retrieve" to turn on auto memory.' 
+                    zh: '✅ Memory Skill 安装成功！\n\n👉 下一步：说「启用自动记忆检索」\n\n这样 AI 会自动记住重要对话，下次提到相关话题时自动回忆。', 
+                    en: '✅ Memory Skill installed!\n\n👉 Next step: Say "enable memory auto retrieve"\n\nThis will let AI remember important conversations and recall them automatically.' 
                 }
             },
             {
@@ -105,8 +105,16 @@ const SKILLS_DATA = [
                 title: { zh: '安装 Behavior Prediction Skill', en: 'Install Behavior Prediction Skill' },
                 userInput: { zh: '帮我从 https://github.com/shetengteng/skillix-hub 安装 behavior-prediction skill', en: 'Please install behavior-prediction skill from https://github.com/shetengteng/skillix-hub' },
                 aiResponse: { 
-                    zh: '正在安装 Behavior Prediction Skill...\n\n1. 克隆仓库\n2. 复制 skills/behavior-prediction 到 ~/.cursor/skills/\n3. 初始化数据目录\n\n✅ 安装完成！\n\n该 Skill 会自动记录你的行为模式，无需额外配置。', 
-                    en: 'Installing Behavior Prediction Skill...\n\n1. Clone repository\n2. Copy skills/behavior-prediction to ~/.cursor/skills/\n3. Initialize data directory\n\n✅ Installation complete!\n\nThis skill will automatically record your behavior patterns, no extra config needed.' 
+                    zh: '✅ Behavior Prediction Skill 安装成功！\n\n👉 下一步：说「启用自动行为记录」\n\n这样 AI 会自动学习你的操作习惯，在适当时候提供智能建议。', 
+                    en: '✅ Behavior Prediction Skill installed!\n\n👉 Next step: Say "enable behavior auto record"\n\nThis will let AI learn your habits and provide smart suggestions.' 
+                }
+            },
+            {
+                title: { zh: '启用自动行为记录', en: 'Enable Auto Behavior Record' },
+                userInput: { zh: '启用自动行为记录', en: 'Enable behavior auto record' },
+                aiResponse: { 
+                    zh: '✅ 自动行为记录已启用！\n\n现在 AI 会自动：\n• 记录你的每次操作\n• 学习你的行为模式\n• 在适当时候提供预测建议\n\n使用一段时间后，说「查看我的行为模式」查看学习结果。', 
+                    en: '✅ Auto behavior recording enabled!\n\nNow AI will automatically:\n• Record your actions\n• Learn your behavior patterns\n• Provide prediction suggestions\n\nAfter using for a while, say "view my behavior patterns" to see the results.' 
                 }
             },
             {
