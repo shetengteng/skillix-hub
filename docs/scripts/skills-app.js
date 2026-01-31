@@ -30,6 +30,7 @@
             setup() {
                 const skills = ref([]);
                 const selectedSkill = ref(null);
+                const activeUseCaseIndex = ref(0);
                 
                 onMounted(() => {
                     // Load skills from global data
@@ -53,6 +54,7 @@
                  */
                 const showSkillDetail = (skill) => {
                     selectedSkill.value = skill;
+                    activeUseCaseIndex.value = 0; // Reset to first use case
                     document.body.style.overflow = 'hidden';
                 };
                 
@@ -61,7 +63,34 @@
                  */
                 const closeModal = () => {
                     selectedSkill.value = null;
+                    activeUseCaseIndex.value = 0;
                     document.body.style.overflow = '';
+                };
+                
+                /**
+                 * Copy install command to clipboard
+                 * @param {string} skillName - Skill name
+                 */
+                const copyInstallCommand = async (skillName) => {
+                    const lang = document.documentElement.getAttribute('data-lang') || 'zh';
+                    const command = lang === 'en' 
+                        ? `Please install ${skillName} skill from https://github.com/shetengteng/skillix-hub`
+                        : `帮我从 https://github.com/shetengteng/skillix-hub 安装 ${skillName} skill`;
+                    
+                    try {
+                        await navigator.clipboard.writeText(command);
+                        // Show a brief feedback (could be enhanced with a toast notification)
+                        const btn = event.currentTarget;
+                        const originalBg = btn.style.borderColor;
+                        btn.style.borderColor = '#22c55e';
+                        btn.style.boxShadow = '0 0 0 3px rgba(34, 197, 94, 0.2)';
+                        setTimeout(() => {
+                            btn.style.borderColor = originalBg;
+                            btn.style.boxShadow = '';
+                        }, 1000);
+                    } catch (err) {
+                        console.error('Failed to copy:', err);
+                    }
                 };
                 
                 // Handle ESC key to close modal
@@ -77,9 +106,11 @@
                 return {
                     skills,
                     selectedSkill,
+                    activeUseCaseIndex,
                     getIconPath,
                     showSkillDetail,
-                    closeModal
+                    closeModal,
+                    copyInstallCommand
                 };
             }
         }).mount('#skills-app');
