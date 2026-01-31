@@ -1,19 +1,21 @@
 # Skillix Hub
 
-Cursor Skills Repository - A collection of tools to enhance AI programming efficiency.
+AI Programming Assistant Skills Repository - A collection of tools to enhance AI programming efficiency.
 
-## What is Cursor Skill?
+## What is AI Skill?
 
-Cursor Skill is a reusable AI instruction set that helps Cursor AI better complete specific tasks. Each Skill includes:
+AI Skill is a reusable AI instruction set that helps AI programming assistants better complete specific tasks. Each Skill includes:
 - Task description and trigger conditions
 - Execution scripts and tools
 - Usage examples
+
+**Supported AI Assistants**: Cursor, Claude, Copilot, Codeium, etc.
 
 ## Available Skills
 
 | Skill | Description |
 |-------|-------------|
-| [memory](./skills/memory/) | Long-term memory for Cursor, auto-record conversations and retrieve relevant history |
+| [memory](./skills/memory/) | Long-term memory for AI assistants, auto-record conversations and retrieve relevant history |
 | [swagger-api-reader](./skills/swagger-api-reader/) | Read and cache Swagger/OpenAPI docs with browser auth support |
 
 ## Installation
@@ -73,7 +75,7 @@ pip install -r .cursor/skills/swagger-api-reader/scripts/requirements.txt
 
 ## Memory Skill Usage
 
-Memory Skill provides long-term memory capability for Cursor with zero external dependencies.
+Memory Skill provides long-term memory capability for AI assistants with zero external dependencies.
 
 ### Core Features
 
@@ -83,6 +85,7 @@ Memory Skill provides long-term memory capability for Cursor with zero external 
 - **View Memories**: View today's/specific date/recent memories
 - **Delete Memories**: Delete specific memories or clear all
 - **Export/Import**: Backup and restore memory data
+- **Auto Memory Rules**: Enable to auto-retrieve at conversation start and save at end
 
 ### Usage Examples
 
@@ -104,6 +107,18 @@ python3 ~/.cursor/skills/memory/scripts/export_memory.py
 
 # Import memories
 python3 ~/.cursor/skills/memory/scripts/import_memory.py '{"input": "backup.json"}'
+
+# Enable auto memory rules
+python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "enable"}'
+
+# Check auto memory status
+python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "check"}'
+
+# Update auto memory rules
+python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "update"}'
+
+# Disable auto memory rules
+python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "disable"}'
 ```
 
 ### Trigger Words
@@ -113,6 +128,7 @@ python3 ~/.cursor/skills/memory/scripts/import_memory.py '{"input": "backup.json
 - **Skip Save**: don't save, skip saving
 - **View Memories**: view today's memories, view recent memories
 - **Export/Import**: export memories, import memories
+- **Auto Memory**: enable memory auto retrieve, disable memory auto retrieve
 
 ## Contributing
 

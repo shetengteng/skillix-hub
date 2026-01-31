@@ -8,31 +8,64 @@ from datetime import datetime
 from pathlib import Path
 
 
+# 支持的 AI 助手 skills 目录名称（按优先级排序）
+SUPPORTED_SKILLS_DIRS = [".cursor", ".claude", ".ai", ".copilot", ".codeium"]
+
+
 def get_project_root() -> Path:
     """
     获取项目根目录
     
     查找顺序：
-    1. 从脚本位置向上查找 .cursor 或 .git 目录
-    2. 从当前工作目录向上查找 .cursor 或 .git 目录
+    1. 从脚本位置向上查找支持的 AI 助手目录或 .git 目录
+    2. 从当前工作目录向上查找支持的 AI 助手目录或 .git 目录
     """
     # 首先尝试从脚本位置向上查找
     script_path = Path(__file__).resolve()
     current = script_path.parent
     while current != current.parent:
-        if (current / ".cursor").exists() or (current / ".git").exists():
+        # 检查是否存在任何支持的 AI 助手目录
+        for skills_dir in SUPPORTED_SKILLS_DIRS:
+            if (current / skills_dir).exists():
+                return current
+        if (current / ".git").exists():
             return current
         current = current.parent
     
     # 否则从当前工作目录向上查找
     current = Path.cwd()
     while current != current.parent:
-        if (current / ".cursor").exists() or (current / ".git").exists():
+        for skills_dir in SUPPORTED_SKILLS_DIRS:
+            if (current / skills_dir).exists():
+                return current
+        if (current / ".git").exists():
             return current
         current = current.parent
     
     # 如果没找到，返回当前目录
     return Path.cwd()
+
+
+def get_skills_base_dir(project_root: Path = None) -> str:
+    """
+    获取当前项目使用的 AI 助手目录名称
+    
+    Args:
+        project_root: 项目根目录，如果为 None 则自动获取
+        
+    Returns:
+        AI 助手目录名称（如 ".cursor", ".ai" 等）
+    """
+    if project_root is None:
+        project_root = get_project_root()
+    
+    # 按优先级检查存在的目录
+    for skills_dir in SUPPORTED_SKILLS_DIRS:
+        if (project_root / skills_dir).exists():
+            return skills_dir
+    
+    # 默认使用 .cursor（向后兼容）
+    return ".cursor"
 
 
 def get_skill_dir() -> Path:
@@ -42,7 +75,9 @@ def get_skill_dir() -> Path:
     if script_path.parent.name == "scripts":
         return script_path.parent.parent
     # 否则使用项目路径
-    return get_project_root() / ".cursor" / "skills" / "memory"
+    project_root = get_project_root()
+    skills_base = get_skills_base_dir(project_root)
+    return project_root / skills_base / "skills" / "memory"
 
 
 def get_data_dir(location: str = "project") -> Path:
@@ -53,9 +88,17 @@ def get_data_dir(location: str = "project") -> Path:
         location: "project" 或 "global"
     """
     if location == "global":
-        data_dir = Path.home() / ".cursor" / "skills" / "memory-data"
+        # 全局目录优先使用 .cursor，保持向后兼容
+        global_base = ".cursor"
+        for skills_dir in SUPPORTED_SKILLS_DIRS:
+            if (Path.home() / skills_dir).exists():
+                global_base = skills_dir
+                break
+        data_dir = Path.home() / global_base / "skills" / "memory-data"
     else:
-        data_dir = get_project_root() / ".cursor" / "skills" / "memory-data"
+        project_root = get_project_root()
+        skills_base = get_skills_base_dir(project_root)
+        data_dir = project_root / skills_base / "skills" / "memory-data"
     
     data_dir.mkdir(parents=True, exist_ok=True)
     return data_dir

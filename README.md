@@ -1,19 +1,21 @@
 # Skillix Hub
 
-Cursor Skills 技能仓库 - 提升 AI 编程效率的工具集合。
+AI 编程助手 Skills 技能仓库 - 提升 AI 编程效率的工具集合。
 
-## 什么是 Cursor Skill？
+## 什么是 AI Skill？
 
-Cursor Skill 是一种可复用的 AI 指令集，帮助 Cursor AI 更好地完成特定任务。每个 Skill 包含：
+AI Skill 是一种可复用的 AI 指令集，帮助 AI 编程助手更好地完成特定任务。每个 Skill 包含：
 - 任务说明和触发条件
 - 执行脚本和工具
 - 使用示例
+
+**支持的 AI 助手**：Cursor、Claude、Copilot、Codeium 等
 
 ## 可用 Skills
 
 | Skill | 描述 |
 |-------|------|
-| [memory](./skills/memory/) | 为 Cursor 提供长期记忆能力，自动记录对话并检索相关历史上下文 |
+| [memory](./skills/memory/) | 为 AI 助手提供长期记忆能力，自动记录对话并检索相关历史上下文 |
 | [swagger-api-reader](./skills/swagger-api-reader/) | 读取并缓存 Swagger/OpenAPI 文档，支持浏览器认证 |
 
 ## 安装使用
@@ -73,7 +75,7 @@ pip install -r .cursor/skills/swagger-api-reader/scripts/requirements.txt
 
 ## Memory Skill 使用说明
 
-Memory Skill 为 Cursor 提供长期记忆能力，无需额外依赖。
+Memory Skill 为 AI 助手提供长期记忆能力，无需额外依赖。
 
 ### 核心功能
 
@@ -83,6 +85,7 @@ Memory Skill 为 Cursor 提供长期记忆能力，无需额外依赖。
 - **查看记忆**：查看今日/指定日期/最近的记忆
 - **删除记忆**：删除指定记忆或清空所有记忆
 - **导出导入**：备份和恢复记忆数据
+- **自动记忆规则**：启用后自动在对话开始时检索、结束时保存
 
 ### 使用示例
 
@@ -104,6 +107,18 @@ python3 ~/.cursor/skills/memory/scripts/export_memory.py
 
 # 导入记忆
 python3 ~/.cursor/skills/memory/scripts/import_memory.py '{"input": "backup.json"}'
+
+# 启用自动记忆规则
+python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "enable"}'
+
+# 检查自动记忆状态
+python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "check"}'
+
+# 更新自动记忆规则
+python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "update"}'
+
+# 禁用自动记忆规则
+python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "disable"}'
 ```
 
 ### 触发词
@@ -113,6 +128,7 @@ python3 ~/.cursor/skills/memory/scripts/import_memory.py '{"input": "backup.json
 - **跳过保存**：不要保存、don't save
 - **查看记忆**：查看今日记忆、查看最近记忆
 - **导出导入**：导出记忆、导入记忆
+- **自动记忆**：启用自动记忆检索、禁用自动记忆检索
 
 ## 贡献
 

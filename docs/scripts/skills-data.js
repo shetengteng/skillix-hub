@@ -9,13 +9,14 @@ const SKILLS_DATA = [
         name: 'memory',
         icon: 'lightbulb',
         description: {
-            zh: '为 Cursor 提供长期记忆能力，自动记录对话并检索相关历史上下文，零外部依赖',
-            en: 'Long-term memory for Cursor, auto-record conversations and retrieve relevant history, zero external dependencies'
+            zh: '为 AI 助手提供长期记忆能力，自动记录对话并检索相关历史上下文，支持 Cursor、Claude 等多种 AI 助手',
+            en: 'Long-term memory for AI assistants, auto-record conversations and retrieve relevant history, supports Cursor, Claude and more'
         },
         tags: [
             { zh: '记忆', en: 'Memory' },
             { zh: '上下文', en: 'Context' },
-            { zh: '检索', en: 'Retrieval' }
+            { zh: '检索', en: 'Retrieval' },
+            { zh: '通用', en: 'Universal' }
         ],
         features: [
             { zh: '保存记忆', en: 'Save Memory' },
@@ -23,10 +24,11 @@ const SKILLS_DATA = [
             { zh: '查看记忆', en: 'View Memory' },
             { zh: '删除记忆', en: 'Delete Memory' },
             { zh: '导出记忆', en: 'Export Memory' },
-            { zh: '导入记忆', en: 'Import Memory' }
+            { zh: '导入记忆', en: 'Import Memory' },
+            { zh: '自动记忆规则', en: 'Auto Memory Rules' }
         ],
-        scripts: ['save_memory.py', 'search_memory.py', 'view_memory.py', 'delete_memory.py', 'export_memory.py', 'import_memory.py', 'utils.py'],
-        version: '1.1',
+        scripts: ['save_memory.py', 'search_memory.py', 'view_memory.py', 'delete_memory.py', 'export_memory.py', 'import_memory.py', 'setup_auto_retrieve.py', 'utils.py'],
+        version: '1.2',
         author: 'shetengteng',
         repo: 'https://github.com/shetengteng/skillix-hub/tree/main/skills/memory'
     },
