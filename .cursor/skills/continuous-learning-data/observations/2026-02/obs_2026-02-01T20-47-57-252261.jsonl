@@ -1,0 +1,3 @@
+{"event": "test1", "timestamp": "2026-02-01T20:47:57.250986"}
+{"event": "test2", "timestamp": "2026-02-01T20:47:57.251620"}
+{"type": "session_metadata", "session_start": "2026-02-01T20:47:57.250984", "session_end": "2026-02-01T20:47:57.252119", "topic": "测试会话", "summary": "这是一个测试"}

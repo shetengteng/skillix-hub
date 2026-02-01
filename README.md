@@ -17,6 +17,7 @@ AI Skill 是一种可复用的 AI 指令集，帮助 AI 编程助手更好地完
 |-------|------|
 | [memory](./skills/memory/) | 为 AI 助手提供长期记忆能力，自动记录对话并检索相关历史上下文 |
 | [behavior-prediction](./skills/behavior-prediction/) | 学习用户行为模式，记录会话内容，预测下一步操作并提供智能建议 |
+| [continuous-learning](./skills/continuous-learning/) | 持续学习用户与 AI 的交互模式，自动提取可复用知识，生成新技能 |
 | [swagger-api-reader](./skills/swagger-api-reader/) | 读取并缓存 Swagger/OpenAPI 文档，支持浏览器认证 |
 | [uniapp-mp-generator](./skills/uniapp-mp-generator/) | uni-app 小程序代码生成器，根据需求文档自动生成 Vue3 页面、API、Store 等代码 |
 
@@ -214,6 +215,55 @@ uni-app 小程序代码生成器根据需求文档自动生成符合项目规范
 
 - **生成代码**：帮我生成 xxx 模块
 - **根据需求**：根据需求文档生成代码
+
+## Continuous Learning Skill 使用说明
+
+Continuous Learning Skill 从用户与 AI 的交互中自动提取可复用的知识，生成新的技能文件。
+
+### 核心功能
+
+- **观察记录**：记录会话中的关键动作和用户反馈
+- **模式检测**：识别用户纠正、错误解决、工具偏好等模式
+- **本能生成**：将检测到的模式转换为原子化的本能
+- **技能演化**：将相关本能聚合为完整的技能文档
+
+### 学习的模式类型
+
+| 模式类型 | 描述 | 示例 |
+|---------|------|------|
+| **用户纠正** | 用户纠正 AI 的行为 | "不要用 class，用函数" |
+| **错误解决** | 特定错误的解决方案 | CORS 错误 → 配置 proxy |
+| **工具偏好** | 用户偏好的工具/方法 | 偏好 pytest 而非 unittest |
+| **项目规范** | 项目特定的约定 | API 路径使用 /api/v2 前缀 |
+
+### 使用示例
+
+```bash
+# 会话开始时初始化
+python3 ~/.cursor/skills/continuous-learning/scripts/observe.py --init
+
+# 记录观察
+python3 ~/.cursor/skills/continuous-learning/scripts/observe.py --record '{"event": "tool_call", "tool": "Write"}'
+
+# 会话结束时保存
+python3 ~/.cursor/skills/continuous-learning/scripts/observe.py --finalize '{"topic": "API 开发"}'
+
+# 查看本能状态
+python3 ~/.cursor/skills/continuous-learning/scripts/instinct.py status
+
+# 演化本能为技能
+python3 ~/.cursor/skills/continuous-learning/scripts/instinct.py evolve
+
+# 启用自动学习规则
+python3 ~/.cursor/skills/continuous-learning/scripts/setup_rule.py '{"action": "enable"}'
+```
+
+### 触发词
+
+- **启用学习**：启用持续学习规则
+- **禁用学习**：禁用持续学习规则
+- **查看知识**：查看学习到的知识
+- **演化技能**：演化本能
 
 ## 贡献
 

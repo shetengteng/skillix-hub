@@ -1,0 +1,110 @@
+---
+description: 持续学习 - 会话生命周期管理
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# 持续学习规则
+
+> **版本**: v1.0
+> **说明**: 管理会话生命周期，自动学习用户行为模式
+
+## 一、会话开始时
+
+**每次新会话开始时**，调用初始化脚本：
+
+```bash
+python3 ~/.cursor/skills/continuous-learning/scripts/observe.py --init
+```
+
+返回的信息包含：
+- 已学习的技能数量
+- 高置信度本能列表
+- 建议
+
+## 二、会话过程中
+
+### 记录关键动作
+
+在以下时机调用记录脚本：
+- 完成文件创建/修改后
+- 用户给出反馈/纠正后
+- 完成一个功能点后
+
+```bash
+python3 ~/.cursor/skills/continuous-learning/scripts/observe.py --record '{
+  "event": "tool_call",
+  "tool": "Write",
+  "input": {"file": "src/api.py"},
+  "stage": "implement"
+}'
+```
+
+### 记录用户反馈
+
+当用户给出反馈时：
+
+```bash
+python3 ~/.cursor/skills/continuous-learning/scripts/observe.py --record '{
+  "event": "user_feedback",
+  "type": "correction",
+  "content": "用户的反馈内容"
+}'
+```
+
+## 三、会话结束时
+
+### 自动 Finalize
+
+下次 `--init` 会自动保存上次会话，无需手动触发。
+
+### 手动触发（可选）
+
+检测到结束信号时，可以手动调用：
+
+```bash
+python3 ~/.cursor/skills/continuous-learning/scripts/observe.py --finalize '{
+  "topic": "会话主题",
+  "summary": "会话摘要"
+}'
+```
+
+## 四、技能管理命令
+
+### 查看学习到的知识
+
+```bash
+python3 ~/.cursor/skills/continuous-learning/scripts/instinct.py status
+```
+
+### 演化本能为技能
+
+```bash
+python3 ~/.cursor/skills/continuous-learning/scripts/instinct.py evolve
+```
+
+### 删除技能
+
+当用户说 "删除技能: xxx" 时：
+
+1. 先检查技能类型：
+```bash
+python3 ~/.cursor/skills/continuous-learning/scripts/instinct.py --check-skill <name>
+```
+
+2. 如果是演化技能，执行删除：
+```bash
+python3 ~/.cursor/skills/continuous-learning/scripts/instinct.py --delete-skill <name>
+```
+
+3. 如果不是演化技能，告诉用户如何手动删除。
+
+**重要**：
+- ❌ 不要直接使用 rm 或 Delete 工具删除技能文件
+- ✅ 始终通过脚本删除，确保同步文件和索引正确处理
+
+## 五、注意事项
+
+1. 脚本调用过程不需要向用户详细展示
+2. 如果脚本调用失败，不影响正常对话
+3. 观察记录是可选的，不强制每次都记录

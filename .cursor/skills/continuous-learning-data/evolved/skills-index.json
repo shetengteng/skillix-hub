@@ -1,0 +1,21 @@
+{
+  "skills": [
+    {
+      "name": "test-domain-workflow",
+      "path": "/Users/TerrellShe/Documents/personal/tt-projects/skillix-hub/.cursor/skills/continuous-learning-data/evolved/skills/test-domain-workflow",
+      "cursor_path": "/Users/TerrellShe/.cursor/skills/evolved-test-domain-workflow",
+      "triggers": [
+        "1",
+        "2",
+        "0",
+        "测试触发条件"
+      ],
+      "domains": [
+        "test-domain"
+      ],
+      "evolved_at": "2026-02-01T20:47:57.568411",
+      "synced": true
+    }
+  ],
+  "last_updated": "2026-02-01T20:47:57.568683"
+}

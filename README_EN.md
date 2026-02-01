@@ -17,6 +17,7 @@ AI Skill is a reusable AI instruction set that helps AI programming assistants b
 |-------|-------------|
 | [memory](./skills/memory/) | Long-term memory for AI assistants, auto-record conversations and retrieve relevant history |
 | [behavior-prediction](./skills/behavior-prediction/) | Learn user behavior patterns, record sessions, predict next actions and provide smart suggestions |
+| [continuous-learning](./skills/continuous-learning/) | Continuously learn from user-AI interactions, extract reusable knowledge, generate new skills |
 | [swagger-api-reader](./skills/swagger-api-reader/) | Read and cache Swagger/OpenAPI docs with browser auth support |
 | [uniapp-mp-generator](./skills/uniapp-mp-generator/) | uni-app mini-program code generator, auto-generate Vue3 pages, API, Store from requirements |
 
@@ -214,6 +215,55 @@ Provide requirements document, AI will auto-generate code:
 
 - **Generate Code**: help me generate xxx module
 - **From Requirements**: generate code from requirements document
+
+## Continuous Learning Skill Usage
+
+Continuous Learning Skill automatically extracts reusable knowledge from user-AI interactions and generates new skill files.
+
+### Core Features
+
+- **Observation Recording**: Record key actions and user feedback during sessions
+- **Pattern Detection**: Identify user corrections, error resolutions, tool preferences
+- **Instinct Generation**: Convert detected patterns into atomic instincts
+- **Skill Evolution**: Aggregate related instincts into complete skill documents
+
+### Pattern Types
+
+| Pattern Type | Description | Example |
+|-------------|-------------|---------|
+| **User Corrections** | User corrects AI behavior | "Don't use class, use functions" |
+| **Error Resolutions** | Solutions for specific errors | CORS error → configure proxy |
+| **Tool Preferences** | User's preferred tools/methods | Prefer pytest over unittest |
+| **Project Conventions** | Project-specific conventions | API paths use /api/v2 prefix |
+
+### Usage Examples
+
+```bash
+# Initialize at session start
+python3 ~/.cursor/skills/continuous-learning/scripts/observe.py --init
+
+# Record observation
+python3 ~/.cursor/skills/continuous-learning/scripts/observe.py --record '{"event": "tool_call", "tool": "Write"}'
+
+# Save at session end
+python3 ~/.cursor/skills/continuous-learning/scripts/observe.py --finalize '{"topic": "API Development"}'
+
+# View instinct status
+python3 ~/.cursor/skills/continuous-learning/scripts/instinct.py status
+
+# Evolve instincts into skills
+python3 ~/.cursor/skills/continuous-learning/scripts/instinct.py evolve
+
+# Enable auto learning rules
+python3 ~/.cursor/skills/continuous-learning/scripts/setup_rule.py '{"action": "enable"}'
+```
+
+### Trigger Words
+
+- **Enable Learning**: enable continuous learning rules
+- **Disable Learning**: disable continuous learning rules
+- **View Knowledge**: view learned knowledge
+- **Evolve Skills**: evolve instincts
 
 ## Contributing
 
