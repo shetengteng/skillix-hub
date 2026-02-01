@@ -79,9 +79,20 @@ Hook 返回用户的行为模式和偏好：
 
 ## 二、会话过程中
 
-### 2.1 记录动作（推荐）
+### 2.1 记录动作（必须）
 
-在执行工具调用后，**始终推荐**调用 `--record` 记录动作，以便更准确地追踪用户行为和提高预测准确性。
+**在执行以下工具调用后，必须调用 `--record` 记录动作**：
+
+| 工具 | 动作类型 | 阶段 |
+|------|---------|------|
+| Write（创建文件） | create_file | implement |
+| Write（修改文件） | modify_file | implement |
+| StrReplace | modify_file | implement |
+| Shell（运行测试） | run_command | test |
+| Shell（git 命令） | run_command | commit |
+| Delete | delete_file | refactor |
+
+**调用格式**：
 
 ```bash
 python3 ~/.cursor/skills/behavior-prediction/scripts/hook.py --record '{
@@ -92,8 +103,16 @@ python3 ~/.cursor/skills/behavior-prediction/scripts/hook.py --record '{
 }'
 ```
 
-> **重要**：始终推荐调用 `--record`。虽然自动 finalize 机制会在下次 `--init` 时保存会话，
-> 但调用 `--record` 可以记录更详细的动作信息，显著提高预测准确性。
+**示例**：
+
+```
+用户：帮我创建一个 test.py 文件
+AI 执行：
+1. Write("test.py", "...")
+2. hook.py --record '{"type": "create_file", "tool": "Write", "details": {"file_path": "test.py"}, "context": {"task_stage": "implement"}}'
+```
+
+> **重要**：必须在每次工具调用后记录动作，这是提高预测准确性的关键。
 
 ### 2.2 工作流程阶段识别
 

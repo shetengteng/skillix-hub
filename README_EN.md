@@ -76,25 +76,40 @@ cp -r skillix-hub/skills/swagger-api-reader .cursor/skills/
 pip install -r .cursor/skills/swagger-api-reader/scripts/requirements.txt
 ```
 
-## Memory Skill Usage
+## Memory Skill v2.0 Usage
 
 Memory Skill provides long-term memory capability for AI assistants with zero external dependencies.
+
+### v2.0 New Features
+
+- **Keyword-triggered Save**: Auto-save when detecting decision/preference/config/plan keywords
+- **Temp Memory Mechanism**: Real-time save, summarize at session end
+- **Smart Summarization**: Auto-merge similar memories, generate structured output
+- **Session Hook**: Support `--init`, `--save`, `--finalize`, `--status`
 
 ### Core Features
 
 - **Auto Retrieval**: Automatically retrieve relevant history based on user questions
-- **Smart Saving**: Automatically judge conversation value and save important content
-- **Keyword Matching**: Retrieval algorithm based on keywords + time decay
+- **Keyword Trigger**: Auto-save temp memory when detecting specific keywords
+- **Smart Summarization**: Merge similar memories at session end
 - **View Memories**: View today's/specific date/recent memories
-- **Delete Memories**: Delete specific memories or clear all
+- **Delete Memories**: Delete specific memories, clear temp, or clear all
 - **Export/Import**: Backup and restore memory data
-- **Auto Memory Rules**: Enable to auto-retrieve at conversation start and save at end
 
 ### Usage Examples
 
 ```bash
-# Save memory
-python3 ~/.cursor/skills/memory/scripts/save_memory.py '{"topic": "API Design", "key_info": ["Using FastAPI"], "tags": ["#api"]}'
+# Session start (auto-finalize previous session)
+python3 ~/.cursor/skills/memory/scripts/hook.py --init
+
+# Save temp memory (keyword detection)
+python3 ~/.cursor/skills/memory/scripts/hook.py --save '{"user_message": "We decided to use FastAPI"}'
+
+# View session status
+python3 ~/.cursor/skills/memory/scripts/hook.py --status
+
+# Session end (summarize temp memories)
+python3 ~/.cursor/skills/memory/scripts/hook.py --finalize
 
 # Search memory
 python3 ~/.cursor/skills/memory/scripts/search_memory.py "API Design"
@@ -105,6 +120,15 @@ python3 ~/.cursor/skills/memory/scripts/view_memory.py today
 # Delete specific memory
 python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"id": "2026-01-29-001"}'
 
+# Clear temp memories
+python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"clear_temp": true}'
+
+# Clear all memories
+python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"clear_all": true, "confirm": true}'
+
+# Delete memories in date range
+python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"start_date": "2026-01-01", "end_date": "2026-01-31"}'
+
 # Export memories
 python3 ~/.cursor/skills/memory/scripts/export_memory.py
 
@@ -113,25 +137,26 @@ python3 ~/.cursor/skills/memory/scripts/import_memory.py '{"input": "backup.json
 
 # Enable auto memory rules
 python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "enable"}'
-
-# Check auto memory status
-python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "check"}'
-
-# Update auto memory rules
-python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "update"}'
-
-# Disable auto memory rules
-python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "disable"}'
 ```
+
+### Keyword-triggered Save
+
+| Type | Chinese Keywords | English Keywords |
+|------|-----------------|------------------|
+| Decision | 决定、选择、使用、采用 | decide, choose, use, adopt |
+| Preference | 喜欢、习惯、偏好、风格 | prefer, like, habit, style |
+| Config | 配置、设置、规范、命名 | config, setting, convention |
+| Plan | 下一步、待办、TODO、计划 | next step, todo, plan |
+| Important | 重要、记住、注意、关键 | important, remember, note |
 
 ### Trigger Words
 
 - **Retrieval Triggers**: continue, last time, before, yesterday, we discussed
 - **Save Triggers**: remember this, save this
 - **Skip Save**: don't save, skip saving
-- **View Memories**: view today's memories, view recent memories
-- **Export/Import**: export memories, import memories
-- **Auto Memory**: enable memory auto retrieve, disable memory auto retrieve
+- **View Memories**: view today's memories, view session status
+- **Summarize**: summarize memories
+- **Clear Memories**: clear temp memories, clear all memories
 
 ## Behavior Prediction Skill V2 Usage
 

@@ -71,6 +71,22 @@ const SKILLS_DATA = [
                     zh: '让我检索一下相关记忆...\n\n找到了！昨天我们讨论了：\n- 使用 FastAPI 替换 Flask\n- RESTful 风格设计\n- 需要添加认证中间件\n\n我们继续从认证中间件开始吧。', 
                     en: 'Let me retrieve relevant memories...\n\nFound it! Yesterday we discussed:\n- Replace Flask with FastAPI\n- RESTful style design\n- Need to add auth middleware\n\nLet\'s continue from the auth middleware.' 
                 }
+            },
+            {
+                title: { zh: '清空临时记忆', en: 'Clear Temp Memories' },
+                userInput: { zh: '清空临时记忆', en: 'Clear temp memories' },
+                aiResponse: { 
+                    zh: '✅ 已清空 3 条临时记忆\n\n当前会话的临时记忆已清除，不会被汇总保存。', 
+                    en: '✅ Cleared 3 temp memories\n\nCurrent session temp memories cleared, won\'t be summarized.' 
+                }
+            },
+            {
+                title: { zh: '清空所有记忆', en: 'Clear All Memories' },
+                userInput: { zh: '清空所有记忆', en: 'Clear all memories' },
+                aiResponse: { 
+                    zh: '⚠️ 确认清空所有记忆？\n\n这将删除：\n- 所有每日记忆文件\n- 所有索引数据\n\n请说"确认清空"来执行此操作。', 
+                    en: '⚠️ Confirm clear all memories?\n\nThis will delete:\n- All daily memory files\n- All index data\n\nSay "confirm clear" to proceed.' 
+                }
             }
         ]
     },

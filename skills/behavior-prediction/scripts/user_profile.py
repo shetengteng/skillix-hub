@@ -11,16 +11,15 @@ from datetime import datetime
 from pathlib import Path
 from collections import Counter
 
-import utils
 from utils import (
-    ensure_dir, load_json, save_json,
+    get_data_dir, ensure_dir, load_json, save_json,
     get_timestamp, get_today, load_config
 )
 
 
 def load_user_profile() -> dict:
     """加载用户画像"""
-    data_dir = utils.DATA_DIR
+    data_dir = get_data_dir()
     profile_file = data_dir / "profile" / "user_profile.json"
     
     if profile_file.exists():
@@ -63,7 +62,7 @@ def update_user_profile(force: bool = False) -> dict:
     Returns:
         更新后的用户画像
     """
-    data_dir = utils.DATA_DIR
+    data_dir = get_data_dir()
     
     # 检查是否需要更新
     if not force:

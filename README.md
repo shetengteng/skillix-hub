@@ -76,25 +76,40 @@ cp -r skillix-hub/skills/swagger-api-reader .cursor/skills/
 pip install -r .cursor/skills/swagger-api-reader/scripts/requirements.txt
 ```
 
-## Memory Skill 使用说明
+## Memory Skill v2.0 使用说明
 
 Memory Skill 为 AI 助手提供长期记忆能力，无需额外依赖。
+
+### v2.0 新特性
+
+- **关键词触发保存**：检测到决策/偏好/配置/计划等关键词时自动保存
+- **临时记忆机制**：实时保存，会话结束时汇总
+- **智能汇总**：自动合并相似记忆，生成结构化记忆
+- **会话 Hook**：支持 `--init`, `--save`, `--finalize`, `--status`
 
 ### 核心功能
 
 - **自动检索**：根据用户问题自动检索相关历史记忆
-- **智能保存**：自动判断对话价值并保存重要内容
-- **关键词匹配**：基于关键词 + 时间衰减的检索算法
+- **关键词触发**：检测到特定关键词时自动保存临时记忆
+- **智能汇总**：会话结束时合并相似记忆
 - **查看记忆**：查看今日/指定日期/最近的记忆
-- **删除记忆**：删除指定记忆或清空所有记忆
+- **删除记忆**：删除指定记忆、清空临时记忆、清空所有记忆
 - **导出导入**：备份和恢复记忆数据
-- **自动记忆规则**：启用后自动在对话开始时检索、结束时保存
 
 ### 使用示例
 
 ```bash
-# 保存记忆
-python3 ~/.cursor/skills/memory/scripts/save_memory.py '{"topic": "API 设计", "key_info": ["使用 FastAPI"], "tags": ["#api"]}'
+# 会话开始（自动 finalize 上一个会话）
+python3 ~/.cursor/skills/memory/scripts/hook.py --init
+
+# 保存临时记忆（检测关键词）
+python3 ~/.cursor/skills/memory/scripts/hook.py --save '{"user_message": "我们决定使用 FastAPI"}'
+
+# 查看会话状态
+python3 ~/.cursor/skills/memory/scripts/hook.py --status
+
+# 会话结束（汇总临时记忆）
+python3 ~/.cursor/skills/memory/scripts/hook.py --finalize
 
 # 搜索记忆
 python3 ~/.cursor/skills/memory/scripts/search_memory.py "API 设计"
@@ -105,6 +120,15 @@ python3 ~/.cursor/skills/memory/scripts/view_memory.py today
 # 删除指定记忆
 python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"id": "2026-01-29-001"}'
 
+# 清空临时记忆
+python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"clear_temp": true}'
+
+# 清空所有记忆
+python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"clear_all": true, "confirm": true}'
+
+# 删除日期范围内的记忆
+python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"start_date": "2026-01-01", "end_date": "2026-01-31"}'
+
 # 导出记忆
 python3 ~/.cursor/skills/memory/scripts/export_memory.py
 
@@ -113,25 +137,26 @@ python3 ~/.cursor/skills/memory/scripts/import_memory.py '{"input": "backup.json
 
 # 启用自动记忆规则
 python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "enable"}'
-
-# 检查自动记忆状态
-python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "check"}'
-
-# 更新自动记忆规则
-python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "update"}'
-
-# 禁用自动记忆规则
-python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "disable"}'
 ```
+
+### 关键词触发保存
+
+| 类型 | 中文关键词 | 英文关键词 |
+|------|-----------|-----------|
+| 决策类 | 决定、选择、使用、采用 | decide, choose, use, adopt |
+| 偏好类 | 喜欢、习惯、偏好、风格 | prefer, like, habit, style |
+| 配置类 | 配置、设置、规范、命名 | config, setting, convention |
+| 计划类 | 下一步、待办、TODO、计划 | next step, todo, plan |
+| 重要类 | 重要、记住、注意、关键 | important, remember, note |
 
 ### 触发词
 
 - **检索触发**：继续、上次、之前、昨天、我们讨论过
 - **保存触发**：记住这个、save this
 - **跳过保存**：不要保存、don't save
-- **查看记忆**：查看今日记忆、查看最近记忆
-- **导出导入**：导出记忆、导入记忆
-- **自动记忆**：启用自动记忆检索、禁用自动记忆检索
+- **查看记忆**：查看今日记忆、查看会话状态
+- **汇总记忆**：汇总记忆、summarize memories
+- **清空记忆**：清空临时记忆、清空所有记忆
 
 ## Behavior Prediction Skill V2 使用说明
 

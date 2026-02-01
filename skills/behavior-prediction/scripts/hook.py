@@ -3,8 +3,7 @@
 Behavior Prediction Skill V2 - 统一 Hook 入口
 
 支持的操作：
-- --init: 会话开始时调用，加载用户画像和预测建议（同时检查并自动 finalize 上一个未完成的会话）
-- --record: 记录动作到当前会话
+- --init: 会话开始时调用，加载用户画像和预测建议
 - --finalize: 会话结束时调用，记录会话并更新模式
 """
 
@@ -13,11 +12,7 @@ import json
 import sys
 from datetime import datetime
 
-from utils import (
-    get_data_dir, ensure_data_dirs, get_timestamp, load_config,
-    load_pending_session, save_pending_session, clear_pending_session,
-    add_action_to_pending_session, build_session_data_from_pending
-)
+from utils import get_data_dir, ensure_data_dirs, get_timestamp, load_config
 from record_session import record_session
 from extract_patterns import extract_and_update_patterns, get_workflow_patterns
 from user_profile import (
@@ -30,30 +25,88 @@ def auto_finalize_pending_session() -> dict:
     """
     自动 finalize 上一个未完成的会话
     
-    Returns:
-        finalize 结果，如果没有 pending session 则返回 None
+    检查是否有 pending session，如果有则自动保存
     """
-    pending_data = load_pending_session()
-    if not pending_data:
+    data_dir = get_data_dir()
+    pending_file = data_dir / "pending_session.json"
+    
+    if not pending_file.exists():
         return None
     
-    # 检查是否有动作记录
-    actions = pending_data.get("actions", [])
-    if not actions:
-        # 没有动作记录，直接清除
-        clear_pending_session()
-        return {"status": "skipped", "reason": "no_actions"}
-    
-    # 构建 session data 并 finalize
-    session_data = build_session_data_from_pending(pending_data)
-    
     try:
-        result = handle_finalize(session_data, auto_finalized=True)
-        clear_pending_session()
-        return result
+        from utils import load_json, save_json
+        pending = load_json(pending_file)
+        
+        if not pending or not pending.get("actions"):
+            # 没有动作记录，删除 pending 文件
+            pending_file.unlink()
+            return None
+        
+        # 构建会话数据
+        session_data = {
+            "session_summary": {
+                "topic": pending.get("topic", "自动保存的会话"),
+                "goals": [],
+                "completed_tasks": [],
+                "technologies_used": [],
+                "workflow_stages": pending.get("stages", []),
+                "tags": []
+            },
+            "operations": {
+                "files": {
+                    "created": [],
+                    "modified": [],
+                    "deleted": []
+                },
+                "commands": []
+            },
+            "conversation": {
+                "user_messages": [],
+                "message_count": 0
+            },
+            "time": {
+                "start": pending.get("start_time", get_timestamp()),
+                "end": get_timestamp()
+            }
+        }
+        
+        # 从 actions 中提取信息
+        for action in pending.get("actions", []):
+            action_type = action.get("type", "")
+            if action_type in ["create_file", "modify_file"]:
+                file_path = action.get("details", {}).get("file_path", "")
+                if file_path:
+                    if action_type == "create_file":
+                        session_data["operations"]["files"]["created"].append(file_path)
+                    else:
+                        session_data["operations"]["files"]["modified"].append(file_path)
+            elif action_type == "run_command":
+                cmd = action.get("details", {}).get("command", "")
+                if cmd:
+                    session_data["operations"]["commands"].append({
+                        "command": cmd,
+                        "type": action.get("details", {}).get("command_type", "other"),
+                        "exit_code": action.get("details", {}).get("exit_code", 0)
+                    })
+        
+        # 记录会话
+        session_id = record_session(session_data)
+        
+        # 删除 pending 文件
+        pending_file.unlink()
+        
+        return {
+            "status": "success",
+            "session_id": session_id,
+            "message": "上一个会话已自动保存"
+        }
+        
     except Exception as e:
-        # finalize 失败也要清除，避免无限循环
-        clear_pending_session()
+        # 出错时删除 pending 文件
+        try:
+            pending_file.unlink()
+        except:
+            pass
         return {"status": "error", "message": str(e)}
 
 
@@ -61,22 +114,20 @@ def handle_init() -> dict:
     """
     会话开始时的初始化
     
-    处理流程：
-    1. 检查并自动 finalize 上一个未完成的会话
-    2. 创建新的 pending session
-    3. 返回用户画像、行为模式、AI 摘要、建议
+    返回：
+    - 用户画像
+    - 行为模式
+    - AI 摘要
+    - 建议
     """
     try:
         ensure_data_dirs()
         
-        # 0. 检查并自动 finalize 上一个未完成的会话
-        auto_finalize_result = auto_finalize_pending_session()
+        # 0. 自动 finalize 上一个未完成的会话
+        auto_finalized = auto_finalize_pending_session()
         
-        # 1. 创建新的 pending session
-        save_pending_session({})
-        
-        # 2. 加载用户画像
-        profile = load_user_profile()
+        # 1. 更新并加载用户画像（会自动检查是否需要更新）
+        profile = update_user_profile()
         
         # 2. 加载行为模式
         patterns = get_workflow_patterns()
@@ -145,12 +196,9 @@ def handle_init() -> dict:
             "suggestions": suggestions
         }
         
-        # 如果有自动 finalize 的结果，添加到返回值
-        if auto_finalize_result and auto_finalize_result.get("status") == "success":
-            result["auto_finalized_session"] = {
-                "session_id": auto_finalize_result.get("session_id"),
-                "message": "上一个会话已自动保存"
-            }
+        # 添加自动 finalize 结果
+        if auto_finalized and auto_finalized.get("status") == "success":
+            result["auto_finalized_session"] = auto_finalized
         
         return result
         
@@ -161,72 +209,20 @@ def handle_init() -> dict:
         }
 
 
-def handle_record(action_data: dict) -> dict:
-    """
-    记录动作到当前会话
-    
-    Args:
-        action_data: 动作数据
-    
-    Returns:
-        记录结果
-    """
-    try:
-        ensure_data_dirs()
-        
-        # 添加时间戳（如果没有）
-        if "timestamp" not in action_data:
-            action_data["timestamp"] = get_timestamp()
-        
-        # 添加到 pending session
-        add_action_to_pending_session(action_data)
-        
-        return {
-            "status": "success",
-            "message": "Action recorded"
-        }
-        
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": str(e)
-        }
-
-
-def handle_finalize(session_data: dict, auto_finalized: bool = False) -> dict:
+def handle_finalize(session_data: dict) -> dict:
     """
     会话结束时的处理
     
     参数：
     - session_data: 会话数据（摘要、操作、对话等）
-    - auto_finalized: 是否为自动 finalize（由 --init 触发）
     
     处理：
-    1. 合并 pending session 中的动作记录
-    2. 记录会话到 sessions/
-    3. 提取并更新行为模式
-    4. 检查是否需要更新用户画像
-    5. 清除 pending session
+    1. 记录会话到 sessions/
+    2. 提取并更新行为模式
+    3. 检查是否需要更新用户画像
     """
     try:
         ensure_data_dirs()
-        
-        # 0. 如果不是自动 finalize，合并 pending session 中的动作
-        if not auto_finalized:
-            pending_data = load_pending_session()
-            if pending_data:
-                pending_actions = pending_data.get("actions", [])
-                if pending_actions:
-                    # 合并动作到 session_data
-                    if "operations" not in session_data:
-                        session_data["operations"] = {}
-                    session_data["operations"]["recorded_actions"] = pending_actions
-                    
-                    # 使用 pending session 的开始时间
-                    if "time" not in session_data:
-                        session_data["time"] = {}
-                    if not session_data["time"].get("start"):
-                        session_data["time"]["start"] = pending_data.get("session_start", get_timestamp())
         
         # 1. 记录会话
         session_id = record_session(session_data)
@@ -249,18 +245,13 @@ def handle_finalize(session_data: dict, auto_finalized: bool = False) -> dict:
                 top = predictions["predictions"][0]
                 next_suggestions.append(f"下次你可能想要：{top.get('suggestion', '')}")
         
-        # 5. 清除 pending session（如果不是自动 finalize）
-        if not auto_finalized:
-            clear_pending_session()
-        
         return {
             "status": "success",
             "session_id": session_id,
             "patterns_updated": patterns_result.get("workflow_updated", False),
             "new_insights": patterns_result.get("new_insights", []),
             "next_suggestions": next_suggestions,
-            "message": f"会话 {session_id} 已记录",
-            "auto_finalized": auto_finalized
+            "message": f"会话 {session_id} 已记录"
         }
         
     except Exception as e:
@@ -270,10 +261,61 @@ def handle_finalize(session_data: dict, auto_finalized: bool = False) -> dict:
         }
 
 
+def handle_record(action_data: dict) -> dict:
+    """
+    记录动作到 pending session
+    
+    参数：
+    - action_data: 动作数据，包含 type, tool, details, context
+    """
+    try:
+        from utils import load_json, save_json
+        
+        data_dir = get_data_dir()
+        pending_file = data_dir / "pending_session.json"
+        
+        # 加载或创建 pending session
+        if pending_file.exists():
+            pending = load_json(pending_file)
+        else:
+            pending = {
+                "start_time": get_timestamp(),
+                "actions": [],
+                "stages": []
+            }
+        
+        # 添加动作
+        action = {
+            "timestamp": get_timestamp(),
+            "type": action_data.get("type", "unknown"),
+            "tool": action_data.get("tool", ""),
+            "details": action_data.get("details", {}),
+            "context": action_data.get("context", {})
+        }
+        pending["actions"].append(action)
+        
+        # 更新阶段
+        stage = action_data.get("context", {}).get("task_stage", "")
+        if stage and stage not in pending["stages"]:
+            pending["stages"].append(stage)
+        
+        # 保存
+        save_json(pending_file, pending)
+        
+        return {
+            "status": "success",
+            "action_count": len(pending["actions"]),
+            "stages": pending["stages"]
+        }
+        
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 def main():
     parser = argparse.ArgumentParser(description='Behavior Prediction Hook V2')
-    parser.add_argument('--init', action='store_true', help='Initialize session (auto-finalizes previous pending session)')
-    parser.add_argument('--record', type=str, help='Record action to current session')
+    parser.add_argument('--init', action='store_true', help='Initialize session')
+    parser.add_argument('--record', type=str, help='Record action to pending session')
     parser.add_argument('--finalize', type=str, help='Finalize session with data')
     
     args = parser.parse_args()

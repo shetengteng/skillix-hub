@@ -16,7 +16,9 @@ from utils import (
     load_index,
     save_index,
     initialize_data_dir,
-    load_config
+    load_config,
+    clear_pending_session,
+    load_pending_session
 )
 
 
@@ -220,6 +222,110 @@ def clear_all_memories(
     }
 
 
+def clear_temp_memories(location: str = "project") -> dict:
+    """
+    清空当前会话的临时记忆
+    
+    Args:
+        location: 存储位置 ("project" 或 "global")
+        
+    Returns:
+        清空结果
+    """
+    pending = load_pending_session(location)
+    
+    if not pending:
+        return {
+            "success": True,
+            "message": "当前没有活跃的会话",
+            "cleared_count": 0
+        }
+    
+    temp_memories = pending.get("temp_memories", [])
+    cleared_count = len(temp_memories)
+    
+    # 清空临时记忆但保留会话
+    pending["temp_memories"] = []
+    from utils import save_pending_session
+    save_pending_session(pending, location)
+    
+    return {
+        "success": True,
+        "cleared_count": cleared_count,
+        "message": f"已清空 {cleared_count} 条临时记忆"
+    }
+
+
+def delete_memories_by_range(
+    start_date: str,
+    end_date: str,
+    location: str = "project"
+) -> dict:
+    """
+    删除指定日期范围内的所有记忆
+    
+    Args:
+        start_date: 开始日期（格式：YYYY-MM-DD）
+        end_date: 结束日期（格式：YYYY-MM-DD）
+        location: 存储位置 ("project" 或 "global")
+        
+    Returns:
+        删除结果
+    """
+    # 检查配置
+    config = load_config(location)
+    if not config.get("enabled", True):
+        return {"success": False, "message": "Memory Skill 已禁用"}
+    
+    # 初始化数据目录
+    initialize_data_dir(location)
+    data_dir = get_data_dir(location)
+    
+    # 加载索引
+    index = load_index(location)
+    entries = index.get("entries", [])
+    
+    # 过滤掉指定日期范围内的记忆
+    original_count = len(entries)
+    entries = [
+        e for e in entries 
+        if not (start_date <= e.get("date", "") <= end_date)
+    ]
+    deleted_count = original_count - len(entries)
+    
+    if deleted_count == 0:
+        return {
+            "success": False,
+            "message": f"未找到 {start_date} 至 {end_date} 范围内的记忆"
+        }
+    
+    # 保存更新后的索引
+    index["entries"] = entries
+    save_index(index, location)
+    
+    # 删除范围内的每日文件
+    daily_dir = data_dir / "daily"
+    files_deleted = 0
+    if daily_dir.exists():
+        for f in daily_dir.glob("*.md"):
+            file_date = f.stem  # 获取文件名（不含扩展名）
+            if start_date <= file_date <= end_date:
+                try:
+                    f.unlink()
+                    files_deleted += 1
+                except Exception:
+                    pass
+    
+    return {
+        "success": True,
+        "start_date": start_date,
+        "end_date": end_date,
+        "deleted_count": deleted_count,
+        "files_deleted": files_deleted,
+        "message": f"已删除 {start_date} 至 {end_date} 的 {deleted_count} 条记忆，{files_deleted} 个文件"
+    }
+
+
 def main():
     """命令行入口"""
     if len(sys.argv) < 2:
@@ -228,6 +334,8 @@ def main():
             "message": """用法:
   删除指定记忆: python3 delete_memory.py '{"id": "2026-01-29-001"}'
   删除指定日期: python3 delete_memory.py '{"date": "2026-01-29"}'
+  删除日期范围: python3 delete_memory.py '{"start_date": "2026-01-01", "end_date": "2026-01-31"}'
+  清空临时记忆: python3 delete_memory.py '{"clear_temp": true}'
   清空所有记忆: python3 delete_memory.py '{"clear_all": true, "confirm": true}'"""
         }, ensure_ascii=False, indent=2))
         sys.exit(1)
@@ -246,6 +354,14 @@ def main():
     # 根据参数决定操作
     if data.get("clear_all"):
         result = clear_all_memories(location, data.get("confirm", False))
+    elif data.get("clear_temp"):
+        result = clear_temp_memories(location)
+    elif data.get("start_date") and data.get("end_date"):
+        result = delete_memories_by_range(
+            data["start_date"], 
+            data["end_date"], 
+            location
+        )
     elif data.get("date"):
         result = delete_memories_by_date(data["date"], location)
     elif data.get("id"):
@@ -253,7 +369,7 @@ def main():
     else:
         result = {
             "success": False,
-            "message": "请提供 id、date 或 clear_all 参数"
+            "message": "请提供 id、date、start_date+end_date、clear_temp 或 clear_all 参数"
         }
     
     print(json.dumps(result, ensure_ascii=False, indent=2))

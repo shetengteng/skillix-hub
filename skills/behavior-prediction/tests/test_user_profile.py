@@ -23,16 +23,45 @@ class TestUserProfile(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.temp_path = Path(self.temp_dir)
         
-        # 修改 utils 模块的 DATA_DIR
+        # 修改 utils 模块的 DATA_DIR 和 get_data_dir 函数
         import utils
+        import user_profile
+        import record_session
+        import extract_patterns
+        
         self.original_data_dir = utils.DATA_DIR
-        utils.DATA_DIR = self.temp_path / "behavior-prediction-data"
+        self.original_get_data_dir = utils.get_data_dir
+        
+        test_data_dir = self.temp_path / "behavior-prediction-data"
+        utils.DATA_DIR = test_data_dir
+        
+        # 创建一个返回测试目录的函数
+        def mock_get_data_dir(location="project"):
+            return test_data_dir
+        
+        utils.get_data_dir = mock_get_data_dir
+        
+        # 同时更新其他模块中的引用
+        user_profile.get_data_dir = mock_get_data_dir
+        record_session.get_data_dir = mock_get_data_dir
+        extract_patterns.get_data_dir = mock_get_data_dir
+        
         utils.ensure_data_dirs()
     
     def tearDown(self):
         """测试后清理"""
         import utils
+        import user_profile
+        import record_session
+        import extract_patterns
+        
+        # 恢复原始函数
         utils.DATA_DIR = self.original_data_dir
+        utils.get_data_dir = self.original_get_data_dir
+        user_profile.get_data_dir = self.original_get_data_dir
+        record_session.get_data_dir = self.original_get_data_dir
+        extract_patterns.get_data_dir = self.original_get_data_dir
+        
         shutil.rmtree(self.temp_dir, ignore_errors=True)
     
     def test_get_default_profile(self):
@@ -245,14 +274,39 @@ class TestUserProfileIntegration(unittest.TestCase):
         self.temp_path = Path(self.temp_dir)
         
         import utils
+        import user_profile
+        import record_session
+        import extract_patterns
+        
         self.original_data_dir = utils.DATA_DIR
-        utils.DATA_DIR = self.temp_path / "behavior-prediction-data"
+        self.original_get_data_dir = utils.get_data_dir
+        
+        test_data_dir = self.temp_path / "behavior-prediction-data"
+        utils.DATA_DIR = test_data_dir
+        
+        def mock_get_data_dir(location="project"):
+            return test_data_dir
+        
+        utils.get_data_dir = mock_get_data_dir
+        user_profile.get_data_dir = mock_get_data_dir
+        record_session.get_data_dir = mock_get_data_dir
+        extract_patterns.get_data_dir = mock_get_data_dir
+        
         utils.ensure_data_dirs()
     
     def tearDown(self):
         """测试后清理"""
         import utils
+        import user_profile
+        import record_session
+        import extract_patterns
+        
         utils.DATA_DIR = self.original_data_dir
+        utils.get_data_dir = self.original_get_data_dir
+        user_profile.get_data_dir = self.original_get_data_dir
+        record_session.get_data_dir = self.original_get_data_dir
+        extract_patterns.get_data_dir = self.original_get_data_dir
+        
         shutil.rmtree(self.temp_dir, ignore_errors=True)
     
     def test_full_workflow(self):

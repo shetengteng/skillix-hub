@@ -1,8 +1,8 @@
 {
   "version": "2.0",
-  "updated_at": "2026-02-01T00:07:14.451929",
+  "updated_at": "2026-02-01T21:40:49.283986",
   "stats": {
-    "total_sessions": 73,
+    "total_sessions": 81,
     "active_days": 2,
     "first_seen": "2026-01-31",
     "last_seen": "2026-02-01"
@@ -22,12 +22,14 @@
     "common_tech": [
       "Python",
       "FastAPI",
-      "JSON"
+      "JSON",
+      "python"
     ],
     "preferred_task_flow": [
       "implement → test",
       "design → implement",
-      "test → commit"
+      "test → commit",
+      "test → implement"
     ]
   },
   "time_patterns": {
@@ -35,7 +37,7 @@
     "most_active_hours": []
   },
   "work_style": {
-    "planning_tendency": 0.17,
+    "planning_tendency": 0.16,
     "test_driven": 0.32,
     "documentation_focus": 0.0,
     "refactoring_habit": 0.0
