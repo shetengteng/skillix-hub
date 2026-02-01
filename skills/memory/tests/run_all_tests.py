@@ -16,7 +16,10 @@ def main():
         "test_delete_memory.py",
         "test_view_memory.py",
         "test_export_import_memory.py",
-        "test_check_session.py"
+        "test_check_session.py",
+        "test_save_trigger.py",
+        "test_hook.py",
+        "test_summarize.py"
     ]
     
     total_passed = 0

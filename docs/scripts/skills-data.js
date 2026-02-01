@@ -9,26 +9,26 @@ const SKILLS_DATA = [
         name: 'memory',
         icon: 'lightbulb',
         description: {
-            zh: '为 AI 助手提供长期记忆能力，自动记录对话并检索相关历史上下文，支持 Cursor、Claude 等多种 AI 助手',
-            en: 'Long-term memory for AI assistants, auto-record conversations and retrieve relevant history, supports Cursor, Claude and more'
+            zh: '为 AI 助手提供长期记忆能力，支持关键词触发保存、临时记忆、智能汇总，自动记录对话并检索相关历史上下文',
+            en: 'Long-term memory for AI assistants with keyword-triggered saving, temp memory, smart summarization, auto-record and retrieve history'
         },
         tags: [
             { zh: '记忆', en: 'Memory' },
             { zh: '上下文', en: 'Context' },
             { zh: '检索', en: 'Retrieval' },
-            { zh: '通用', en: 'Universal' }
+            { zh: '智能保存', en: 'Smart Save' }
         ],
         features: [
-            { zh: '保存记忆', en: 'Save Memory' },
+            { zh: '关键词触发保存', en: 'Keyword-triggered Save' },
+            { zh: '临时记忆机制', en: 'Temp Memory' },
+            { zh: '智能汇总', en: 'Smart Summarization' },
             { zh: '搜索记忆', en: 'Search Memory' },
             { zh: '查看记忆', en: 'View Memory' },
-            { zh: '删除记忆', en: 'Delete Memory' },
-            { zh: '导出记忆', en: 'Export Memory' },
-            { zh: '导入记忆', en: 'Import Memory' },
+            { zh: '导出导入', en: 'Export/Import' },
             { zh: '自动记忆规则', en: 'Auto Memory Rules' }
         ],
-        scripts: ['save_memory.py', 'search_memory.py', 'view_memory.py', 'delete_memory.py', 'export_memory.py', 'import_memory.py', 'setup_auto_retrieve.py', 'utils.py'],
-        version: '1.2',
+        scripts: ['save_memory.py', 'search_memory.py', 'view_memory.py', 'delete_memory.py', 'hook.py', 'summarize.py', 'utils.py'],
+        version: '2.0',
         author: 'shetengteng',
         repo: 'https://github.com/shetengteng/skillix-hub/tree/main/skills/memory',
         useCases: [
@@ -36,16 +36,32 @@ const SKILLS_DATA = [
                 title: { zh: '安装 Memory Skill', en: 'Install Memory Skill' },
                 userInput: { zh: '帮我从 https://github.com/shetengteng/skillix-hub 安装 memory skill', en: 'Please install memory skill from https://github.com/shetengteng/skillix-hub' },
                 aiResponse: { 
-                    zh: '✅ Memory Skill 安装成功！\n\n👉 下一步：说「启用自动记忆检索」\n\n这样 AI 会自动记住重要对话，下次提到相关话题时自动回忆。', 
-                    en: '✅ Memory Skill installed!\n\n👉 Next step: Say "enable memory auto retrieve"\n\nThis will let AI remember important conversations and recall them automatically.' 
+                    zh: '✅ Memory Skill v2.0 安装成功！\n\n👉 下一步：说「启用自动记忆检索」\n\nv2.0 新特性：\n• 关键词触发保存\n• 临时记忆机制\n• 智能汇总', 
+                    en: '✅ Memory Skill v2.0 installed!\n\n👉 Next step: Say "enable memory auto retrieve"\n\nv2.0 Features:\n• Keyword-triggered save\n• Temp memory\n• Smart summarization' 
                 }
             },
             {
-                title: { zh: '启用自动记忆', en: 'Enable Auto Memory' },
-                userInput: { zh: '启用自动记忆检索', en: 'Enable memory auto retrieve' },
+                title: { zh: '关键词自动保存', en: 'Keyword Auto Save' },
+                userInput: { zh: '我们决定使用 FastAPI 替换 Flask', en: 'We decided to use FastAPI instead of Flask' },
                 aiResponse: { 
-                    zh: '已启用自动记忆规则！\n\n✅ 规则文件已创建: .cursor/rules/memory-auto-retrieve.mdc\n\n功能说明：\n- 对话开始时自动检索相关历史记忆\n- 有价值的内容会实时保存\n\n你可以随时说"禁用自动记忆检索"来关闭此功能。', 
-                    en: 'Auto memory rules enabled!\n\n✅ Rule file created: .cursor/rules/memory-auto-retrieve.mdc\n\nFeatures:\n- Auto retrieve relevant memories at conversation start\n- Valuable content saved in real-time\n\nYou can say "disable memory auto retrieve" anytime to turn this off.' 
+                    zh: '好的，我来帮你实现这个迁移。\n\n（已自动保存：检测到关键词"决定"、"使用"）\n\n首先，让我们创建 FastAPI 的基础结构...', 
+                    en: 'OK, I\'ll help you with this migration.\n\n(Auto-saved: detected keywords "decided", "use")\n\nFirst, let\'s create the FastAPI base structure...' 
+                }
+            },
+            {
+                title: { zh: '查看会话状态', en: 'View Session Status' },
+                userInput: { zh: '查看会话状态', en: 'View session status' },
+                aiResponse: { 
+                    zh: '📊 当前会话状态\n\n状态: 活跃\n开始时间: 10:30:00\n临时记忆数: 3\n\n最近记忆:\n1. 技术选型 - 使用 FastAPI\n2. API 配置 - 前缀 /api/v2\n3. 计划 - 实现认证功能', 
+                    en: '📊 Current Session Status\n\nStatus: Active\nStart: 10:30:00\nTemp memories: 3\n\nRecent:\n1. Tech choice - Use FastAPI\n2. API config - prefix /api/v2\n3. Plan - Implement auth' 
+                }
+            },
+            {
+                title: { zh: '手动汇总记忆', en: 'Manual Summarize' },
+                userInput: { zh: '汇总记忆', en: 'Summarize memories' },
+                aiResponse: { 
+                    zh: '正在汇总临时记忆...\n\n✅ 汇总完成！\n\n原始记忆数: 5\n合并后: 3\n保存位置: memory-data/daily/2026-02-01.md\n\n已合并相似主题的记忆。', 
+                    en: 'Summarizing temp memories...\n\n✅ Summarization complete!\n\nOriginal: 5\nMerged: 3\nSaved to: memory-data/daily/2026-02-01.md\n\nSimilar topics merged.' 
                 }
             },
             {
@@ -54,22 +70,6 @@ const SKILLS_DATA = [
                 aiResponse: { 
                     zh: '让我检索一下相关记忆...\n\n找到了！昨天我们讨论了：\n- 使用 FastAPI 替换 Flask\n- RESTful 风格设计\n- 需要添加认证中间件\n\n我们继续从认证中间件开始吧。', 
                     en: 'Let me retrieve relevant memories...\n\nFound it! Yesterday we discussed:\n- Replace Flask with FastAPI\n- RESTful style design\n- Need to add auth middleware\n\nLet\'s continue from the auth middleware.' 
-                }
-            },
-            {
-                title: { zh: '保存重要决策', en: 'Save Important Decisions' },
-                userInput: { zh: '记住这个：我们决定使用 PostgreSQL 而不是 MySQL', en: 'Remember this: we decided to use PostgreSQL instead of MySQL' },
-                aiResponse: { 
-                    zh: '已保存记忆！\n\n记忆 ID: 2026-01-31-001\n主题: 数据库选型决策\n关键信息: 使用 PostgreSQL 替代 MySQL\n标签: #database #decision', 
-                    en: 'Memory saved!\n\nMemory ID: 2026-01-31-001\nTopic: Database Selection Decision\nKey Info: Use PostgreSQL instead of MySQL\nTags: #database #decision' 
-                }
-            },
-            {
-                title: { zh: '查看今日记忆', en: 'View Today\'s Memories' },
-                userInput: { zh: '查看今日记忆', en: 'View today\'s memories' },
-                aiResponse: { 
-                    zh: '今日记忆（共 3 条）：\n\n1. [10:30] API 设计讨论\n   - 使用 FastAPI 框架\n   - RESTful 风格\n\n2. [14:15] 数据库选型\n   - 选择 PostgreSQL\n\n3. [16:45] 部署方案\n   - Docker + K8s', 
-                    en: 'Today\'s memories (3 total):\n\n1. [10:30] API Design Discussion\n   - Use FastAPI framework\n   - RESTful style\n\n2. [14:15] Database Selection\n   - Choose PostgreSQL\n\n3. [16:45] Deployment Plan\n   - Docker + K8s' 
                 }
             }
         ]

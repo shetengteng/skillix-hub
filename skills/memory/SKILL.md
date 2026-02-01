@@ -1,6 +1,12 @@
-# Memory Skill
+# Memory Skill v2.0
 
-为 AI 助手提供长期记忆能力，自动记录每日对话内容，并在新会话开始时根据用户问题检索相关历史上下文。当用户问题包含延续性词汇（上次、之前、昨天、继续、你记得）、偏好相关词汇（我喜欢、我习惯、按照我的风格）、或项目相关词汇（这个项目、我们的）时自动触发检索。
+为 AI 助手提供长期记忆能力，自动记录每日对话内容，并在新会话开始时根据用户问题检索相关历史上下文。
+
+**v2.0 新特性**：
+- **关键词触发保存**：检测到特定关键词时自动保存临时记忆
+- **临时记忆机制**：实时保存，会话结束时汇总
+- **会话 Hook**：支持 `--init`, `--save`, `--finalize`, `--status`
+- **智能汇总**：自动合并相似记忆，生成结构化记忆
 
 ## 安装后提示
 
@@ -388,6 +394,104 @@ python3 scripts/check_session.py '{"action": "cleanup"}'
 
 脚本位置：`<skill_dir>/scripts/check_session.py`
 
+## 会话 Hook（v2.0 新增）
+
+会话 Hook 提供完整的会话生命周期管理。
+
+### 会话开始
+
+```bash
+python3 scripts/hook.py --init
+```
+
+功能：
+- 自动 finalize 上一个未完成的会话
+- 创建新的 pending session
+- 清理过期的临时记忆
+
+### 实时保存
+
+```bash
+python3 scripts/hook.py --save '{
+  "user_message": "我们决定使用 FastAPI",
+  "topic": "技术选型",
+  "key_info": ["使用 FastAPI"],
+  "tags": ["#decision"]
+}'
+```
+
+功能：
+- 检测关键词触发保存
+- 保存到临时记忆
+
+### 会话结束
+
+```bash
+python3 scripts/hook.py --finalize '{"topic": "会话主题"}'
+```
+
+功能：
+- 汇总临时记忆
+- 生成结构化记忆
+- 清理 pending session
+
+### 查看状态
+
+```bash
+python3 scripts/hook.py --status
+```
+
+## 关键词触发保存（v2.0 新增）
+
+当用户消息包含以下关键词时，自动触发保存：
+
+| 类型 | 中文关键词 | 英文关键词 |
+|------|-----------|-----------|
+| **决策类** | 决定、选择、使用、采用、确定 | decide, choose, use, adopt, select |
+| **偏好类** | 喜欢、习惯、偏好、风格、方式 | prefer, like, habit, style, way |
+| **配置类** | 配置、设置、规范、约定、命名 | config, setting, convention, naming |
+| **计划类** | 下一步、待办、TODO、计划 | next step, todo, plan |
+| **重要类** | 重要、记住、注意、关键、核心 | important, remember, note, key, core |
+
+### 自定义关键词
+
+在 `memory-data/config.json` 中配置：
+
+```json
+{
+  "save_trigger": {
+    "custom_keywords": {
+      "zh": ["自定义词1", "自定义词2"],
+      "en": ["custom1", "custom2"]
+    },
+    "excluded_keywords": {
+      "zh": ["排除词"],
+      "en": ["exclude"]
+    }
+  }
+}
+```
+
+## 汇总机制（v2.0 新增）
+
+临时记忆会在以下时机被汇总为结构化记忆：
+
+1. **会话结束时**（检测到结束信号）
+2. **下次会话开始时**（自动 finalize）
+3. **手动触发**（用户说"汇总记忆"）
+
+### 汇总规则
+
+- **主题相似**：相似度 > 80% 的记忆会被合并
+- **时间接近**：10 分钟内的记忆会被合并到同一 Session
+- **去重**：完全相同的 key_info 只保留一个
+
+### 手动汇总
+
+```bash
+python3 scripts/summarize.py --session
+```
+
 ## 数据存储
 
 ### 目录结构
@@ -405,6 +509,8 @@ python3 scripts/check_session.py '{"action": "cleanup"}'
 │   │   ├── import_memory.py
 │   │   ├── check_session.py
 │   │   ├── setup_auto_retrieve.py
+│   │   ├── hook.py              # v2.0 新增
+│   │   ├── summarize.py         # v2.0 新增
 │   │   └── utils.py
 │   └── default_config.json
 └── memory-data/                 # 用户数据（永不覆盖）
@@ -412,6 +518,8 @@ python3 scripts/check_session.py '{"action": "cleanup"}'
     │   └── 2026-01-29.md
     ├── index/
     │   └── keywords.json
+    ├── temp/                    # v2.0 新增：临时记忆
+    ├── pending_session.json     # v2.0 新增：当前会话状态
     └── config.json
 ```
 

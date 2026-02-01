@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "2.0",
   "enabled": true,
   "auto_save": true,
   "auto_retrieve": true,
@@ -16,5 +16,29 @@
       "project": 1.0,
       "global": 0.7
     }
+  },
+  "save_trigger": {
+    "enabled": true,
+    "min_message_length": 5,
+    "custom_keywords": {
+      "zh": [],
+      "en": []
+    },
+    "excluded_keywords": {
+      "zh": [],
+      "en": []
+    }
+  },
+  "temp_memory": {
+    "enabled": true,
+    "retention_days": 30,
+    "max_per_session": 50
+  },
+  "summarize": {
+    "enabled": true,
+    "similarity_threshold": 0.8,
+    "time_window_minutes": 10,
+    "auto_on_session_end": true,
+    "auto_on_next_session": true
   }
 }
