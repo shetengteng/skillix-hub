@@ -10,6 +10,29 @@ description: |
 
 为 Agent 提供跨会话的长期记忆能力。
 
+## 更新 Skill
+
+当用户要求更新 Memory Skill 时，**必须运行初始化脚本**，不要直接复制文件覆盖（直接覆盖会导致占位符未替换）。
+
+**更新流程**：
+
+1. 克隆或拉取最新代码到临时目录
+2. 从临时目录运行初始化脚本：
+
+```bash
+python3 <临时目录>/skills/memory/scripts/service/init/index.py --project-path <项目路径> --skip-model
+```
+
+初始化脚本会自动：
+- 覆盖 skill 代码并替换占位符
+- 合并 hooks.json（不重复添加）
+- 更新 memory-rules.mdc
+- 保留已有的记忆数据和配置
+
+**重要**：不要直接 `cp -r` 覆盖 `.cursor/skills/memory/`，这会导致 SKILL.md 和 rules 中的路径变成 `{{SCRIPT_PATH}}` 等占位符。
+
+---
+
 ## 自动行为（Hooks 触发）
 
 ### 收到 [Memory Flush] 消息时

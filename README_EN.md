@@ -44,6 +44,8 @@ Cursor AI will automatically clone the repository, copy files, and install depen
 Please update memory skill from https://github.com/shetengteng/skillix-hub
 ```
 
+> **Note**: When updating, the Agent clones the latest code and re-runs the init script (`init/index.py`) instead of directly overwriting files. This ensures placeholders are properly replaced and existing memory data and config are preserved.
+
 ### Method 2: Manual Command Line Installation
 
 #### Global Installation (Available for all projects)
