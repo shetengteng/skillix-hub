@@ -45,8 +45,8 @@ const SKILLS_DATA = [
                 title: { zh: '更新 Memory Skill', en: 'Update Memory Skill' },
                 userInput: { zh: '帮我从 https://github.com/shetengteng/skillix-hub 更新 memory skill', en: 'Please update memory skill from https://github.com/shetengteng/skillix-hub' },
                 aiResponse: {
-                    zh: '正在更新 Memory Skill...\n\n1. 拉取最新代码\n2. 对比版本差异\n3. 更新 skill 代码到 .cursor/skills/memory/\n4. 合并 hooks.json（保留已有配置）\n5. 更新 memory-rules.mdc\n\n✅ Memory Skill 已更新到最新版本！\n\n更新内容：\n• 新增自然语言配置管理\n• memory-data 目录新增 README.md 配置说明\n• 已有记忆数据完整保留',
-                    en: 'Updating Memory Skill...\n\n1. Pull latest code\n2. Compare version differences\n3. Update skill code to .cursor/skills/memory/\n4. Merge hooks.json (preserve existing config)\n5. Update memory-rules.mdc\n\n✅ Memory Skill updated to latest version!\n\nChanges:\n• Added natural language config management\n• Added README.md config docs to memory-data\n• Existing memory data fully preserved'
+                    zh: '正在更新 Memory Skill...\n\n1. 克隆最新代码到临时目录\n2. 运行 update.py 脚本（非直接覆盖文件）\n   python3 /tmp/skillix-hub/skills/memory/scripts/service/init/update.py --source /tmp/skillix-hub/skills/memory --project-path .\n3. update.py 自动完成：\n   • 替换 skill 代码并处理占位符\n   • 合并 hooks.json（不重复添加）\n   • 更新 memory-rules.mdc 和 SKILL.md\n   • 不触碰 memory-data/、config.json、MEMORY.md\n\n✅ Memory Skill 已更新到最新版本！\n已有记忆数据和配置完整保留',
+                    en: 'Updating Memory Skill...\n\n1. Clone latest code to temp directory\n2. Run update.py script (not direct file copy)\n   python3 /tmp/skillix-hub/skills/memory/scripts/service/init/update.py --source /tmp/skillix-hub/skills/memory --project-path .\n3. update.py automatically:\n   • Replaces skill code with placeholder resolution\n   • Merges hooks.json (no duplicates)\n   • Updates memory-rules.mdc and SKILL.md\n   • Preserves memory-data/, config.json, MEMORY.md\n\n✅ Memory Skill updated to latest version!\nExisting memory data and config fully preserved'
                 }
             },
             {
