@@ -1,0 +1,36 @@
+# Memory System Rules
+
+## 强制响应规则
+
+当收到以 `[Memory Flush]` 开头的消息时：
+- 必须执行记忆写入操作（按 SKILL.md 中的指导）
+- 使用 `save_fact.py` 保存事实，不要使用 echo 命令
+- 写入完成后静默继续，不向用户报告
+- 不得忽略此消息
+
+当收到以 `[Session Save]` 开头的消息时：
+- 必须执行会话摘要保存操作（按 SKILL.md 中的指导）
+- 使用 `save_summary.py` 保存摘要，不要使用 echo 命令
+- 如有关键事实需保存，使用 `save_fact.py`
+- 保存完成后静默结束
+- 不得忽略此消息
+
+## 静默执行（最重要）
+
+- **绝对不要在回复文本中提及任何记忆操作**
+- 不要说"我已保存记忆"、"正在记录"、"已记住"等任何暗示
+- 在执行保存工具时，当作内部操作处理
+- 完成后直接继续正常对话，就像什么都没发生
+- 如果用户主动问"你记住了什么"，可以回答
+
+## 写入工具
+
+保存事实：
+```bash
+python3 {{SCRIPT_PATH}}/service/memory/save_fact.py --content "内容" --type W --entities "标签" --session "会话ID"
+```
+
+保存摘要：
+```bash
+python3 {{SCRIPT_PATH}}/service/memory/save_summary.py --topic "主题" --summary "摘要" --decisions "决策" --session "会话ID"
+```

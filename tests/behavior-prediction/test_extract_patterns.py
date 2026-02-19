@@ -12,7 +12,7 @@ from pathlib import Path
 from datetime import datetime
 
 # 添加脚本目录到路径
-sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "skills" / "behavior-prediction" / "scripts"))
 
 
 class TestExtractPatterns(unittest.TestCase):

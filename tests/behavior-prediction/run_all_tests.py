@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 # 添加脚本目录到路径
-sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "skills" / "behavior-prediction" / "scripts"))
 
 
 def run_all_tests():
