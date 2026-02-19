@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-utils.py 测试用例
+utils.py 测试用例（沙盒模式）
 """
 
 import json
@@ -11,16 +11,33 @@ from pathlib import Path
 from datetime import datetime
 
 # 添加脚本目录到路径
-script_dir = Path(__file__).resolve().parent.parent / "scripts"
+script_dir = Path(__file__).resolve().parent.parent.parent / "skills" / "continuous-learning" / "scripts"
 sys.path.insert(0, str(script_dir))
 
+import utils as utils_module
 from utils import (
     get_timestamp, get_date_str, get_month_str, calculate_days_since,
     load_pending_session, save_pending_session, clear_pending_session,
     add_observation_to_pending, parse_instinct_file, generate_instinct_file,
     load_skills_index, save_skills_index, add_skill_to_index, remove_skill_from_index,
-    get_default_config
+    get_default_config, ensure_data_dirs
 )
+
+
+class SandboxMixin:
+    """沙盒测试基类，将数据操作隔离到临时目录"""
+
+    def _setup_sandbox(self):
+        self._sandbox_dir = tempfile.mkdtemp()
+        self._sandbox_path = Path(self._sandbox_dir)
+        self._original_override = utils_module._data_dir_override
+        utils_module._data_dir_override = self._sandbox_path / "continuous-learning-data"
+        utils_module._data_dir_override.mkdir(parents=True, exist_ok=True)
+        ensure_data_dirs()
+
+    def _teardown_sandbox(self):
+        utils_module._data_dir_override = self._original_override
+        shutil.rmtree(self._sandbox_dir, ignore_errors=True)
 
 
 class TestTimeUtils:
@@ -57,16 +74,14 @@ class TestTimeUtils:
         assert calculate_days_since(None) == float('inf')
 
 
-class TestPendingSession:
+class TestPendingSession(SandboxMixin):
     """Pending Session 测试"""
     
     def setup_method(self):
-        """每个测试前清理"""
-        clear_pending_session()
+        self._setup_sandbox()
     
     def teardown_method(self):
-        """每个测试后清理"""
-        clear_pending_session()
+        self._teardown_sandbox()
     
     def test_save_and_load_pending_session(self):
         """测试保存和加载 pending session"""
@@ -180,8 +195,14 @@ id: minimal
         assert parsed["confidence"] == original["confidence"]
 
 
-class TestSkillsIndex:
+class TestSkillsIndex(SandboxMixin):
     """技能索引测试"""
+
+    def setup_method(self):
+        self._setup_sandbox()
+
+    def teardown_method(self):
+        self._teardown_sandbox()
     
     def test_load_empty_index(self):
         """测试加载空索引"""

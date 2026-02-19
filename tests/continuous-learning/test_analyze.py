@@ -1,22 +1,46 @@
 #!/usr/bin/env python3
 """
-analyze.py 测试用例
+analyze.py 测试用例（沙盒模式）
 """
 
 import json
+import os
 import sys
+import tempfile
+import shutil
 from pathlib import Path
 
 # 添加脚本目录到路径
-script_dir = Path(__file__).resolve().parent.parent / "scripts"
+script_dir = Path(__file__).resolve().parent.parent.parent / "skills" / "continuous-learning" / "scripts"
 sys.path.insert(0, str(script_dir))
 
+import utils as utils_module
+from utils import ensure_data_dirs
 from analyze import (
     analyze_observations,
     detect_user_corrections,
     detect_error_resolutions,
     detect_tool_preferences
 )
+
+
+class SandboxMixin:
+    def _setup_sandbox(self):
+        self._sandbox_dir = tempfile.mkdtemp()
+        self._sandbox_path = Path(self._sandbox_dir)
+        self._original_override = utils_module._data_dir_override
+        utils_module._data_dir_override = self._sandbox_path / "continuous-learning-data"
+        utils_module._data_dir_override.mkdir(parents=True, exist_ok=True)
+        ensure_data_dirs()
+
+    def _teardown_sandbox(self):
+        utils_module._data_dir_override = self._original_override
+        shutil.rmtree(self._sandbox_dir, ignore_errors=True)
+
+    def _get_sandbox_env(self):
+        env = os.environ.copy()
+        env['CL_SANDBOX_DATA_DIR'] = str(self._sandbox_path / "continuous-learning-data")
+        return env
 
 
 class TestAnalyzeObservations:
@@ -171,8 +195,14 @@ class TestDetectToolPreferences:
         assert len(result) >= 1
 
 
-class TestCommandLine:
+class TestCommandLine(SandboxMixin):
     """命令行接口测试"""
+
+    def setup_method(self):
+        self._setup_sandbox()
+
+    def teardown_method(self):
+        self._teardown_sandbox()
     
     def test_observations_command(self):
         """测试 --observations 命令"""
@@ -186,7 +216,8 @@ class TestCommandLine:
         result = subprocess.run(
             ["python3", str(script_dir / "analyze.py"), "--observations", data],
             capture_output=True,
-            text=True
+            text=True,
+            env=self._get_sandbox_env()
         )
         
         assert result.returncode == 0
@@ -200,7 +231,8 @@ class TestCommandLine:
         result = subprocess.run(
             ["python3", str(script_dir / "analyze.py"), "--recent", "7"],
             capture_output=True,
-            text=True
+            text=True,
+            env=self._get_sandbox_env()
         )
         
         assert result.returncode == 0

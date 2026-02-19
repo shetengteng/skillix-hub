@@ -1,21 +1,45 @@
 #!/usr/bin/env python3
 """
-setup_rule.py 测试用例
+setup_rule.py 测试用例（沙盒模式）
 """
 
 import json
+import os
 import sys
+import tempfile
 import shutil
 from pathlib import Path
 
 # 添加脚本目录到路径
-script_dir = Path(__file__).resolve().parent.parent / "scripts"
+script_dir = Path(__file__).resolve().parent.parent.parent / "skills" / "continuous-learning" / "scripts"
 sys.path.insert(0, str(script_dir))
 
+import setup_rule as setup_rule_module
 from setup_rule import (
     setup_rule, remove_rule, check_rule, update_rule,
     get_rule_config, detect_assistant_type, get_project_root
 )
+
+
+class SandboxMixin:
+    """沙盒测试，使用临时目录模拟项目根目录"""
+
+    def _setup_sandbox(self):
+        self._sandbox_dir = tempfile.mkdtemp()
+        self._sandbox_path = Path(self._sandbox_dir)
+        (self._sandbox_path / ".cursor" / "rules").mkdir(parents=True, exist_ok=True)
+        (self._sandbox_path / ".git").mkdir(parents=True, exist_ok=True)
+        self._original_get_project_root = setup_rule_module.get_project_root
+        setup_rule_module.get_project_root = lambda: self._sandbox_path
+
+    def _teardown_sandbox(self):
+        setup_rule_module.get_project_root = self._original_get_project_root
+        shutil.rmtree(self._sandbox_dir, ignore_errors=True)
+
+    def _get_sandbox_env(self):
+        env = os.environ.copy()
+        env['CL_SANDBOX_PROJECT_ROOT'] = str(self._sandbox_path)
+        return env
 
 
 class TestGetRuleConfig:
@@ -50,60 +74,45 @@ class TestGetRuleConfig:
         assert config["dir_name"] == ".ai"
 
 
-class TestDetectAssistantType:
+class TestDetectAssistantType(SandboxMixin):
     """detect_assistant_type 测试"""
+
+    def setup_method(self):
+        self._setup_sandbox()
+
+    def teardown_method(self):
+        self._teardown_sandbox()
     
     def test_detect(self):
         """测试检测助手类型"""
         result = detect_assistant_type()
-        
-        # 应该返回有效的类型
         assert result in ["cursor", "claude", "generic"]
 
 
-class TestGetProjectRoot:
+class TestGetProjectRoot(SandboxMixin):
     """get_project_root 测试"""
+
+    def setup_method(self):
+        self._setup_sandbox()
+
+    def teardown_method(self):
+        self._teardown_sandbox()
     
     def test_get_root(self):
         """测试获取项目根目录"""
-        root = get_project_root()
-        
+        root = setup_rule_module.get_project_root()
         assert root.exists()
-        # 应该包含 .cursor 或 .git
-        has_marker = (root / ".cursor").exists() or (root / ".git").exists()
-        # 如果没有找到，返回当前目录
-        assert has_marker or root == Path.cwd()
+        assert root == self._sandbox_path
 
 
-class TestSetupRule:
+class TestSetupRule(SandboxMixin):
     """setup_rule 测试"""
     
     def setup_method(self):
-        """每个测试前准备"""
-        # 备份可能存在的规则文件
-        self.backup_files = []
-        
-        for location in ["global", "project"]:
-            for assistant_type in ["cursor", "claude", "generic"]:
-                config = get_rule_config(assistant_type)
-                if location == "global":
-                    base_dir = Path.home() / config["dir_name"]
-                else:
-                    base_dir = get_project_root() / config["dir_name"]
-                
-                rule_file = base_dir / config["rules_dir"] / config["file_name"]
-                if rule_file.exists():
-                    backup_path = rule_file.with_suffix(".backup")
-                    shutil.copy(rule_file, backup_path)
-                    self.backup_files.append((rule_file, backup_path))
+        self._setup_sandbox()
     
     def teardown_method(self):
-        """每个测试后恢复"""
-        # 恢复备份的文件
-        for rule_file, backup_path in self.backup_files:
-            if backup_path.exists():
-                shutil.copy(backup_path, rule_file)
-                backup_path.unlink()
+        self._teardown_sandbox()
     
     def test_setup_project_rule(self):
         """测试设置项目级规则"""
@@ -133,8 +142,14 @@ class TestSetupRule:
         Path(result1["rule_file"]).unlink()
 
 
-class TestRemoveRule:
+class TestRemoveRule(SandboxMixin):
     """remove_rule 测试"""
+
+    def setup_method(self):
+        self._setup_sandbox()
+
+    def teardown_method(self):
+        self._teardown_sandbox()
     
     def test_remove_existing(self):
         """测试移除存在的规则"""
@@ -162,8 +177,14 @@ class TestRemoveRule:
         assert result["success"] == False
 
 
-class TestCheckRule:
+class TestCheckRule(SandboxMixin):
     """check_rule 测试"""
+
+    def setup_method(self):
+        self._setup_sandbox()
+
+    def teardown_method(self):
+        self._teardown_sandbox()
     
     def test_check_nonexistent(self):
         """测试检查不存在的规则"""
@@ -191,8 +212,14 @@ class TestCheckRule:
         remove_rule(location="project", assistant_type="cursor")
 
 
-class TestUpdateRule:
+class TestUpdateRule(SandboxMixin):
     """update_rule 测试"""
+
+    def setup_method(self):
+        self._setup_sandbox()
+
+    def teardown_method(self):
+        self._teardown_sandbox()
     
     def test_update_existing(self):
         """测试更新存在的规则"""
@@ -217,8 +244,14 @@ class TestUpdateRule:
         assert result["success"] == False
 
 
-class TestCommandLine:
+class TestCommandLine(SandboxMixin):
     """命令行接口测试"""
+
+    def setup_method(self):
+        self._setup_sandbox()
+
+    def teardown_method(self):
+        self._teardown_sandbox()
     
     def test_check_command(self):
         """测试 check 命令"""
@@ -228,7 +261,8 @@ class TestCommandLine:
         result = subprocess.run(
             ["python3", str(script_dir / "setup_rule.py"), data],
             capture_output=True,
-            text=True
+            text=True,
+            env=self._get_sandbox_env()
         )
         
         assert result.returncode == 0
@@ -239,12 +273,15 @@ class TestCommandLine:
         """测试 enable/disable 命令"""
         import subprocess
         
+        env = self._get_sandbox_env()
+        
         # Enable
         data = json.dumps({"action": "enable", "location": "project", "force": True})
         result = subprocess.run(
             ["python3", str(script_dir / "setup_rule.py"), data],
             capture_output=True,
-            text=True
+            text=True,
+            env=env
         )
         
         assert result.returncode == 0
@@ -256,7 +293,8 @@ class TestCommandLine:
         result = subprocess.run(
             ["python3", str(script_dir / "setup_rule.py"), data],
             capture_output=True,
-            text=True
+            text=True,
+            env=env
         )
         
         assert result.returncode == 0
@@ -271,7 +309,8 @@ class TestCommandLine:
         result = subprocess.run(
             ["python3", str(script_dir / "setup_rule.py"), data],
             capture_output=True,
-            text=True
+            text=True,
+            env=self._get_sandbox_env()
         )
         
         assert result.returncode == 1

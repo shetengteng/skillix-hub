@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 """
-observe.py 测试用例
+observe.py 测试用例（沙盒模式）
 """
 
 import json
+import os
 import sys
 import tempfile
 import shutil
 from pathlib import Path
 
 # 添加脚本目录到路径
-script_dir = Path(__file__).resolve().parent.parent / "scripts"
+script_dir = Path(__file__).resolve().parent.parent.parent / "skills" / "continuous-learning" / "scripts"
 sys.path.insert(0, str(script_dir))
 
+import utils as utils_module
 from observe import handle_init, handle_record, handle_finalize
 from utils import (
     clear_pending_session, load_pending_session,
@@ -20,16 +22,33 @@ from utils import (
 )
 
 
-class TestHandleInit:
+class SandboxMixin:
+    def _setup_sandbox(self):
+        self._sandbox_dir = tempfile.mkdtemp()
+        self._sandbox_path = Path(self._sandbox_dir)
+        self._original_override = utils_module._data_dir_override
+        utils_module._data_dir_override = self._sandbox_path / "continuous-learning-data"
+        utils_module._data_dir_override.mkdir(parents=True, exist_ok=True)
+        ensure_data_dirs()
+
+    def _teardown_sandbox(self):
+        utils_module._data_dir_override = self._original_override
+        shutil.rmtree(self._sandbox_dir, ignore_errors=True)
+
+    def _get_sandbox_env(self):
+        env = os.environ.copy()
+        env['CL_SANDBOX_DATA_DIR'] = str(self._sandbox_path / "continuous-learning-data")
+        return env
+
+
+class TestHandleInit(SandboxMixin):
     """handle_init 测试"""
     
     def setup_method(self):
-        """每个测试前清理"""
-        clear_pending_session()
+        self._setup_sandbox()
     
     def teardown_method(self):
-        """每个测试后清理"""
-        clear_pending_session()
+        self._teardown_sandbox()
     
     def test_init_creates_pending_session(self):
         """测试初始化创建 pending session"""
@@ -64,16 +83,14 @@ class TestHandleInit:
         # （取决于是否有足够的观察记录）
 
 
-class TestHandleRecord:
+class TestHandleRecord(SandboxMixin):
     """handle_record 测试"""
     
     def setup_method(self):
-        """每个测试前清理"""
-        clear_pending_session()
+        self._setup_sandbox()
     
     def teardown_method(self):
-        """每个测试后清理"""
-        clear_pending_session()
+        self._teardown_sandbox()
     
     def test_record_observation(self):
         """测试记录观察"""
@@ -108,17 +125,14 @@ class TestHandleRecord:
         assert "timestamp" in obs
 
 
-class TestHandleFinalize:
+class TestHandleFinalize(SandboxMixin):
     """handle_finalize 测试"""
     
     def setup_method(self):
-        """每个测试前清理"""
-        clear_pending_session()
-        ensure_data_dirs()
+        self._setup_sandbox()
     
     def teardown_method(self):
-        """每个测试后清理"""
-        clear_pending_session()
+        self._teardown_sandbox()
     
     def test_finalize_empty_session(self):
         """测试 finalize 空会话"""
@@ -156,8 +170,14 @@ class TestHandleFinalize:
         assert load_pending_session() is None
 
 
-class TestCommandLine:
+class TestCommandLine(SandboxMixin):
     """命令行接口测试"""
+
+    def setup_method(self):
+        self._setup_sandbox()
+
+    def teardown_method(self):
+        self._teardown_sandbox()
     
     def test_init_command(self):
         """测试 --init 命令"""
@@ -166,7 +186,8 @@ class TestCommandLine:
         result = subprocess.run(
             ["python3", str(script_dir / "observe.py"), "--init"],
             capture_output=True,
-            text=True
+            text=True,
+            env=self._get_sandbox_env()
         )
         
         assert result.returncode == 0
@@ -181,7 +202,8 @@ class TestCommandLine:
         result = subprocess.run(
             ["python3", str(script_dir / "observe.py"), "--record", data],
             capture_output=True,
-            text=True
+            text=True,
+            env=self._get_sandbox_env()
         )
         
         assert result.returncode == 0
@@ -196,7 +218,8 @@ class TestCommandLine:
         result = subprocess.run(
             ["python3", str(script_dir / "observe.py"), "--finalize", data],
             capture_output=True,
-            text=True
+            text=True,
+            env=self._get_sandbox_env()
         )
         
         assert result.returncode == 0
@@ -210,7 +233,8 @@ class TestCommandLine:
         result = subprocess.run(
             ["python3", str(script_dir / "observe.py"), "--record", "invalid json"],
             capture_output=True,
-            text=True
+            text=True,
+            env=self._get_sandbox_env()
         )
         
         assert result.returncode == 1

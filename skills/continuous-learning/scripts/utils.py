@@ -17,6 +17,8 @@ from typing import Optional, Dict, List, Any
 # 路径管理
 # ─────────────────────────────────────────────
 
+_data_dir_override = None
+
 def get_skill_dir() -> Path:
     """获取 Skill 代码目录"""
     return Path(__file__).parent.parent
@@ -24,7 +26,10 @@ def get_skill_dir() -> Path:
 
 def get_project_root() -> Path:
     """获取项目根目录"""
-    # 尝试找到 .cursor 或 .git 目录
+    env_root = os.environ.get('CL_SANDBOX_PROJECT_ROOT')
+    if env_root:
+        return Path(env_root)
+
     current = Path.cwd()
     
     while current != current.parent:
@@ -40,23 +45,30 @@ def get_data_dir() -> Path:
     获取用户数据目录
     
     优先级：
+    0. 沙盒覆写（用于测试）
     1. 项目级: <project>/.cursor/skills/continuous-learning-data/
     2. 全局级: ~/.cursor/skills/continuous-learning-data/
     """
-    # 检查项目级目录
+    if _data_dir_override is not None:
+        return Path(_data_dir_override)
+
+    env_dir = os.environ.get('CL_SANDBOX_DATA_DIR')
+    if env_dir:
+        p = Path(env_dir)
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
     project_root = get_project_root()
     project_data_dir = project_root / ".cursor" / "skills" / "continuous-learning-data"
     
     if project_data_dir.exists():
         return project_data_dir
     
-    # 检查全局目录
     global_data_dir = Path.home() / ".cursor" / "skills" / "continuous-learning-data"
     
     if global_data_dir.exists():
         return global_data_dir
     
-    # 默认创建项目级目录
     project_data_dir.mkdir(parents=True, exist_ok=True)
     return project_data_dir
 

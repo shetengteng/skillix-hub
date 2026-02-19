@@ -1,0 +1,6 @@
+[2026-02-19 21:29:19] [INFO] [memory.embedding] 从本地缓存加载模型 /Users/TerrellShe/.memory-skill/models/models--BAAI--bge-small-zh-v1.5
+[2026-02-19 21:29:26] [INFO] [memory.embedding] 模型加载完成 dim=512 (耗时 7.1s)
+[2026-02-19 21:29:27] [INFO] [memory.embedding] 批量生成向量 3 条, dim=512 (耗时 0.15s)
+[2026-02-19 21:42:46] [INFO] [memory.embedding] 从本地缓存加载模型 /Users/TerrellShe/.memory-skill/models/models--BAAI--bge-small-zh-v1.5
+[2026-02-19 21:42:54] [INFO] [memory.embedding] 模型加载完成 dim=512 (耗时 7.9s)
+[2026-02-19 21:42:55] [INFO] [memory.embedding] 批量生成向量 3 条, dim=512 (耗时 0.15s)

@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """
-instinct.py 测试用例
+instinct.py 测试用例（沙盒模式）
 """
 
 import json
+import os
 import sys
+import tempfile
 import shutil
 from pathlib import Path
 
 # 添加脚本目录到路径
-script_dir = Path(__file__).resolve().parent.parent / "scripts"
+script_dir = Path(__file__).resolve().parent.parent.parent / "skills" / "continuous-learning" / "scripts"
 sys.path.insert(0, str(script_dir))
 
+import utils as utils_module
 from instinct import (
     list_instincts, create_instinct, update_instinct, delete_instinct,
     check_skill, delete_evolved_skill, evolve_instincts,
@@ -20,19 +23,33 @@ from instinct import (
 from utils import get_data_dir, ensure_data_dirs, remove_skill_from_index
 
 
-class TestCreateInstinct:
+class SandboxMixin:
+    def _setup_sandbox(self):
+        self._sandbox_dir = tempfile.mkdtemp()
+        self._sandbox_path = Path(self._sandbox_dir)
+        self._original_override = utils_module._data_dir_override
+        utils_module._data_dir_override = self._sandbox_path / "continuous-learning-data"
+        utils_module._data_dir_override.mkdir(parents=True, exist_ok=True)
+        ensure_data_dirs()
+
+    def _teardown_sandbox(self):
+        utils_module._data_dir_override = self._original_override
+        shutil.rmtree(self._sandbox_dir, ignore_errors=True)
+
+    def _get_sandbox_env(self):
+        env = os.environ.copy()
+        env['CL_SANDBOX_DATA_DIR'] = str(self._sandbox_path / "continuous-learning-data")
+        return env
+
+
+class TestCreateInstinct(SandboxMixin):
     """create_instinct 测试"""
     
     def setup_method(self):
-        """每个测试前准备"""
-        ensure_data_dirs()
+        self._setup_sandbox()
     
     def teardown_method(self):
-        """每个测试后清理"""
-        # 清理测试创建的本能
-        instincts_dir = get_data_dir() / "instincts"
-        for f in instincts_dir.glob("test-*.yaml"):
-            f.unlink()
+        self._teardown_sandbox()
     
     def test_create_basic_instinct(self):
         """测试创建基本本能"""
@@ -75,12 +92,11 @@ class TestCreateInstinct:
         assert "id" in result["message"]
 
 
-class TestUpdateInstinct:
+class TestUpdateInstinct(SandboxMixin):
     """update_instinct 测试"""
     
     def setup_method(self):
-        """每个测试前准备"""
-        ensure_data_dirs()
+        self._setup_sandbox()
         create_instinct({
             "id": "test-update",
             "trigger": "原始触发条件",
@@ -88,10 +104,7 @@ class TestUpdateInstinct:
         })
     
     def teardown_method(self):
-        """每个测试后清理"""
-        instincts_dir = get_data_dir() / "instincts"
-        for f in instincts_dir.glob("test-*.yaml"):
-            f.unlink()
+        self._teardown_sandbox()
     
     def test_update_confidence(self):
         """测试更新置信度"""
@@ -111,22 +124,18 @@ class TestUpdateInstinct:
         assert result["status"] == "error"
 
 
-class TestDeleteInstinct:
+class TestDeleteInstinct(SandboxMixin):
     """delete_instinct 测试"""
     
     def setup_method(self):
-        """每个测试前准备"""
-        ensure_data_dirs()
+        self._setup_sandbox()
         create_instinct({
             "id": "test-delete",
             "trigger": "待删除"
         })
     
     def teardown_method(self):
-        """每个测试后清理"""
-        instincts_dir = get_data_dir() / "instincts"
-        for f in instincts_dir.glob("test-*.yaml"):
-            f.unlink()
+        self._teardown_sandbox()
     
     def test_delete_existing(self):
         """测试删除存在的本能"""
@@ -145,22 +154,14 @@ class TestDeleteInstinct:
         assert result["status"] == "error"
 
 
-class TestListInstincts:
+class TestListInstincts(SandboxMixin):
     """list_instincts 测试"""
     
     def setup_method(self):
-        """每个测试前准备"""
-        ensure_data_dirs()
-        # 清理现有本能
-        instincts_dir = get_data_dir() / "instincts"
-        for f in instincts_dir.glob("test-*.yaml"):
-            f.unlink()
+        self._setup_sandbox()
     
     def teardown_method(self):
-        """每个测试后清理"""
-        instincts_dir = get_data_dir() / "instincts"
-        for f in instincts_dir.glob("test-*.yaml"):
-            f.unlink()
+        self._teardown_sandbox()
     
     def test_list_empty(self):
         """测试列出空列表"""
@@ -184,8 +185,14 @@ class TestListInstincts:
         assert "test-list-2" in ids
 
 
-class TestCheckSkill:
+class TestCheckSkill(SandboxMixin):
     """check_skill 测试"""
+
+    def setup_method(self):
+        self._setup_sandbox()
+
+    def teardown_method(self):
+        self._teardown_sandbox()
     
     def test_check_nonexistent(self):
         """测试检查不存在的技能"""
@@ -195,7 +202,6 @@ class TestCheckSkill:
     
     def test_check_evolved_skill(self):
         """测试检查演化技能"""
-        # 创建一个演化技能
         from utils import add_skill_to_index
         
         add_skill_to_index({
@@ -207,34 +213,16 @@ class TestCheckSkill:
         result = check_skill("test-evolved")
         
         assert result["is_evolved"] == True
-        
-        # 清理
-        remove_skill_from_index("test-evolved")
 
 
-class TestEvolveInstincts:
+class TestEvolveInstincts(SandboxMixin):
     """evolve_instincts 测试"""
     
     def setup_method(self):
-        """每个测试前准备"""
-        ensure_data_dirs()
-        # 清理现有本能
-        instincts_dir = get_data_dir() / "instincts"
-        for f in instincts_dir.glob("test-*.yaml"):
-            f.unlink()
+        self._setup_sandbox()
     
     def teardown_method(self):
-        """每个测试后清理"""
-        instincts_dir = get_data_dir() / "instincts"
-        for f in instincts_dir.glob("test-*.yaml"):
-            f.unlink()
-        
-        # 清理演化的技能
-        evolved_dir = get_data_dir() / "evolved" / "skills"
-        if evolved_dir.exists():
-            for d in evolved_dir.iterdir():
-                if d.name.startswith("test-"):
-                    shutil.rmtree(d)
+        self._teardown_sandbox()
     
     def test_evolve_insufficient(self):
         """测试本能不足"""
@@ -263,18 +251,14 @@ class TestEvolveInstincts:
         assert result["status"] in ["success", "no_candidates"]
 
 
-class TestCommandLine:
+class TestCommandLine(SandboxMixin):
     """命令行接口测试"""
     
     def setup_method(self):
-        """每个测试前准备"""
-        ensure_data_dirs()
+        self._setup_sandbox()
     
     def teardown_method(self):
-        """每个测试后清理"""
-        instincts_dir = get_data_dir() / "instincts"
-        for f in instincts_dir.glob("test-*.yaml"):
-            f.unlink()
+        self._teardown_sandbox()
     
     def test_status_command(self):
         """测试 status 命令"""
@@ -283,7 +267,8 @@ class TestCommandLine:
         result = subprocess.run(
             ["python3", str(script_dir / "instinct.py"), "status"],
             capture_output=True,
-            text=True
+            text=True,
+            env=self._get_sandbox_env()
         )
         
         assert result.returncode == 0
@@ -299,7 +284,8 @@ class TestCommandLine:
         result = subprocess.run(
             ["python3", str(script_dir / "instinct.py"), "create", data],
             capture_output=True,
-            text=True
+            text=True,
+            env=self._get_sandbox_env()
         )
         
         assert result.returncode == 0
@@ -313,7 +299,8 @@ class TestCommandLine:
         result = subprocess.run(
             ["python3", str(script_dir / "instinct.py"), "--check-skill", "test-skill"],
             capture_output=True,
-            text=True
+            text=True,
+            env=self._get_sandbox_env()
         )
         
         assert result.returncode == 0

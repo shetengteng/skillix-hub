@@ -232,6 +232,11 @@ def detect_assistant_type() -> str:
 
 def get_project_root() -> Path:
     """获取项目根目录"""
+    import os
+    env_root = os.environ.get('CL_SANDBOX_PROJECT_ROOT')
+    if env_root:
+        return Path(env_root)
+
     current = Path.cwd()
     
     while current != current.parent:
