@@ -17,7 +17,7 @@ from service.config import get_memory_dir
 from core.utils import iso_now, ts_id, today_str
 from service.logger import get_logger
 
-log = get_logger("save_summary")
+log = get_logger("stop_hook")
 
 _MEMORY_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "memory"))
 SAVE_SUMMARY_CMD = f"python3 {os.path.join(_MEMORY_DIR, 'save_summary.py')}"
@@ -61,9 +61,13 @@ def main():
     except (json.JSONDecodeError, ValueError):
         event = {}
 
-    # 非完成状态不注入任何内容
     status = event.get("status", "")
+    conv_id = event.get("conversation_id", "unknown")
+
+    log.info("stop 触发 status=%s conv_id=%s", status, conv_id)
+
     if status != "completed":
+        log.info("status 非 completed，跳过摘要保存提示")
         print(json.dumps({}))
         return
 
@@ -73,9 +77,10 @@ def main():
     prompt = SAVE_TEMPLATE.format(
         save_summary_cmd=SAVE_SUMMARY_CMD,
         save_fact_cmd=SAVE_FACT_CMD,
-        conv_id=event.get("conversation_id", "unknown"),
+        conv_id=conv_id,
     )
 
+    log.info("注入 [Session Save] 提示词")
     print(json.dumps({"followup_message": prompt}))
 
 

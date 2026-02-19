@@ -14,6 +14,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../
 from service.config import get_project_path
 from service.config import get_memory_dir
 from core.utils import iso_now, today_str, ts_id
+from service.logger import get_logger
+
+log = get_logger("flush_memory")
 
 _MEMORY_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "memory"))
 SAVE_FACT_CMD = f"python3 {os.path.join(_MEMORY_DIR, 'save_fact.py')}"
@@ -56,12 +59,17 @@ def main():
     project_path = get_project_path(event)
     os.makedirs(get_memory_dir(project_path), exist_ok=True)
 
-    # 填充模板：上下文使用率、消息数、save_fact 命令、会话 ID
+    usage = event.get("context_usage_percent", "?")
+    msg_count = event.get("message_count", "?")
+    conv_id = event.get("conversation_id", "unknown")
+
+    log.info("preCompact 触发 usage=%s%% msg_count=%s conv_id=%s", usage, msg_count, conv_id)
+
     prompt = FLUSH_TEMPLATE.format(
-        usage=event.get("context_usage_percent", "?"),
-        msg_count=event.get("message_count", "?"),
+        usage=usage,
+        msg_count=msg_count,
         save_fact_cmd=SAVE_FACT_CMD,
-        conv_id=event.get("conversation_id", "unknown"),
+        conv_id=conv_id,
     )
 
     print(json.dumps({"user_message": prompt}))

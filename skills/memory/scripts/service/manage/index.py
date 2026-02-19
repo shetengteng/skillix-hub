@@ -27,6 +27,14 @@ from commands.cmd_config import (
     cmd_config_reset,
     cmd_config_validate,
 )
+from commands.cmd_db import (
+    cmd_db_tables,
+    cmd_db_schema,
+    cmd_db_show,
+    cmd_db_query,
+    cmd_db_stats,
+    cmd_db_browse,
+)
 
 
 def main():
@@ -118,6 +126,22 @@ def main():
     r.add_argument("--global", dest="scope_global", action="store_true")
     cs.add_parser("validate")
 
+    # db
+    dp = sub.add_parser("db")
+    ds = dp.add_subparsers(dest="action")
+    ds.add_parser("tables")
+    ds.add_parser("stats")
+    d_schema = ds.add_parser("schema")
+    d_schema.add_argument("table")
+    d_show = ds.add_parser("show")
+    d_show.add_argument("table")
+    d_show.add_argument("--limit", type=int, default=20)
+    d_show.add_argument("--offset", type=int, default=0)
+    d_query = ds.add_parser("query")
+    d_query.add_argument("sql")
+    d_browse = ds.add_parser("browse")
+    d_browse.add_argument("--port", type=int, default=8685)
+
     args = parser.parse_args()
 
     if not args.command:
@@ -149,6 +173,19 @@ def main():
             cp.print_help()
             sys.exit(2)
         config_handlers[args.action](cfg, args)
+    elif args.command == "db":
+        db_handlers = {
+            "tables": cmd_db_tables,
+            "schema": cmd_db_schema,
+            "show": cmd_db_show,
+            "query": cmd_db_query,
+            "stats": cmd_db_stats,
+            "browse": cmd_db_browse,
+        }
+        if not args.action or args.action not in db_handlers:
+            dp.print_help()
+            sys.exit(2)
+        db_handlers[args.action](args)
     elif args.command in handlers:
         handlers[args.command](args)
     else:

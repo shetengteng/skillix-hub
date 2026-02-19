@@ -112,6 +112,59 @@ python3 {{SCRIPT_PATH}}/service/manage/index.py config show
 python3 {{SCRIPT_PATH}}/service/manage/index.py config reset <字段>
 ```
 
+### 用户要求查看数据库
+
+当用户想查看 SQLite 索引数据库的内容时，使用 `db` 子命令。
+
+**查看数据库概览**：
+
+```bash
+python3 {{SCRIPT_PATH}}/service/manage/index.py db stats
+```
+
+**查看所有表**：
+
+```bash
+python3 {{SCRIPT_PATH}}/service/manage/index.py db tables
+```
+
+**查看表结构**：
+
+```bash
+python3 {{SCRIPT_PATH}}/service/manage/index.py db schema chunks
+```
+
+**查看表数据**：
+
+```bash
+python3 {{SCRIPT_PATH}}/service/manage/index.py db show chunks --limit 10
+python3 {{SCRIPT_PATH}}/service/manage/index.py db show sync_state
+python3 {{SCRIPT_PATH}}/service/manage/index.py db show meta
+```
+
+**自定义 SQL 查询**（只读）：
+
+```bash
+python3 {{SCRIPT_PATH}}/service/manage/index.py db query "SELECT id, content, type, memory_type, confidence FROM chunks ORDER BY timestamp DESC LIMIT 5"
+```
+
+**在浏览器中可视化查看**（需要 datasette）：
+
+```bash
+python3 {{SCRIPT_PATH}}/service/manage/index.py db browse
+```
+
+如果 datasette 未安装，先执行 `pip install datasette`。
+
+| 用户可能的说法 | 对应命令 |
+|---------------|----------|
+| "打开数据库看看" / "可视化查看数据库" | `db browse` |
+| "看一下数据库里有什么" | `db stats` 或 `db tables` |
+| "看一下索引里的内容" | `db show chunks` |
+| "数据库有多少条记录" | `db stats` |
+| "看一下同步状态" | `db show sync_state` |
+| "查一下包含 xxx 的记录" | `db query "SELECT ... WHERE content LIKE '%xxx%'"` |
+
 ## 记忆类型说明
 
 | 类型 | 前缀 | 说明 | 示例 |
