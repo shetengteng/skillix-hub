@@ -101,6 +101,7 @@ skills/memory/scripts/
 - **语义搜索**：本地嵌入模型 + SQLite FTS + 向量相似度混合搜索
 - **事实保存**：分类保存 W(客观事实) / B(项目经历) / O(用户偏好) 类型记忆
 - **记忆管理**：支持列出、搜索、删除、编辑、导出记忆
+- **自然语言配置**：通过对话直接修改配置，无需手动编辑 JSON
 
 ### 使用示例
 
@@ -122,8 +123,24 @@ python3 ~/.cursor/skills/memory/scripts/service/memory/search_memory.py "API 设
 # 管理记忆（列出、删除、编辑、导出等）
 python3 ~/.cursor/skills/memory/scripts/service/manage/index.py list
 python3 ~/.cursor/skills/memory/scripts/service/manage/index.py delete --keyword "测试"
-python3 ~/.cursor/skills/memory/scripts/service/manage/index.py config get embedding.model
+python3 ~/.cursor/skills/memory/scripts/service/manage/index.py config show
+python3 ~/.cursor/skills/memory/scripts/service/manage/index.py config set memory.facts_limit 30
 ```
+
+### 自然语言配置
+
+安装后可直接用自然语言管理配置：
+
+```
+用户: 帮我看一下现在的记忆配置
+用户: 多加载几天的记忆，全量加载改成5天
+用户: 日志级别调成 DEBUG
+用户: 把事实加载上限改为30条
+用户: 换一个嵌入模型，用 BAAI/bge-base-zh-v1.5
+用户: 把配置恢复默认
+```
+
+完整配置说明请参考安装后 `memory-data/README.md`。
 
 ### 记忆类型
 
@@ -140,6 +157,7 @@ python3 ~/.cursor/skills/memory/scripts/service/manage/index.py config get embed
 - **保存触发**：记住这个、save this
 - **查看记忆**：查看记忆、搜索记忆
 - **管理记忆**：删除记忆、编辑记忆、导出记忆
+- **配置管理**：查看配置、修改配置、调整加载天数
 
 ## Behavior Prediction Skill V2 使用说明
 

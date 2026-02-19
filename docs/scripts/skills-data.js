@@ -24,6 +24,7 @@ const SKILLS_DATA = [
             { zh: '事实保存（W/B/O 分类）', en: 'Fact Storage (W/B/O Types)' },
             { zh: '会话摘要', en: 'Session Summary' },
             { zh: '记忆管理', en: 'Memory Management' },
+            { zh: '自然语言配置', en: 'Natural Language Config' },
             { zh: '一键初始化', en: 'One-click Init' }
         ],
         scripts: ['service/memory/save_fact.py', 'service/memory/search_memory.py', 'service/manage/index.py', 'service/hooks/load_memory.py', 'service/init/index.py'],
@@ -85,6 +86,22 @@ const SKILLS_DATA = [
                 aiResponse: { 
                     zh: '搜索包含 \"MySQL\" 的记忆...\n\n找到 2 条：\n1. [W] 旧项目使用 MySQL 5.7 (2026-02-15)\n2. [W] MySQL 连接字符串配置 (2026-02-15)\n\n已删除 2 条记忆。索引已更新。', 
                     en: 'Searching memories containing "MySQL"...\n\nFound 2 entries:\n1. [W] Old project uses MySQL 5.7 (2026-02-15)\n2. [W] MySQL connection string config (2026-02-15)\n\nDeleted 2 memories. Index updated.' 
+                }
+            },
+            {
+                title: { zh: '自然语言修改配置', en: 'Natural Language Config' },
+                userInput: { zh: '多加载几天的记忆，全量加载改成5天，事实上限改为30条', en: 'Load more days of memory, set full load to 5 days and facts limit to 30' },
+                aiResponse: {
+                    zh: '已更新配置：\n\n1. memory.load_days_full: 2 → 5\n   （最近 5 天的事实将全部加载）\n\n2. memory.facts_limit: 15 → 30\n   （单次最多加载 30 条事实）\n\n配置已保存到 .cursor/skills/memory-data/config.json',
+                    en: 'Configuration updated:\n\n1. memory.load_days_full: 2 → 5\n   (Facts from last 5 days will be fully loaded)\n\n2. memory.facts_limit: 15 → 30\n   (Up to 30 facts per load)\n\nConfig saved to .cursor/skills/memory-data/config.json'
+                }
+            },
+            {
+                title: { zh: '查看配置', en: 'View Configuration' },
+                userInput: { zh: '帮我看一下现在的记忆配置', en: 'Show me the current memory configuration' },
+                aiResponse: {
+                    zh: '当前记忆配置：\n\n📋 记忆加载\n• 全量加载天数: 5 天\n• 部分加载天数: 5 天（每天 3 条）\n• 最大加载天数: 7 天\n• 事实上限: 30 条\n\n🔍 嵌入模型\n• 模型: BAAI/bge-small-zh-v1.5\n\n📝 日志\n• 级别: INFO\n• 保留天数: 7 天\n\n🧹 自动清理\n• 清理周期: 90 天\n• 备份保留: 30 天',
+                    en: 'Current memory configuration:\n\n📋 Memory Loading\n• Full load days: 5\n• Partial load days: 5 (3 per day)\n• Max load days: 7\n• Facts limit: 30\n\n🔍 Embedding Model\n• Model: BAAI/bge-small-zh-v1.5\n\n📝 Logging\n• Level: INFO\n• Retain days: 7\n\n🧹 Auto Cleanup\n• Cleanup cycle: 90 days\n• Backup retain: 30 days'
                 }
             },
             {

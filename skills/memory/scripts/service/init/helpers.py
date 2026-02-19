@@ -82,7 +82,7 @@ def install_skill_md(skill_install_dir, source_path, replacements):
 
 
 def init_memory_dir(project_path):
-    """创建 memory-data 目录结构，若 MEMORY.md 不存在则从模板复制或创建默认内容。"""
+    """创建 memory-data 目录结构，若 MEMORY.md / README.md 不存在则从模板复制或创建默认内容。"""
     memory_dir = os.path.join(project_path, _DEFAULTS["paths"]["data_dir"])
     daily_dir = os.path.join(memory_dir, DAILY_DIR_NAME)
     os.makedirs(daily_dir, exist_ok=True)
@@ -95,6 +95,12 @@ def init_memory_dir(project_path):
         else:
             with open(memory_md, "w", encoding="utf-8") as f:
                 f.write("# 核心记忆\n\n## 用户偏好\n\n## 项目背景\n\n## 重要决策\n")
+
+    readme_md = os.path.join(memory_dir, "README.md")
+    if not os.path.exists(readme_md):
+        readme_template = os.path.join(TEMPLATES_DIR, "memory-data-README.md")
+        if os.path.exists(readme_template):
+            shutil.copy2(readme_template, readme_md)
 
     return memory_dir
 

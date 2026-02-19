@@ -85,6 +85,10 @@ def main():
     memory_dir = init_memory_dir(project_path)
     print(f"  data dir: {memory_dir}")
 
+    readme_path = os.path.join(memory_dir, "README.md")
+    if os.path.exists(readme_path):
+        print(f"  readme: {readme_path}")
+
     config_json = os.path.join(memory_dir, "config.json")
     if not os.path.exists(config_json):
         from service.config import _DEFAULTS

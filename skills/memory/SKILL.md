@@ -70,6 +70,48 @@ python3 {{SCRIPT_PATH}}/service/memory/save_summary.py \
 
 直接编辑 `{{MEMORY_DATA_PATH}}/MEMORY.md`，将信息添加到核心记忆中。
 
+### 用户要求修改配置
+
+当用户用自然语言描述配置变更时（如"多加载几天的记忆"、"把日志级别调成 DEBUG"），执行对应的 `config set` 命令。
+
+**字段映射参考**：
+
+| 用户可能的说法 | 对应字段 | 命令示例 |
+|---------------|----------|----------|
+| "多加载几天记忆" / "加载更多天的事实" | `memory.load_days_full` | `config set memory.load_days_full 3` |
+| "每天多加载几条" / "部分加载条数改为5" | `memory.partial_per_day` | `config set memory.partial_per_day 5` |
+| "加载上限改为30条" / "多加载一些事实" | `memory.facts_limit` | `config set memory.facts_limit 30` |
+| "调高/调低置信度阈值" | `memory.important_confidence` | `config set memory.important_confidence 0.85` |
+| "换个嵌入模型" / "用 xxx 模型" | `embedding.model` | `config set embedding.model "模型名"` |
+| "日志级别调成 DEBUG" / "开启调试日志" | `log.level` | `config set log.level DEBUG` |
+| "日志只保留3天" | `log.retain_days` | `config set log.retain_days 3` |
+| "分块大小改为600" | `index.chunk_tokens` | `config set index.chunk_tokens 600` |
+| "90天后自动清理" / "关闭自动清理" | `cleanup.auto_cleanup_days` | `config set cleanup.auto_cleanup_days 0` |
+
+**执行流程**：
+
+1. 解析用户意图，确定要修改的字段和目标值
+2. 执行 `config set` 命令：
+
+```bash
+python3 {{SCRIPT_PATH}}/service/manage/index.py config set <字段> <值>
+```
+
+3. 如果命令返回 `needs_rebuild: true`，提示用户需要重建索引
+4. 向用户确认修改结果
+
+**查看当前配置**：
+
+```bash
+python3 {{SCRIPT_PATH}}/service/manage/index.py config show
+```
+
+**重置为默认值**：
+
+```bash
+python3 {{SCRIPT_PATH}}/service/manage/index.py config reset <字段>
+```
+
 ## 记忆类型说明
 
 | 类型 | 前缀 | 说明 | 示例 |
