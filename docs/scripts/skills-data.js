@@ -41,6 +41,14 @@ const SKILLS_DATA = [
                 }
             },
             {
+                title: { zh: '更新 Memory Skill', en: 'Update Memory Skill' },
+                userInput: { zh: '帮我从 https://github.com/shetengteng/skillix-hub 更新 memory skill', en: 'Please update memory skill from https://github.com/shetengteng/skillix-hub' },
+                aiResponse: {
+                    zh: '正在更新 Memory Skill...\n\n1. 拉取最新代码\n2. 对比版本差异\n3. 更新 skill 代码到 .cursor/skills/memory/\n4. 合并 hooks.json（保留已有配置）\n5. 更新 memory-rules.mdc\n\n✅ Memory Skill 已更新到最新版本！\n\n更新内容：\n• 新增自然语言配置管理\n• memory-data 目录新增 README.md 配置说明\n• 已有记忆数据完整保留',
+                    en: 'Updating Memory Skill...\n\n1. Pull latest code\n2. Compare version differences\n3. Update skill code to .cursor/skills/memory/\n4. Merge hooks.json (preserve existing config)\n5. Update memory-rules.mdc\n\n✅ Memory Skill updated to latest version!\n\nChanges:\n• Added natural language config management\n• Added README.md config docs to memory-data\n• Existing memory data fully preserved'
+                }
+            },
+            {
                 title: { zh: '自动加载记忆（新会话开始）', en: 'Auto Load Memory (New Session)' },
                 userInput: { zh: '继续昨天的 API 重构工作', en: 'Continue yesterday\'s API refactoring work' },
                 aiResponse: { 
@@ -150,6 +158,14 @@ const SKILLS_DATA = [
                 }
             },
             {
+                title: { zh: '更新 Behavior Prediction Skill', en: 'Update Behavior Prediction Skill' },
+                userInput: { zh: '帮我从 https://github.com/shetengteng/skillix-hub 更新 behavior-prediction skill', en: 'Please update behavior-prediction skill from https://github.com/shetengteng/skillix-hub' },
+                aiResponse: {
+                    zh: '正在更新 Behavior Prediction Skill...\n\n1. 拉取最新代码\n2. 更新 skill 代码\n3. 保留已有行为数据和用户画像\n\n✅ Behavior Prediction Skill 已更新到最新版本！\n\n已有的行为模式、用户画像数据完整保留。',
+                    en: 'Updating Behavior Prediction Skill...\n\n1. Pull latest code\n2. Update skill code\n3. Preserve existing behavior data and user profile\n\n✅ Behavior Prediction Skill updated to latest version!\n\nExisting behavior patterns and user profile data fully preserved.'
+                }
+            },
+            {
                 title: { zh: '启用行为预测规则', en: 'Enable Behavior Prediction Rule' },
                 userInput: { zh: '启用行为预测规则', en: 'Enable behavior prediction rule' },
                 aiResponse: { 
@@ -243,6 +259,14 @@ const SKILLS_DATA = [
                 }
             },
             {
+                title: { zh: '更新 Continuous Learning Skill', en: 'Update Continuous Learning Skill' },
+                userInput: { zh: '帮我从 https://github.com/shetengteng/skillix-hub 更新 continuous-learning skill', en: 'Please update continuous-learning skill from https://github.com/shetengteng/skillix-hub' },
+                aiResponse: {
+                    zh: '正在更新 Continuous Learning Skill...\n\n1. 拉取最新代码\n2. 更新 skill 代码\n3. 保留已有本能和演化技能数据\n\n✅ Continuous Learning Skill 已更新到最新版本！\n\n已有的本能、观察记录和演化技能完整保留。',
+                    en: 'Updating Continuous Learning Skill...\n\n1. Pull latest code\n2. Update skill code\n3. Preserve existing instincts and evolved skills\n\n✅ Continuous Learning Skill updated to latest version!\n\nExisting instincts, observations and evolved skills fully preserved.'
+                }
+            },
+            {
                 title: { zh: '启用持续学习规则', en: 'Enable Continuous Learning Rules' },
                 userInput: { zh: '启用持续学习规则', en: 'Enable continuous learning rules' },
                 aiResponse: { 
@@ -320,6 +344,14 @@ const SKILLS_DATA = [
                 }
             },
             {
+                title: { zh: '更新 uni-app 代码生成器', en: 'Update uni-app Code Generator' },
+                userInput: { zh: '帮我从 https://github.com/shetengteng/skillix-hub 更新 uniapp-mp-generator skill', en: 'Please update uniapp-mp-generator skill from https://github.com/shetengteng/skillix-hub' },
+                aiResponse: {
+                    zh: '正在更新 uni-app 代码生成器...\n\n1. 拉取最新代码\n2. 更新 SKILL.md 和模板文件\n\n✅ uni-app 代码生成器已更新到最新版本！\n\n新版本可能包含更多页面模板和组件支持。',
+                    en: 'Updating uni-app Code Generator...\n\n1. Pull latest code\n2. Update SKILL.md and template files\n\n✅ uni-app Code Generator updated to latest version!\n\nNew version may include more page templates and component support.'
+                }
+            },
+            {
                 title: { zh: '生成课程管理模块', en: 'Generate Course Management Module' },
                 userInput: { zh: '帮我生成课程管理模块，包含课程列表、详情、新增页面', en: 'Help me generate course management module with list, detail, and add pages' },
                 aiResponse: { 
@@ -366,6 +398,14 @@ const SKILLS_DATA = [
                 aiResponse: { 
                     zh: '正在安装 Swagger API Reader...\n\n1. 克隆仓库\n2. 复制 skills/swagger-api-reader 到 ~/.cursor/skills/\n3. 安装依赖: pip install -r requirements.txt\n\n✅ 安装完成！\n\n你可以说"读取 API 文档"来开始使用。', 
                     en: 'Installing Swagger API Reader...\n\n1. Clone repository\n2. Copy skills/swagger-api-reader to ~/.cursor/skills/\n3. Install deps: pip install -r requirements.txt\n\n✅ Installation complete!\n\nYou can say "read API docs" to start using.' 
+                }
+            },
+            {
+                title: { zh: '更新 Swagger API Reader', en: 'Update Swagger API Reader' },
+                userInput: { zh: '帮我从 https://github.com/shetengteng/skillix-hub 更新 swagger-api-reader skill', en: 'Please update swagger-api-reader skill from https://github.com/shetengteng/skillix-hub' },
+                aiResponse: {
+                    zh: '正在更新 Swagger API Reader...\n\n1. 拉取最新代码\n2. 更新 skill 代码和脚本\n3. 更新依赖\n\n✅ Swagger API Reader 已更新到最新版本！\n\n已有的 API 缓存数据完整保留。',
+                    en: 'Updating Swagger API Reader...\n\n1. Pull latest code\n2. Update skill code and scripts\n3. Update dependencies\n\n✅ Swagger API Reader updated to latest version!\n\nExisting API cache data fully preserved.'
                 }
             },
             {
