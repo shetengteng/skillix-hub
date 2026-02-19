@@ -9,25 +9,24 @@ const SKILLS_DATA = [
         name: 'memory',
         icon: 'lightbulb',
         description: {
-            zh: '为 AI 助手提供长期记忆能力，支持关键词触发保存、临时记忆、智能汇总，自动记录对话并检索相关历史上下文',
-            en: 'Long-term memory for AI assistants with keyword-triggered saving, temp memory, smart summarization, auto-record and retrieve history'
+            zh: '为 AI 助手提供跨会话长期记忆能力，零外部依赖，通过 Hook 机制自动保存事实和摘要，支持语义搜索和记忆管理',
+            en: 'Cross-session long-term memory for AI assistants, zero dependencies, auto-save facts and summaries via Hooks, with semantic search and memory management'
         },
         tags: [
             { zh: '记忆', en: 'Memory' },
             { zh: '上下文', en: 'Context' },
-            { zh: '检索', en: 'Retrieval' },
-            { zh: '智能保存', en: 'Smart Save' }
+            { zh: '语义搜索', en: 'Semantic Search' },
+            { zh: 'Hook', en: 'Hook' }
         ],
         features: [
-            { zh: '关键词触发保存', en: 'Keyword-triggered Save' },
-            { zh: '临时记忆机制', en: 'Temp Memory' },
-            { zh: '智能汇总', en: 'Smart Summarization' },
-            { zh: '搜索记忆', en: 'Search Memory' },
-            { zh: '查看记忆', en: 'View Memory' },
-            { zh: '导出导入', en: 'Export/Import' },
-            { zh: '自动记忆规则', en: 'Auto Memory Rules' }
+            { zh: '自动记忆（Hook 触发）', en: 'Auto Memory (Hook-triggered)' },
+            { zh: '语义搜索', en: 'Semantic Search' },
+            { zh: '事实保存（W/B/O 分类）', en: 'Fact Storage (W/B/O Types)' },
+            { zh: '会话摘要', en: 'Session Summary' },
+            { zh: '记忆管理', en: 'Memory Management' },
+            { zh: '一键初始化', en: 'One-click Init' }
         ],
-        scripts: ['save_memory.py', 'search_memory.py', 'view_memory.py', 'delete_memory.py', 'hook.py', 'summarize.py', 'utils.py'],
+        scripts: ['service/memory/save_fact.py', 'service/memory/search_memory.py', 'service/manage/index.py', 'service/hooks/load_memory.py', 'service/init/index.py'],
         version: '2.0',
         author: 'shetengteng',
         repo: 'https://github.com/shetengteng/skillix-hub/tree/main/skills/memory',
@@ -36,56 +35,64 @@ const SKILLS_DATA = [
                 title: { zh: '安装 Memory Skill', en: 'Install Memory Skill' },
                 userInput: { zh: '帮我从 https://github.com/shetengteng/skillix-hub 安装 memory skill', en: 'Please install memory skill from https://github.com/shetengteng/skillix-hub' },
                 aiResponse: { 
-                    zh: '✅ Memory Skill v2.0 安装成功！\n\n👉 下一步：说「启用自动记忆检索」\n\nv2.0 新特性：\n• 关键词触发保存\n• 临时记忆机制\n• 智能汇总', 
-                    en: '✅ Memory Skill v2.0 installed!\n\n👉 Next step: Say "enable memory auto retrieve"\n\nv2.0 Features:\n• Keyword-triggered save\n• Temp memory\n• Smart summarization' 
+                    zh: '正在安装 Memory Skill...\n\n1. 克隆仓库\n2. 复制 skills/memory 到 ~/.cursor/skills/\n3. 运行初始化脚本\n\n✅ Memory Skill 安装成功！\n\n已配置：\n• sessionStart Hook → 自动加载记忆\n• preCompact Hook → 上下文压缩前保存事实\n• stop Hook → 会话结束保存摘要\n• memory-rules.mdc → 引导 Agent 执行记忆操作', 
+                    en: 'Installing Memory Skill...\n\n1. Clone repository\n2. Copy skills/memory to ~/.cursor/skills/\n3. Run init script\n\n✅ Memory Skill installed!\n\nConfigured:\n• sessionStart Hook → auto-load memory\n• preCompact Hook → save facts before context compression\n• stop Hook → save summary on session end\n• memory-rules.mdc → guide Agent memory operations' 
                 }
             },
             {
-                title: { zh: '关键词自动保存', en: 'Keyword Auto Save' },
-                userInput: { zh: '我们决定使用 FastAPI 替换 Flask', en: 'We decided to use FastAPI instead of Flask' },
-                aiResponse: { 
-                    zh: '好的，我来帮你实现这个迁移。\n\n（已自动保存：检测到关键词"决定"、"使用"）\n\n首先，让我们创建 FastAPI 的基础结构...', 
-                    en: 'OK, I\'ll help you with this migration.\n\n(Auto-saved: detected keywords "decided", "use")\n\nFirst, let\'s create the FastAPI base structure...' 
-                }
-            },
-            {
-                title: { zh: '查看会话状态', en: 'View Session Status' },
-                userInput: { zh: '查看会话状态', en: 'View session status' },
-                aiResponse: { 
-                    zh: '📊 当前会话状态\n\n状态: 活跃\n开始时间: 10:30:00\n临时记忆数: 3\n\n最近记忆:\n1. 技术选型 - 使用 FastAPI\n2. API 配置 - 前缀 /api/v2\n3. 计划 - 实现认证功能', 
-                    en: '📊 Current Session Status\n\nStatus: Active\nStart: 10:30:00\nTemp memories: 3\n\nRecent:\n1. Tech choice - Use FastAPI\n2. API config - prefix /api/v2\n3. Plan - Implement auth' 
-                }
-            },
-            {
-                title: { zh: '手动汇总记忆', en: 'Manual Summarize' },
-                userInput: { zh: '汇总记忆', en: 'Summarize memories' },
-                aiResponse: { 
-                    zh: '正在汇总临时记忆...\n\n✅ 汇总完成！\n\n原始记忆数: 5\n合并后: 3\n保存位置: memory-data/daily/2026-02-01.md\n\n已合并相似主题的记忆。', 
-                    en: 'Summarizing temp memories...\n\n✅ Summarization complete!\n\nOriginal: 5\nMerged: 3\nSaved to: memory-data/daily/2026-02-01.md\n\nSimilar topics merged.' 
-                }
-            },
-            {
-                title: { zh: '继续昨天的工作', en: 'Continue Yesterday\'s Work' },
+                title: { zh: '自动加载记忆（新会话开始）', en: 'Auto Load Memory (New Session)' },
                 userInput: { zh: '继续昨天的 API 重构工作', en: 'Continue yesterday\'s API refactoring work' },
                 aiResponse: { 
-                    zh: '让我检索一下相关记忆...\n\n找到了！昨天我们讨论了：\n- 使用 FastAPI 替换 Flask\n- RESTful 风格设计\n- 需要添加认证中间件\n\n我们继续从认证中间件开始吧。', 
-                    en: 'Let me retrieve relevant memories...\n\nFound it! Yesterday we discussed:\n- Replace Flask with FastAPI\n- RESTful style design\n- Need to add auth middleware\n\nLet\'s continue from the auth middleware.' 
+                    zh: '（sessionStart Hook 已自动加载记忆上下文）\n\n根据之前的记忆，昨天我们讨论了：\n\n• 决定使用 FastAPI 替换 Flask（W 类型事实）\n• 采用 RESTful 风格，路径前缀 /api/v2（W 类型事实）\n• 待办：实现认证中间件（上次会话摘要）\n\n我们从认证中间件开始吧。需要我先设计接口还是直接实现？', 
+                    en: '(sessionStart Hook auto-loaded memory context)\n\nBased on previous memories, yesterday we discussed:\n\n• Decided to use FastAPI instead of Flask (W-type fact)\n• Adopted RESTful style, path prefix /api/v2 (W-type fact)\n• TODO: implement auth middleware (last session summary)\n\nLet\'s start with the auth middleware. Want me to design the API first or go straight to implementation?' 
                 }
             },
             {
-                title: { zh: '清空临时记忆', en: 'Clear Temp Memories' },
-                userInput: { zh: '清空临时记忆', en: 'Clear temp memories' },
+                title: { zh: '记住这个决策', en: 'Remember This Decision' },
+                userInput: { zh: '记住这个：我们项目统一使用 PostgreSQL 数据库，不用 MySQL', en: 'Remember this: our project uses PostgreSQL, not MySQL' },
                 aiResponse: { 
-                    zh: '✅ 已清空 3 条临时记忆\n\n当前会话的临时记忆已清除，不会被汇总保存。', 
-                    en: '✅ Cleared 3 temp memories\n\nCurrent session temp memories cleared, won\'t be summarized.' 
+                    zh: '已记录到核心记忆 MEMORY.md 中。\n\n以后的会话中我会记得项目使用 PostgreSQL 数据库。', 
+                    en: 'Recorded to core memory MEMORY.md.\n\nI\'ll remember the project uses PostgreSQL in future sessions.' 
                 }
             },
             {
-                title: { zh: '清空所有记忆', en: 'Clear All Memories' },
-                userInput: { zh: '清空所有记忆', en: 'Clear all memories' },
+                title: { zh: '搜索记忆', en: 'Search Memory' },
+                userInput: { zh: '搜索一下我们之前关于数据库的讨论', en: 'Search our previous discussions about database' },
                 aiResponse: { 
-                    zh: '⚠️ 确认清空所有记忆？\n\n这将删除：\n- 所有每日记忆文件\n- 所有索引数据\n\n请说"确认清空"来执行此操作。', 
-                    en: '⚠️ Confirm clear all memories?\n\nThis will delete:\n- All daily memory files\n- All index data\n\nSay "confirm clear" to proceed.' 
+                    zh: '搜索记忆中...\n\n找到 3 条相关记忆：\n\n1. [W] 项目统一使用 PostgreSQL 数据库（置信度 0.95）\n   - 日期: 2026-02-18\n   - 实体: PostgreSQL, 数据库\n\n2. [W] 数据库连接池配置为最大 20 个连接\n   - 日期: 2026-02-17\n   - 实体: PostgreSQL, 连接池\n\n3. [S] 会话摘要：讨论了数据库选型方案\n   - 日期: 2026-02-16\n   - 决策: 选择 PostgreSQL', 
+                    en: 'Searching memory...\n\nFound 3 relevant memories:\n\n1. [W] Project uses PostgreSQL database (confidence 0.95)\n   - Date: 2026-02-18\n   - Entities: PostgreSQL, database\n\n2. [W] Database connection pool configured to max 20\n   - Date: 2026-02-17\n   - Entities: PostgreSQL, connection pool\n\n3. [S] Session summary: discussed database selection\n   - Date: 2026-02-16\n   - Decision: chose PostgreSQL' 
+                }
+            },
+            {
+                title: { zh: '上下文压缩时自动保存', en: 'Auto Save on Context Compression' },
+                userInput: { zh: '（长对话中触发 preCompact Hook，Agent 静默执行）', en: '(preCompact Hook triggered during long conversation, Agent executes silently)' },
+                aiResponse: { 
+                    zh: '（Agent 在后台静默执行，用户不可见）\n\n[Memory Flush] 触发 → Agent 回顾当前对话：\n\n• save_fact --content \"用户偏好 TypeScript\" --type O --confidence 0.85\n• save_fact --content \"API 采用 GraphQL\" --type W --entities \"GraphQL,API\"\n• save_fact --content \"完成了用户模块重构\" --type B\n\n事实已保存到 daily/2026-02-19.jsonl\n（用户继续正常对话，不感知此操作）', 
+                    en: '(Agent executes silently in background, invisible to user)\n\n[Memory Flush] triggered → Agent reviews current conversation:\n\n• save_fact --content "User prefers TypeScript" --type O --confidence 0.85\n• save_fact --content "API uses GraphQL" --type W --entities "GraphQL,API"\n• save_fact --content "Completed user module refactoring" --type B\n\nFacts saved to daily/2026-02-19.jsonl\n(User continues conversation normally, unaware of this operation)' 
+                }
+            },
+            {
+                title: { zh: '管理记忆', en: 'Manage Memory' },
+                userInput: { zh: '帮我看一下记忆统计', en: 'Show me memory statistics' },
+                aiResponse: { 
+                    zh: '📊 记忆统计\n\n• 核心记忆 (MEMORY.md): 856 字符\n• 事实记录: 47 条\n  - W (客观事实): 28 条\n  - B (项目经历): 11 条\n  - O (用户偏好): 8 条\n• 会话摘要: 12 条\n• 最近 7 天活跃\n• 磁盘占用: 156 KB\n\n需要删除或编辑某条记忆吗？', 
+                    en: '📊 Memory Statistics\n\n• Core memory (MEMORY.md): 856 characters\n• Fact records: 47 entries\n  - W (World facts): 28\n  - B (Biographical): 11\n  - O (Opinions): 8\n• Session summaries: 12\n• Active in last 7 days\n• Disk usage: 156 KB\n\nNeed to delete or edit any memory?' 
+                }
+            },
+            {
+                title: { zh: '删除记忆', en: 'Delete Memory' },
+                userInput: { zh: '删除关于 MySQL 的记忆', en: 'Delete memories about MySQL' },
+                aiResponse: { 
+                    zh: '搜索包含 \"MySQL\" 的记忆...\n\n找到 2 条：\n1. [W] 旧项目使用 MySQL 5.7 (2026-02-15)\n2. [W] MySQL 连接字符串配置 (2026-02-15)\n\n已删除 2 条记忆。索引已更新。', 
+                    en: 'Searching memories containing "MySQL"...\n\nFound 2 entries:\n1. [W] Old project uses MySQL 5.7 (2026-02-15)\n2. [W] MySQL connection string config (2026-02-15)\n\nDeleted 2 memories. Index updated.' 
+                }
+            },
+            {
+                title: { zh: '会话结束自动保存摘要', en: 'Auto Save Summary on Session End' },
+                userInput: { zh: '好的，今天就到这里，谢谢', en: 'OK, that\'s all for today, thanks' },
+                aiResponse: { 
+                    zh: '好的，再见！\n\n（stop Hook 触发，Agent 静默保存会话摘要）\n\nsave_summary:\n  topic: \"认证中间件实现\"\n  summary: \"实现了基于 JWT 的认证中间件，配置了 CORS...\"\n  decisions: \"JWT认证,CORS允许前端域名\"\n  todos: \"添加刷新token逻辑,编写认证测试\"', 
+                    en: 'OK, goodbye!\n\n(stop Hook triggered, Agent silently saves session summary)\n\nsave_summary:\n  topic: "Auth middleware implementation"\n  summary: "Implemented JWT-based auth middleware, configured CORS..."\n  decisions: "JWT auth, CORS allow frontend domain"\n  todos: "Add refresh token logic, write auth tests"' 
                 }
             }
         ]
