@@ -21,7 +21,7 @@ _DEFAULTS = {
     },
     "embedding": {
         "model": "BAAI/bge-small-zh-v1.5",
-        "cache_dir": os.path.join("~", ".memory-skill", "models"),
+        "cache_dir": os.path.join("~", ".memory", "models"),
     },
     "index": {
         "chunk_tokens": 400,
@@ -70,7 +70,7 @@ _ENV_MAP = {
 REBUILD_FIELDS = {"embedding.model", "index.chunk_tokens", "index.chunk_overlap"}
 
 # 全局配置文件路径
-_GLOBAL_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".memory-skill", "config.json")
+_GLOBAL_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".memory", "config.json")
 
 
 # ========== 工具函数 ==========

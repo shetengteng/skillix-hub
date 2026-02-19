@@ -20,3 +20,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 /refer/
+
+# Test runtime data
+tests/**/testdata/

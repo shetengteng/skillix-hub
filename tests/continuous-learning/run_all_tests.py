@@ -19,7 +19,7 @@ TEST_FILES = [
 
 def run_all_tests():
     """运行所有测试"""
-    tests_dir = Path(__file__).parent
+    tests_dir = Path(__file__).parent / "src"
     
     total_passed = 0
     total_failed = 0

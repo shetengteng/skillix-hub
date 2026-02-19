@@ -8,15 +8,20 @@ import unittest
 from pathlib import Path
 
 # 添加脚本目录到路径
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "skills" / "behavior-prediction" / "scripts"))
+THIS_DIR = Path(__file__).resolve().parent
+SRC_DIR = THIS_DIR / "src"
+
+sys.path.insert(0, str(THIS_DIR.parent.parent / "skills" / "behavior-prediction" / "scripts"))
+
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
 
 def run_all_tests():
     """运行所有测试"""
-    # 发现并运行测试
     loader = unittest.TestLoader()
     suite = loader.discover(
-        start_dir=str(Path(__file__).parent),
+        start_dir=str(SRC_DIR),
         pattern="test_*.py"
     )
     

@@ -42,11 +42,11 @@ def main():
 
     if args.global_mode:
         cursor_dir = os.path.expanduser("~/.cursor")
-        skill_install_dir = os.path.join(cursor_dir, "skills", "memory-skill")
+        skill_install_dir = os.path.join(cursor_dir, "skills", "memory")
         memory_data_rel = os.path.join("~/.cursor", "skills", "memory-data")
     else:
         cursor_dir = os.path.join(project_path, ".cursor")
-        skill_install_dir = os.path.join(cursor_dir, "skills", "memory-skill")
+        skill_install_dir = os.path.join(cursor_dir, "skills", "memory")
         memory_data_rel = os.path.join(".cursor", "skills", "memory-data")
 
     if args.global_mode:

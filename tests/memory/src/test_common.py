@@ -14,7 +14,7 @@ from pathlib import Path
 THIS_DIR = Path(__file__).resolve().parent
 TEST_ROOT = THIS_DIR.parent
 REPO_ROOT = TEST_ROOT.parents[1]
-SKILL_ROOT = REPO_ROOT / "skills" / "memory-skill"
+SKILL_ROOT = REPO_ROOT / "skills" / "memory"
 SCRIPTS_DIR = SKILL_ROOT / "scripts"
 TESTDATA_ROOT = TEST_ROOT / "testdata"
 RUNTIME_ROOT = TESTDATA_ROOT / "runtime"

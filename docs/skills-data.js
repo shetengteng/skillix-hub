@@ -18,13 +18,13 @@ const SKILLS_DATA = [
             { zh: '检索', en: 'Retrieval' }
         ],
         features: [
-            { zh: '保存记忆', en: 'Save Memory' },
-            { zh: '搜索记忆', en: 'Search Memory' },
-            { zh: '查看记忆', en: 'View Memory' },
-            { zh: '删除记忆', en: 'Delete Memory' }
+            { zh: '自动记忆', en: 'Auto Memory' },
+            { zh: '语义搜索', en: 'Semantic Search' },
+            { zh: '事实保存', en: 'Fact Storage' },
+            { zh: '记忆管理', en: 'Memory Management' }
         ],
-        scripts: ['save_memory.py', 'search_memory.py', 'view_memory.py', 'delete_memory.py', 'utils.py'],
-        version: '1.0',
+        scripts: ['service/memory/save_fact.py', 'service/memory/search_memory.py', 'service/manage/index.py', 'service/hooks/load_memory.py'],
+        version: '2.0',
         author: 'shetengteng',
         repo: 'https://github.com/shetengteng/skillix-hub/tree/main/skills/memory'
     },

@@ -11,7 +11,7 @@ import shutil
 from pathlib import Path
 
 # 添加脚本目录到路径
-script_dir = Path(__file__).resolve().parent.parent.parent / "skills" / "continuous-learning" / "scripts"
+script_dir = Path(__file__).resolve().parent.parent.parent.parent / "skills" / "continuous-learning" / "scripts"
 sys.path.insert(0, str(script_dir))
 
 import setup_rule as setup_rule_module

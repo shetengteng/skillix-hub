@@ -1,8 +1,8 @@
 # Standalone Memory Skill 测试报告
 
-> 时间: 2026-02-19 21:18:46
+> 时间: 2026-02-19 21:51:46
 > 结果: PASSED
-> 耗时: 81.627s
+> 耗时: 77.598s
 
 ## 汇总
 
@@ -14,7 +14,7 @@
 | 错误 | 0 |
 | 跳过 | 4 |
 
-## 按模块结果
+## 单元测试
 
 ### test_chunker
 
@@ -32,19 +32,6 @@
 | `test_manage_config_set_and_get_roundtrip` | PASS |
 | `test_project_facts_limit_should_affect_load_memory` | SKIP |
 | `test_reset_all_should_work` | SKIP |
-
-### test_context_flow
-
-| 用例 | 状态 |
-|---|---|
-| `test_lifecycle_session_start_precompact_stop_and_next_session` | PASS |
-
-### test_e2e
-
-| 用例 | 状态 |
-|---|---|
-| `test_saved_daily_fact_loaded_by_session_start` | PASS |
-| `test_session_end_sync_makes_new_fact_searchable` | PASS |
 
 ### test_embedding
 
@@ -67,21 +54,6 @@
 | `test_lock_path_property` | PASS |
 | `test_reentrant_same_process` | PASS |
 | `test_release_without_acquire_is_safe` | PASS |
-
-### test_hook_contracts
-
-| 用例 | 状态 |
-|---|---|
-| `test_flush_memory_returns_user_message_contract` | PASS |
-| `test_load_memory_returns_additional_context_json` | PASS |
-| `test_prompt_session_save_completed_returns_followup` | PASS |
-| `test_prompt_session_save_non_completed_returns_empty_json` | PASS |
-
-### test_init
-
-| 用例 | 状态 |
-|---|---|
-| `test_init_creates_hooks_rules_data_and_is_idempotent` | PASS |
 
 ### test_install_paths
 
@@ -127,25 +99,6 @@
 | `test_get_logger_returns_logger` | PASS |
 | `test_logger_writes_to_file` | PASS |
 
-### test_manage_e2e
-
-| 用例 | 状态 |
-|---|---|
-| `test_delete_no_match_returns_zero` | PASS |
-| `test_delete_preview_without_confirm` | PASS |
-| `test_delete_purge_removes_permanently` | PASS |
-| `test_delete_soft_with_confirm` | PASS |
-| `test_delete_then_restore_by_id` | PASS |
-| `test_edit_content` | PASS |
-| `test_edit_without_id_fails` | PASS |
-| `test_export_returns_records` | PASS |
-| `test_export_to_file` | PASS |
-| `test_doctor_returns_checks` | PASS |
-| `test_list_pagination` | PASS |
-| `test_list_returns_json_with_records` | PASS |
-| `test_list_with_keyword_filter` | PASS |
-| `test_stats_returns_disk_and_daily_info` | PASS |
-
 ### test_manage_helpers
 
 | 用例 | 状态 |
@@ -183,13 +136,6 @@
 | `test_cosine_similarity_edges` | PASS |
 | `test_upsert_fts_meta_sync_state` | PASS |
 
-### test_sync_search
-
-| 用例 | 状态 |
-|---|---|
-| `test_search_memory_fts_hybrid_and_missing_index` | PASS |
-| `test_sync_index_build_incremental_rebuild` | PASS |
-
 ### test_unit_core
 
 | 用例 | 状态 |
@@ -210,3 +156,61 @@
 | `test_today_str_format` | PASS |
 | `test_ts_id_format_and_uniqueness` | PASS |
 | `test_utcnow_returns_utc_datetime` | PASS |
+
+## 集成测试
+
+### test_context_flow
+
+| 用例 | 状态 |
+|---|---|
+| `test_lifecycle_session_start_precompact_stop_and_next_session` | PASS |
+
+### test_hook_contracts
+
+| 用例 | 状态 |
+|---|---|
+| `test_flush_memory_returns_user_message_contract` | PASS |
+| `test_load_memory_returns_additional_context_json` | PASS |
+| `test_prompt_session_save_completed_returns_followup` | PASS |
+| `test_prompt_session_save_non_completed_returns_empty_json` | PASS |
+
+### test_sync_search
+
+| 用例 | 状态 |
+|---|---|
+| `test_search_memory_fts_hybrid_and_missing_index` | PASS |
+| `test_sync_index_build_incremental_rebuild` | PASS |
+
+## 端到端测试
+
+### test_e2e
+
+| 用例 | 状态 |
+|---|---|
+| `test_saved_daily_fact_loaded_by_session_start` | PASS |
+| `test_session_end_sync_makes_new_fact_searchable` | PASS |
+
+### test_init
+
+| 用例 | 状态 |
+|---|---|
+| `test_init_creates_hooks_rules_data_and_is_idempotent` | PASS |
+
+### test_manage_e2e
+
+| 用例 | 状态 |
+|---|---|
+| `test_delete_no_match_returns_zero` | PASS |
+| `test_delete_preview_without_confirm` | PASS |
+| `test_delete_purge_removes_permanently` | PASS |
+| `test_delete_soft_with_confirm` | PASS |
+| `test_delete_then_restore_by_id` | PASS |
+| `test_edit_content` | PASS |
+| `test_edit_without_id_fails` | PASS |
+| `test_export_returns_records` | PASS |
+| `test_export_to_file` | PASS |
+| `test_doctor_returns_checks` | PASS |
+| `test_list_pagination` | PASS |
+| `test_list_returns_json_with_records` | PASS |
+| `test_list_with_keyword_filter` | PASS |
+| `test_stats_returns_disk_and_daily_info` | PASS |

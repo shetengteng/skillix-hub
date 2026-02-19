@@ -3,6 +3,7 @@
 **Date**: 2026-02-19  
 **Mode**: Sandbox (`_data_dir_override` + `CL_SANDBOX_DATA_DIR` env)  
 **Runner**: Custom pytest-style runner  
+**Source**: `tests/continuous-learning/src/`  
 **Result**: ALL PASSED (75/75)
 
 ---

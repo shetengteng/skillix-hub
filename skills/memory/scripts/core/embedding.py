@@ -25,7 +25,7 @@ def _load_model(model_name=None):
 
     加载优先级：
     1. 如果已加载且模型名一致，直接返回缓存
-    2. 检查 ~/.memory-skill/models/ 下是否有本地缓存
+    2. 检查 ~/.memory/models/ 下是否有本地缓存
     3. 缓存不存在则从 HuggingFace 下载
     """
     global _model, _model_name

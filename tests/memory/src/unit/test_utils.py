@@ -5,7 +5,7 @@ import os
 import unittest
 from datetime import datetime, timezone
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "skills", "memory-skill", "scripts"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "skills", "memory", "scripts"))
 
 from core.utils import utcnow, iso_now, today_str, ts_id, date_range, parse_iso
 

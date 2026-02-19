@@ -76,87 +76,70 @@ cp -r skillix-hub/skills/swagger-api-reader .cursor/skills/
 pip install -r .cursor/skills/swagger-api-reader/scripts/requirements.txt
 ```
 
-## Memory Skill v2.0 使用说明
+## Memory Skill 使用说明
 
-Memory Skill 为 AI 助手提供长期记忆能力，无需额外依赖。
+Memory Skill 为 AI 助手提供跨会话的长期记忆能力，零外部依赖。通过 Hook 机制自动在会话生命周期中保存和召回记忆。
 
-### v2.0 新特性
+### 架构
 
-- **关键词触发保存**：检测到决策/偏好/配置/计划等关键词时自动保存
-- **临时记忆机制**：实时保存，会话结束时汇总
-- **智能汇总**：自动合并相似记忆，生成结构化记忆
-- **会话 Hook**：支持 `--init`, `--save`, `--finalize`, `--status`
+```
+skills/memory/scripts/
+├── core/           # 底层能力：嵌入向量、文件锁、工具函数
+├── storage/        # 存储层：JSONL 读写、SQLite 向量搜索、Markdown 切分
+├── service/
+│   ├── hooks/      # Hook 入口：load_memory, flush_memory, prompt_session_save
+│   ├── memory/     # 记忆操作：save_fact, save_summary, search_memory, sync_index
+│   ├── manage/     # 管理工具：list, delete, edit, config, index
+│   ├── init/       # 一键初始化
+│   ├── config/     # 配置管理
+│   └── logger/     # 日志系统
+```
 
 ### 核心功能
 
-- **自动检索**：根据用户问题自动检索相关历史记忆
-- **关键词触发**：检测到特定关键词时自动保存临时记忆
-- **智能汇总**：会话结束时合并相似记忆
-- **查看记忆**：查看今日/指定日期/最近的记忆
-- **删除记忆**：删除指定记忆、清空临时记忆、清空所有记忆
-- **导出导入**：备份和恢复记忆数据
+- **自动记忆**：通过 [Memory Flush] / [Session Save] Hook 自动保存事实和摘要
+- **语义搜索**：本地嵌入模型 + SQLite FTS + 向量相似度混合搜索
+- **事实保存**：分类保存 W(客观事实) / B(项目经历) / O(用户偏好) 类型记忆
+- **记忆管理**：支持列出、搜索、删除、编辑、导出记忆
 
 ### 使用示例
 
 ```bash
-# 会话开始（自动 finalize 上一个会话）
-python3 ~/.cursor/skills/memory/scripts/hook.py --init
+# 一键初始化（创建 hooks、rules、数据目录）
+python3 ~/.cursor/skills/memory/scripts/service/init/index.py
 
-# 保存临时记忆（检测关键词）
-python3 ~/.cursor/skills/memory/scripts/hook.py --save '{"user_message": "我们决定使用 FastAPI"}'
+# 保存事实
+python3 ~/.cursor/skills/memory/scripts/service/memory/save_fact.py \
+  --content "项目使用 PostgreSQL" --type W --confidence 0.9
 
-# 查看会话状态
-python3 ~/.cursor/skills/memory/scripts/hook.py --status
-
-# 会话结束（汇总临时记忆）
-python3 ~/.cursor/skills/memory/scripts/hook.py --finalize
+# 保存会话摘要
+python3 ~/.cursor/skills/memory/scripts/service/memory/save_summary.py \
+  --topic "API 设计讨论" --summary "讨论了 RESTful 接口设计方案"
 
 # 搜索记忆
-python3 ~/.cursor/skills/memory/scripts/search_memory.py "API 设计"
+python3 ~/.cursor/skills/memory/scripts/service/memory/search_memory.py "API 设计"
 
-# 查看今日记忆
-python3 ~/.cursor/skills/memory/scripts/view_memory.py today
-
-# 删除指定记忆
-python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"id": "2026-01-29-001"}'
-
-# 清空临时记忆
-python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"clear_temp": true}'
-
-# 清空所有记忆
-python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"clear_all": true, "confirm": true}'
-
-# 删除日期范围内的记忆
-python3 ~/.cursor/skills/memory/scripts/delete_memory.py '{"start_date": "2026-01-01", "end_date": "2026-01-31"}'
-
-# 导出记忆
-python3 ~/.cursor/skills/memory/scripts/export_memory.py
-
-# 导入记忆
-python3 ~/.cursor/skills/memory/scripts/import_memory.py '{"input": "backup.json"}'
-
-# 启用自动记忆规则
-python3 ~/.cursor/skills/memory/scripts/setup_auto_retrieve.py '{"action": "enable"}'
+# 管理记忆（列出、删除、编辑、导出等）
+python3 ~/.cursor/skills/memory/scripts/service/manage/index.py list
+python3 ~/.cursor/skills/memory/scripts/service/manage/index.py delete --keyword "测试"
+python3 ~/.cursor/skills/memory/scripts/service/manage/index.py config get embedding.model
 ```
 
-### 关键词触发保存
+### 记忆类型
 
-| 类型 | 中文关键词 | 英文关键词 |
-|------|-----------|-----------|
-| 决策类 | 决定、选择、使用、采用 | decide, choose, use, adopt |
-| 偏好类 | 喜欢、习惯、偏好、风格 | prefer, like, habit, style |
-| 配置类 | 配置、设置、规范、命名 | config, setting, convention |
-| 计划类 | 下一步、待办、TODO、计划 | next step, todo, plan |
-| 重要类 | 重要、记住、注意、关键 | important, remember, note |
+| 类型 | 前缀 | 说明 | 示例 |
+|------|------|------|------|
+| World | W | 客观事实 | "项目使用 PostgreSQL 数据库" |
+| Biographical | B | 项目经历 | "2026-02-17 完成了 API 重构" |
+| Opinion | O | 偏好/判断 | "用户偏好 TypeScript（confidence: 0.9）" |
+| Summary | S | 会话摘要 | "讨论了 API 设计方案" |
 
 ### 触发词
 
 - **检索触发**：继续、上次、之前、昨天、我们讨论过
 - **保存触发**：记住这个、save this
-- **跳过保存**：不要保存、don't save
-- **查看记忆**：查看今日记忆、查看会话状态
-- **汇总记忆**：汇总记忆、summarize memories
-- **清空记忆**：清空临时记忆、清空所有记忆
+- **查看记忆**：查看记忆、搜索记忆
+- **管理记忆**：删除记忆、编辑记忆、导出记忆
 
 ## Behavior Prediction Skill V2 使用说明
 

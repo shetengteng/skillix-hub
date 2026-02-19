@@ -3,6 +3,7 @@
 **Date**: 2026-02-19  
 **Mode**: Sandbox (tempfile isolation)  
 **Runner**: unittest  
+**Source**: `tests/behavior-prediction/src/`  
 **Result**: ALL PASSED (94/94)
 
 ---

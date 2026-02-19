@@ -131,7 +131,7 @@ python3 {save_script_path} '{{"topic": "主题", "key_info": ["要点1", "要点
 
 # 规则模板 - Claude 格式 (.md)
 CLAUDE_RULE_TEMPLATE = '''---
-name: memory-skill
+name: memory
 description: Memory Skill 自动记忆规则 - 采用三层保障机制确保记忆数据完整性（实时保存、会话结束处理、下次会话检查）
 allowed-tools: Shell, Read, Grep, Glob
 ---

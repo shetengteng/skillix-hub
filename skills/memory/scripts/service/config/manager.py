@@ -25,7 +25,7 @@ class Config:
 
     加载顺序（低 → 高优先级）：
       1. 代码默认值 (_DEFAULTS)
-      2. 全局配置 (~/.memory-skill/config.json)
+      2. 全局配置 (~/.memory/config.json)
       3. 项目级配置 ({project}/.cursor/skills/memory-data/config.json)
       4. 环境变量 (MEMORY_*)
     """

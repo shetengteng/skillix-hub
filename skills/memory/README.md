@@ -21,7 +21,7 @@ sessionEnd   → 静默同步 JSONL → SQLite 索引 + 记录元数据 + 清理
 ## 目录结构
 
 ```
-skills/memory-skill/           ← 源码（开发用）
+skills/memory/           ← 源码（开发用）
 ├── scripts/
 │   ├── core/                  # 纯基础设施（无业务逻辑）
 │   │   ├── utils.py           #   时间/ID 工具
@@ -69,27 +69,27 @@ skills/memory-skill/           ← 源码（开发用）
 ### 本地安装（推荐）
 
 ```bash
-python3 skills/memory-skill/scripts/service/init/index.py --project-path /path/to/your/project
+python3 skills/memory/scripts/service/init/index.py --project-path /path/to/your/project
 ```
 
 ### 全局安装
 
 ```bash
-python3 skills/memory-skill/scripts/service/init/index.py --global
+python3 skills/memory/scripts/service/init/index.py --global
 ```
 
 ### 跳过模型下载
 
 ```bash
-python3 skills/memory-skill/scripts/service/init/index.py --skip-model
+python3 skills/memory/scripts/service/init/index.py --skip-model
 ```
 
 安装后自动完成：
-- 复制 skill 代码到 `.cursor/skills/memory-skill/`
+- 复制 skill 代码到 `.cursor/skills/memory/`
 - 创建 `.cursor/hooks.json`（合并已有配置）
 - 创建 `.cursor/rules/memory-rules.mdc`
 - 创建 `.cursor/skills/memory-data/` 数据目录
-- 下载嵌入模型到 `~/.memory-skill/models/`（全局缓存）
+- 下载嵌入模型到 `~/.memory/models/`（全局缓存）
 
 ## 数据存储
 
@@ -117,7 +117,7 @@ python3 skills/memory-skill/scripts/service/init/index.py --skip-model
 ## 嵌入模型
 
 - **开发环境**：BAAI/bge-small-zh-v1.5（96MB，中英文支持）
-- **缓存位置**：`~/.memory-skill/models/`（跨项目共享）
+- **缓存位置**：`~/.memory/models/`（跨项目共享）
 - 首次使用时自动下载，后续从缓存加载
 
 ## 搜索
@@ -126,13 +126,13 @@ Agent 可通过 `search_memory.py` 搜索历史记忆：
 
 ```bash
 # 全文搜索
-python3 .cursor/skills/memory-skill/scripts/service/memory/search_memory.py "关键词" --method fts
+python3 .cursor/skills/memory/scripts/service/memory/search_memory.py "关键词" --method fts
 
 # 向量语义搜索
-python3 .cursor/skills/memory-skill/scripts/service/memory/search_memory.py "模糊描述" --method vector
+python3 .cursor/skills/memory/scripts/service/memory/search_memory.py "模糊描述" --method vector
 
 # 混合搜索（推荐）
-python3 .cursor/skills/memory-skill/scripts/service/memory/search_memory.py "查询" --method hybrid
+python3 .cursor/skills/memory/scripts/service/memory/search_memory.py "查询" --method hybrid
 ```
 
 ## 测试
@@ -140,16 +140,16 @@ python3 .cursor/skills/memory-skill/scripts/service/memory/search_memory.py "查
 从源码目录运行全量测试：
 
 ```bash
-python3 tests/standalone-memory-skill/run_tests.py
+python3 tests/standalone-memory/run_tests.py
 ```
 
-测试报告自动输出到 `tests/standalone-memory-skill/reports/`。
+测试报告自动输出到 `tests/standalone-memory/reports/`。
 
 ## 开发流程
 
-1. 在 `skills/memory-skill/` 源码目录开发
+1. 在 `skills/memory/` 源码目录开发
 2. 运行测试验证
-3. 通过 `init.py` 安装到 `.cursor/skills/memory-skill/`
+3. 通过 `init.py` 安装到 `.cursor/skills/memory/`
 4. 实际使用中验证 Hook 触发
 
 ## Hook 配置

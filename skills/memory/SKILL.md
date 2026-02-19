@@ -1,5 +1,5 @@
 ---
-name: memory-skill
+name: memory
 description: |
   管理 AI Agent 的长期记忆系统。自动记住重要对话、决策和用户偏好，
   并在新会话中召回相关信息。当收到 [Memory Flush] 或 [Session Save]
