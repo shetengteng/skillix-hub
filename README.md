@@ -44,7 +44,13 @@ Cursor AI 会自动完成克隆仓库、复制文件、安装依赖等操作。
 帮我从 https://github.com/shetengteng/skillix-hub 更新 memory skill
 ```
 
-> **注意**：更新时 Agent 会克隆最新代码并重新运行初始化脚本（`init/index.py`），而非直接覆盖文件。这确保占位符被正确替换，已有记忆数据和配置不受影响。
+> **注意**：更新时 Agent 会克隆最新代码并运行 `update.py` 脚本，而非直接覆盖文件。这确保占位符被正确替换，已有记忆数据和配置不受影响。
+
+手动更新命令：
+```bash
+git clone https://github.com/shetengteng/skillix-hub.git /tmp/skillix-hub
+python3 /tmp/skillix-hub/skills/memory/scripts/service/init/update.py --source /tmp/skillix-hub/skills/memory --project-path .
+```
 
 ### 方式二：手动命令行安装
 

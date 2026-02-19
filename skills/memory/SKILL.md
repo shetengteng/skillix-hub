@@ -12,24 +12,33 @@ description: |
 
 ## 更新 Skill
 
-当用户要求更新 Memory Skill 时，**必须运行初始化脚本**，不要直接复制文件覆盖（直接覆盖会导致占位符未替换）。
+当用户要求更新 Memory Skill 时，**必须运行 update.py 脚本**，不要直接复制文件覆盖（直接覆盖会导致占位符未替换）。
 
 **更新流程**：
 
 1. 克隆或拉取最新代码到临时目录
-2. 从临时目录运行初始化脚本：
+2. 运行更新脚本：
 
 ```bash
-python3 <临时目录>/skills/memory/scripts/service/init/index.py --project-path <项目路径> --skip-model
+python3 <临时目录>/skills/memory/scripts/service/init/update.py --source <临时目录>/skills/memory --project-path <项目路径>
 ```
 
-初始化脚本会自动：
+全局安装的更新：
+
+```bash
+python3 <临时目录>/skills/memory/scripts/service/init/update.py --source <临时目录>/skills/memory --global
+```
+
+update.py 会自动：
 - 覆盖 skill 代码并替换占位符
 - 合并 hooks.json（不重复添加）
-- 更新 memory-rules.mdc
-- 保留已有的记忆数据和配置
+- 更新 memory-rules.mdc 和 SKILL.md
+- **不触碰**记忆数据目录、config.json、MEMORY.md、*.jsonl
 
-**重要**：不要直接 `cp -r` 覆盖 `.cursor/skills/memory/`，这会导致 SKILL.md 和 rules 中的路径变成 `{{SCRIPT_PATH}}` 等占位符。
+**重要**：
+- 不要直接 `cp -r` 覆盖 `.cursor/skills/memory/`，这会导致路径变成 `{{SCRIPT_PATH}}` 等占位符
+- update.py 仅更新代码，不创建数据目录、不下载模型
+- 首次安装请使用 `init/index.py`
 
 ---
 

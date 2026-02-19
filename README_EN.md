@@ -44,7 +44,13 @@ Cursor AI will automatically clone the repository, copy files, and install depen
 Please update memory skill from https://github.com/shetengteng/skillix-hub
 ```
 
-> **Note**: When updating, the Agent clones the latest code and re-runs the init script (`init/index.py`) instead of directly overwriting files. This ensures placeholders are properly replaced and existing memory data and config are preserved.
+> **Note**: When updating, the Agent clones the latest code and runs `update.py` instead of directly overwriting files. This ensures placeholders are properly replaced and existing memory data and config are preserved.
+
+Manual update command:
+```bash
+git clone https://github.com/shetengteng/skillix-hub.git /tmp/skillix-hub
+python3 /tmp/skillix-hub/skills/memory/scripts/service/init/update.py --source /tmp/skillix-hub/skills/memory --project-path .
+```
 
 ### Method 2: Manual Command Line Installation
 
