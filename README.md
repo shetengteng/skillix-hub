@@ -125,6 +125,11 @@ python3 ~/.cursor/skills/memory/scripts/service/manage/index.py list
 python3 ~/.cursor/skills/memory/scripts/service/manage/index.py delete --keyword "测试"
 python3 ~/.cursor/skills/memory/scripts/service/manage/index.py config show
 python3 ~/.cursor/skills/memory/scripts/service/manage/index.py config set memory.facts_limit 30
+
+# 查看 SQLite 索引数据库
+python3 ~/.cursor/skills/memory/scripts/service/manage/index.py db stats
+python3 ~/.cursor/skills/memory/scripts/service/manage/index.py db show chunks --limit 10
+python3 ~/.cursor/skills/memory/scripts/service/manage/index.py db browse  # 浏览器可视化（需 datasette）
 ```
 
 ### 自然语言配置
@@ -158,6 +163,7 @@ python3 ~/.cursor/skills/memory/scripts/service/manage/index.py config set memor
 - **查看记忆**：查看记忆、搜索记忆
 - **管理记忆**：删除记忆、编辑记忆、导出记忆
 - **配置管理**：查看配置、修改配置、调整加载天数
+- **数据库查看**：打开数据库、查看索引内容、数据库统计
 
 ## Behavior Prediction Skill V2 使用说明
 

@@ -25,9 +25,10 @@ const SKILLS_DATA = [
             { zh: '会话摘要', en: 'Session Summary' },
             { zh: '记忆管理', en: 'Memory Management' },
             { zh: '自然语言配置', en: 'Natural Language Config' },
+            { zh: '数据库可视化', en: 'Database Viewer' },
             { zh: '一键初始化', en: 'One-click Init' }
         ],
-        scripts: ['service/memory/save_fact.py', 'service/memory/search_memory.py', 'service/manage/index.py', 'service/hooks/load_memory.py', 'service/init/index.py'],
+        scripts: ['service/memory/save_fact.py', 'service/memory/search_memory.py', 'service/manage/index.py', 'service/manage/commands/cmd_db.py', 'service/hooks/load_memory.py', 'service/init/index.py'],
         version: '2.0',
         author: 'shetengteng',
         repo: 'https://github.com/shetengteng/skillix-hub/tree/main/skills/memory',
@@ -110,6 +111,22 @@ const SKILLS_DATA = [
                 aiResponse: {
                     zh: '当前记忆配置：\n\n📋 记忆加载\n• 全量加载天数: 5 天\n• 部分加载天数: 5 天（每天 3 条）\n• 最大加载天数: 7 天\n• 事实上限: 30 条\n\n🔍 嵌入模型\n• 模型: BAAI/bge-small-zh-v1.5\n\n📝 日志\n• 级别: INFO\n• 保留天数: 7 天\n\n🧹 自动清理\n• 清理周期: 90 天\n• 备份保留: 30 天',
                     en: 'Current memory configuration:\n\n📋 Memory Loading\n• Full load days: 5\n• Partial load days: 5 (3 per day)\n• Max load days: 7\n• Facts limit: 30\n\n🔍 Embedding Model\n• Model: BAAI/bge-small-zh-v1.5\n\n📝 Logging\n• Level: INFO\n• Retain days: 7\n\n🧹 Auto Cleanup\n• Cleanup cycle: 90 days\n• Backup retain: 30 days'
+                }
+            },
+            {
+                title: { zh: '查看数据库内容', en: 'View Database Contents' },
+                userInput: { zh: '帮我看一下数据库里存了什么', en: 'Show me what\'s in the database' },
+                aiResponse: {
+                    zh: '📊 索引数据库统计\n\n• 数据库大小: 256 KB\n• 总 chunk 数: 42\n• 含向量索引: 42 条\n\n按类型分布:\n• fact: 35 条\n• core: 4 条\n• summary: 3 条\n\n按记忆类型:\n• W (客观事实): 25 条\n• B (项目经历): 6 条\n• O (用户偏好): 4 条\n\n已同步文件: 8 个\n\n需要查看具体内容或在浏览器中打开吗？',
+                    en: '📊 Index Database Statistics\n\n• Database size: 256 KB\n• Total chunks: 42\n• With vector index: 42\n\nBy type:\n• fact: 35\n• core: 4\n• summary: 3\n\nBy memory type:\n• W (World facts): 25\n• B (Biographical): 6\n• O (Opinions): 4\n\nSynced files: 8\n\nWant to see specific contents or open in browser?'
+                }
+            },
+            {
+                title: { zh: '浏览器打开数据库', en: 'Open Database in Browser' },
+                userInput: { zh: '在浏览器中打开数据库看看', en: 'Open the database in browser' },
+                aiResponse: {
+                    zh: '正在启动 datasette Web 界面...\n\n✅ 已在浏览器中打开 http://localhost:8685\n\n你可以在网页中：\n• 浏览所有表和数据\n• 执行自定义 SQL 查询\n• 按列排序和过滤\n• 导出数据为 CSV/JSON\n\n按 Ctrl+C 关闭服务。',
+                    en: 'Starting datasette web interface...\n\n✅ Opened in browser at http://localhost:8685\n\nYou can:\n• Browse all tables and data\n• Execute custom SQL queries\n• Sort and filter by columns\n• Export data as CSV/JSON\n\nPress Ctrl+C to stop the server.'
                 }
             },
             {

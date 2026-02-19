@@ -125,6 +125,11 @@ python3 ~/.cursor/skills/memory/scripts/service/manage/index.py list
 python3 ~/.cursor/skills/memory/scripts/service/manage/index.py delete --keyword "test"
 python3 ~/.cursor/skills/memory/scripts/service/manage/index.py config show
 python3 ~/.cursor/skills/memory/scripts/service/manage/index.py config set memory.facts_limit 30
+
+# View SQLite index database
+python3 ~/.cursor/skills/memory/scripts/service/manage/index.py db stats
+python3 ~/.cursor/skills/memory/scripts/service/manage/index.py db show chunks --limit 10
+python3 ~/.cursor/skills/memory/scripts/service/manage/index.py db browse  # Browser UI (requires datasette)
 ```
 
 ### Natural Language Configuration
@@ -158,6 +163,7 @@ Full configuration reference available in `memory-data/README.md` after installa
 - **View Memories**: view memories, search memories
 - **Manage Memories**: delete memory, edit memory, export memory
 - **Config Management**: view config, modify config, adjust load days
+- **Database Viewer**: open database, view index contents, database statistics
 
 ## Behavior Prediction Skill V2 Usage
 
