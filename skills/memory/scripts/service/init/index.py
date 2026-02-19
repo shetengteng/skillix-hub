@@ -107,7 +107,25 @@ def main():
             print("  (You can install manually later: pip install sentence-transformers)")
 
     print()
-    print("Memory Skill initialized!")
+    print("=" * 50)
+    print("  Memory Skill initialized!")
+    print("=" * 50)
+    print()
+    print("Installed components:")
+    print(f"  hooks.json   → sessionStart / preCompact / stop / sessionEnd")
+    print(f"  rules        → memory-rules.mdc")
+    print(f"  data dir     → {memory_data_rel}")
+    print()
+    print("What you can say to Cursor:")
+    print('  "记住这个：项目使用 PostgreSQL"')
+    print('  "搜索一下关于数据库的记忆"')
+    print('  "帮我看一下记忆统计"')
+    print('  "删除关于 MySQL 的记忆"')
+    print()
+    print("Auto behaviors (no action needed):")
+    print("  New session  → loads MEMORY.md + recent facts + last summary")
+    print("  Long chat    → saves key facts before context compression")
+    print("  Task done    → saves session summary automatically")
 
 
 if __name__ == "__main__":

@@ -135,15 +135,91 @@ python3 .cursor/skills/memory/scripts/service/memory/search_memory.py "模糊描
 python3 .cursor/skills/memory/scripts/service/memory/search_memory.py "查询" --method hybrid
 ```
 
-## 测试
+## 自然语言交互示例
 
-从源码目录运行全量测试：
+安装完成后，直接在 Cursor 中用自然语言与 Agent 对话即可。以下是完整的交互场景：
 
-```bash
-python3 tests/standalone-memory/run_tests.py
+### 自动行为（无需干预）
+
+| 场景 | 触发条件 | Agent 行为 |
+|------|----------|------------|
+| 新会话开始 | 打开 Cursor / 开始新对话 | 自动加载 MEMORY.md + 近期事实 + 上次摘要 |
+| 长对话压缩 | 上下文接近阈值时 | 静默提取关键事实并保存（用户不可见） |
+| 任务完成 | 对话正常结束 | 静默保存会话摘要和待办事项 |
+
+### 记忆保存
+
+```
+用户: 记住这个：我们的代码规范要求所有函数必须有 docstring
+Agent: 已记录到核心记忆中。以后我会确保所有函数都包含 docstring。
+
+用户: 我们决定使用 PostgreSQL 作为主数据库，不用 MySQL
+Agent: （Agent 在回复中继续正常对话的同时，静默执行 save_fact 保存这个技术决策）
 ```
 
-测试报告自动输出到 `tests/standalone-memory/reports/`。
+### 记忆检索
+
+```
+用户: 继续昨天的 API 重构工作
+Agent: 根据之前的记忆，昨天我们讨论了：
+       • 使用 FastAPI 替换 Flask
+       • RESTful 风格设计，路径前缀 /api/v2
+       • 待办：实现认证中间件
+       我们从认证中间件开始吧。
+
+用户: 搜索一下我们之前关于数据库的讨论
+Agent: 找到 3 条相关记忆：
+       1. [W] 项目使用 PostgreSQL 数据库（置信度 0.95）
+       2. [W] 数据库连接池配置为最大 20 个连接
+       3. [S] 会话摘要：讨论了数据库选型方案
+
+用户: 我们之前决定用什么做缓存？
+Agent: 根据记忆，你们决定使用 Redis 做缓存层，TTL 设为 300 秒。
+```
+
+### 记忆管理
+
+```
+用户: 帮我看一下记忆统计
+Agent: 📊 记忆统计
+       • 核心记忆: 856 字符
+       • 事实记录: 47 条（W:28 / B:11 / O:8）
+       • 会话摘要: 12 条
+       • 磁盘占用: 156 KB
+
+用户: 删除关于 MySQL 的记忆
+Agent: 找到 2 条包含 "MySQL" 的记忆，已删除。索引已更新。
+
+用户: 帮我看一下现在的配置
+Agent: 当前配置：
+       • 嵌入模型: BAAI/bge-small-zh-v1.5
+       • 最大加载事实数: 15
+       • 搜索方法: hybrid
+```
+
+### 跨会话场景
+
+```
+=== 会话 A ===
+用户: 我们决定用 Redis 做缓存层，TTL 300 秒
+Agent: 好的，使用 Redis 缓存，TTL 300 秒。
+用户: 好了今天就到这里
+Agent: 再见！（自动保存会话摘要）
+
+=== 会话 B（新开对话）===
+用户: 我们之前决定用什么做缓存？TTL 是多少？
+Agent: 根据之前的记忆，你们决定使用 Redis 做缓存层，TTL 设为 300 秒。
+```
+
+## 测试
+
+从项目根目录运行全量测试：
+
+```bash
+python3 tests/memory/run_tests.py
+```
+
+测试报告自动输出到 `tests/memory/reports/`。
 
 ## 开发流程
 
