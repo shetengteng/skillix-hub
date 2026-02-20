@@ -48,8 +48,14 @@ def load_context(project_path):
 
     daily_dir = os.path.join(memory_dir, DAILY_DIR_NAME)
     recent_facts = read_recent_facts_from_daily(daily_dir)
-    log.info("加载近期事实 %d 条（从 daily/ 目录）", len(recent_facts) if recent_facts else 0)
+    fact_count = len(recent_facts) if recent_facts else 0
+    log.info("加载近期事实 %d 条（从 daily/ 目录）", fact_count)
     if recent_facts:
+        for i, fact in enumerate(recent_facts):
+            fid = fact.get("id", "?")
+            ftype = fact.get("memory_type", "?")
+            fcontent = fact.get("content", "")[:80]
+            log.info("  [%d] id=%s type=%s: %s", i + 1, fid, ftype, fcontent)
         lines = []
         for fact in recent_facts:
             mtype = fact.get("memory_type", "?")
@@ -63,9 +69,13 @@ def load_context(project_path):
     if last_session:
         topic = last_session.get("topic", "未知")
         summary = last_session.get("summary", "无")
+        sid = last_session.get("id", "?")
+        log.info("加载上次会话 id=%s topic='%s'", sid, topic[:50])
         context_parts.append(
             f"## 上次会话\n\n- 主题：{topic}\n- 摘要：{summary}"
         )
+    else:
+        log.info("无上次会话摘要")
 
     return "\n\n".join(context_parts) if context_parts else ""
 

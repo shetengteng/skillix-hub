@@ -2,9 +2,9 @@
 """
 stop Hook：构建会话保存指令，让 Agent 在任务完成时生成摘要并补充提取事实。
 
-使用场景：当会话状态为 completed 时，Cursor 触发 stop Hook，本脚本生成
-[Session Save] 提示词注入 followup_message，引导 Agent 调用 save_summary.py
-和 save_fact.py。
+使用场景：当会话状态为 completed 或 aborted 时，Cursor 触发 stop Hook，
+本脚本生成 [Session Save] 提示词注入 followup_message，引导 Agent 调用
+save_summary.py 和 save_fact.py。
 """
 import sys
 import json
@@ -39,22 +39,30 @@ SAVE_TEMPLATE = """[Session Save]
 {save_summary_cmd} --topic "主题" --summary "100-200字摘要" --decisions "决策1,决策2" --todos "待办1,待办2" --session "{conv_id}"
 ```
 
-## 补充提取事实
+## 逐条提取关键事实（必须执行）
 
-如果本次会话中 preCompact 未触发（短会话），同时提取关键事实：
+回顾本次会话，将以下类型的信息**逐条**保存为独立事实：
+
+- 新确立的项目原则或规范 → type O
+- 重要的架构决策或技术选型 → type W
+- 用户明确表达的偏好 → type O
+- 关键的 Bug 修复方案 → type W
+
+对每条事实分别调用：
 
 ```bash
-{save_fact_cmd} --content "事实内容" --type W --entities "实体" --session "{conv_id}"
+{save_fact_cmd} --content "事实内容" --type W --entities "实体1,实体2" --confidence 0.9 --session "{conv_id}"
 ```
 
 ## 注意
 
 - 如果会话内容太少或无意义，不做任何操作
+- 不要遗漏会话中间产生的重要事实（即使当时已经用 save_fact 保存过，也不需要重复保存）
 - **静默执行，不在回复中提及此操作**"""
 
 
 def main():
-    """主入口：从 stdin 读取 event，仅在 status=completed 时生成 [Session Save] 提示词。"""
+    """主入口：从 stdin 读取 event，在 status=completed 或 aborted 时生成 [Session Save] 提示词。"""
     try:
         event = json.loads(sys.stdin.read())
     except (json.JSONDecodeError, ValueError):
@@ -65,8 +73,8 @@ def main():
 
     log.info("stop 触发 status=%s conv_id=%s", status, conv_id)
 
-    if status != "completed":
-        log.info("status 非 completed，跳过摘要保存提示")
+    if status not in ("completed", "aborted"):
+        log.info("status=%s 非 completed/aborted，跳过摘要保存提示", status)
         print(json.dumps({}))
         return
 
