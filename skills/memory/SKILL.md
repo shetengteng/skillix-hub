@@ -102,6 +102,22 @@ python3 {{SCRIPT_PATH}}/service/memory/save_summary.py \
 
 直接编辑 `{{MEMORY_DATA_PATH}}/MEMORY.md`，将信息添加到核心记忆中。
 
+### 用户要求禁用/启用记忆功能
+
+在 `<project>/.cursor/skills/` 下创建或删除 `.memory-disable` 文件即可控制。
+
+**禁用**：
+```bash
+mkdir -p .cursor/skills && touch .cursor/skills/.memory-disable
+```
+
+**启用**：
+```bash
+rm .cursor/skills/.memory-disable
+```
+
+禁用后所有 Hook 静默跳过，已有数据保留不删除，重新启用后恢复。
+
 ### 用户要求修改配置
 
 当用户用自然语言描述配置变更时（如"多加载几天的记忆"、"把日志级别调成 DEBUG"），执行对应的 `config set` 命令。

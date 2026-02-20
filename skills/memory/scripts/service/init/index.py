@@ -120,16 +120,26 @@ def main():
     print(f"  rules        → memory-rules.mdc")
     print(f"  data dir     → {memory_data_rel}")
     print()
+    if args.global_mode:
+        print("Data directory:")
+        print("  Memory data is always stored per-project at:")
+        print("    <project>/.cursor/skills/memory-data/")
+        print("  It will be auto-created on first session in each project.")
+        print()
     print("What you can say to Cursor:")
     print('  "记住这个：项目使用 PostgreSQL"')
     print('  "搜索一下关于数据库的记忆"')
     print('  "帮我看一下记忆统计"')
     print('  "删除关于 MySQL 的记忆"')
+    print('  "这个项目不需要记忆功能"  → disable memory for this project')
     print()
     print("Auto behaviors (no action needed):")
     print("  New session  → loads MEMORY.md + recent facts + last summary")
     print("  Long chat    → saves key facts before context compression")
     print("  Task done    → saves session summary automatically")
+    print()
+    print("Project-level install (alternative to --global):")
+    print("  python3 init.py --project-path /path/to/project")
 
 
 if __name__ == "__main__":
