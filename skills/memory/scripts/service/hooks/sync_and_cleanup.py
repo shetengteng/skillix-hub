@@ -17,7 +17,7 @@ import subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
 from service.config import get_project_path, _DEFAULTS
-from service.config import get_memory_dir
+from service.config import get_memory_dir, is_memory_enabled
 from core.utils import iso_now, today_str, ts_id
 from service.logger import get_logger
 
@@ -104,6 +104,12 @@ def main():
         pass
 
     project_path = get_project_path(event)
+
+    if not is_memory_enabled(project_path):
+        log.info("Memory 已禁用（.memory-disable），跳过")
+        print(json.dumps({}))
+        return
+
     memory_dir = get_memory_dir(project_path)
 
     log.info("sessionEnd 触发 reason=%s", event.get("reason", "unknown"))

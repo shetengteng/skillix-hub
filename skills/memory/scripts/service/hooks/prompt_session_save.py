@@ -13,7 +13,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
 from service.config import get_project_path
-from service.config import get_memory_dir
+from service.config import get_memory_dir, is_memory_enabled
 from core.utils import iso_now, ts_id, today_str
 from service.logger import get_logger
 
@@ -72,6 +72,12 @@ def main():
         return
 
     project_path = get_project_path(event)
+
+    if not is_memory_enabled(project_path):
+        log.info("Memory 已禁用（.memory-disable），跳过")
+        print(json.dumps({}))
+        return
+
     os.makedirs(get_memory_dir(project_path), exist_ok=True)
 
     prompt = SAVE_TEMPLATE.format(

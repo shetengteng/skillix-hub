@@ -14,16 +14,28 @@ import argparse
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
 from service.config import get_project_path, MEMORY_MD, SESSIONS_FILE, DAILY_DIR_NAME
-from service.config import get_memory_dir
+from service.config import get_memory_dir, is_memory_enabled
 from storage.jsonl import read_recent_facts_from_daily, read_last_entry
 from service.logger import get_logger
 
 log = get_logger("load")
 
 
+def _ensure_memory_md(memory_dir):
+    """首次使用时自动创建 MEMORY.md，避免新项目需要手动 init。"""
+    memory_md_path = os.path.join(memory_dir, MEMORY_MD)
+    if os.path.exists(memory_md_path):
+        return
+    os.makedirs(memory_dir, exist_ok=True)
+    with open(memory_md_path, "w", encoding="utf-8") as f:
+        f.write("# 核心记忆\n\n## 用户偏好\n\n## 项目背景\n\n## 重要决策\n")
+    log.info("自动创建 MEMORY.md: %s", memory_md_path)
+
+
 def load_context(project_path):
     """加载所有记忆数据，返回格式化的上下文文本"""
     memory_dir = get_memory_dir(project_path)
+    _ensure_memory_md(memory_dir)
     context_parts = []
 
     memory_md_path = os.path.join(memory_dir, MEMORY_MD)
@@ -94,6 +106,12 @@ def main():
             pass
 
     project_path = event.get("workspace_roots", [None])[0] or args.project_path
+
+    if not is_memory_enabled(project_path):
+        log.info("Memory 已禁用（.memory-disable），跳过")
+        print(json.dumps({"additional_context": ""}) if event else "")
+        return
+
     memory_dir = get_memory_dir(project_path)
 
     context = load_context(project_path)

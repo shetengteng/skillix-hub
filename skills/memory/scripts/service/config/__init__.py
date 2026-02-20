@@ -23,3 +23,12 @@ def get_memory_dir(project_path):
 def get_daily_dir(project_path):
     """每日事实日志目录绝对路径。"""
     return os.path.join(get_memory_dir(project_path), DAILY_DIR_NAME)
+
+
+DISABLE_FILE = ".memory-disable"
+
+
+def is_memory_enabled(project_path):
+    """检查项目是否启用 Memory 功能（.cursor/skills/.memory-disable 不存在即启用）。"""
+    disable_file = os.path.join(project_path, ".cursor", "skills", DISABLE_FILE)
+    return not os.path.exists(disable_file)

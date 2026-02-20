@@ -164,6 +164,35 @@ python3 ~/.cursor/skills/memory/scripts/service/manage/index.py db browse  # 浏
 | Opinion | O | 偏好/判断 | "用户偏好 TypeScript（confidence: 0.9）" |
 | Summary | S | 会话摘要 | "讨论了 API 设计方案" |
 
+### 全局安装后的数据目录
+
+全局安装（`--global`）时，Skill 代码安装到 `~/.cursor/skills/memory/`，但**记忆数据始终在项目本地**：
+
+```
+~/.cursor/skills/memory/          ← Skill 代码（全局共享，只读）
+<项目>/.cursor/skills/memory-data/ ← 记忆数据（每个项目独立）
+```
+
+新项目首次打开时，Hook 会自动创建数据目录和 `MEMORY.md`，无需手动运行 init。
+
+### 禁用 Memory 功能
+
+全局安装后，如果某个项目不需要记忆功能，创建标记文件即可禁用：
+
+```bash
+# 禁用当前项目的 Memory 功能
+mkdir -p .cursor/skills && touch .cursor/skills/.memory-disable
+
+# 重新启用
+rm .cursor/skills/.memory-disable
+```
+
+或直接用自然语言告诉 AI：
+```
+用户: 这个项目不需要记忆功能
+用户: 重新开启记忆
+```
+
 ### 触发词
 
 - **检索触发**：继续、上次、之前、昨天、我们讨论过
@@ -172,6 +201,7 @@ python3 ~/.cursor/skills/memory/scripts/service/manage/index.py db browse  # 浏
 - **管理记忆**：删除记忆、编辑记忆、导出记忆
 - **配置管理**：查看配置、修改配置、调整加载天数
 - **数据库查看**：打开数据库、查看索引内容、数据库统计
+- **禁用/启用**：关闭记忆功能、重新开启记忆
 
 ## Behavior Prediction Skill V2 使用说明
 

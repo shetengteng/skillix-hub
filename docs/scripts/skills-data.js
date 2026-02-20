@@ -26,7 +26,9 @@ const SKILLS_DATA = [
             { zh: '记忆管理', en: 'Memory Management' },
             { zh: '自然语言配置', en: 'Natural Language Config' },
             { zh: '数据库可视化', en: 'Database Viewer' },
-            { zh: '一键初始化', en: 'One-click Init' }
+            { zh: '一键初始化', en: 'One-click Init' },
+            { zh: '项目级禁用开关', en: 'Per-project Disable Switch' },
+            { zh: '新项目自动初始化', en: 'Auto Init for New Projects' }
         ],
         scripts: ['service/memory/save_fact.py', 'service/memory/search_memory.py', 'service/manage/index.py', 'service/manage/commands/cmd_db.py', 'service/hooks/load_memory.py', 'service/init/index.py'],
         version: '2.0',
@@ -135,6 +137,14 @@ const SKILLS_DATA = [
                 aiResponse: { 
                     zh: '好的，再见！\n\n（stop Hook 触发，Agent 静默保存会话摘要）\n\nsave_summary:\n  topic: \"认证中间件实现\"\n  summary: \"实现了基于 JWT 的认证中间件，配置了 CORS...\"\n  decisions: \"JWT认证,CORS允许前端域名\"\n  todos: \"添加刷新token逻辑,编写认证测试\"', 
                     en: 'OK, goodbye!\n\n(stop Hook triggered, Agent silently saves session summary)\n\nsave_summary:\n  topic: "Auth middleware implementation"\n  summary: "Implemented JWT-based auth middleware, configured CORS..."\n  decisions: "JWT auth, CORS allow frontend domain"\n  todos: "Add refresh token logic, write auth tests"' 
+                }
+            },
+            {
+                title: { zh: '禁用/启用记忆功能', en: 'Disable/Enable Memory' },
+                userInput: { zh: '这个项目不需要记忆功能', en: 'This project doesn\'t need memory' },
+                aiResponse: {
+                    zh: '已禁用当前项目的 Memory 功能。\n\n执行：mkdir -p .cursor/skills && touch .cursor/skills/.memory-disable\n\n✅ Memory 已禁用\n\n禁用后：\n• 不会加载/保存记忆\n• 不会生成 [Memory Flush] 和 [Session Save] 提示\n• 已有数据保留，重新启用后恢复\n\n如需重新启用，说「重新开启记忆」即可。',
+                    en: 'Memory disabled for current project.\n\nExecuted: mkdir -p .cursor/skills && touch .cursor/skills/.memory-disable\n\n✅ Memory disabled\n\nWhen disabled:\n• No memory loading/saving\n• No [Memory Flush] or [Session Save] prompts\n• Existing data preserved, restored when re-enabled\n\nTo re-enable, say "re-enable memory".'
                 }
             }
         ]
