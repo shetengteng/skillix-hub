@@ -460,9 +460,7 @@ const SKILLS_DATA = [
                 }
             }
         ]
-    }
-];
-
+    },
     {
         id: 'playwright',
         name: 'playwright',
