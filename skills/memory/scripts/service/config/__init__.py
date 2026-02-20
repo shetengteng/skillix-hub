@@ -1,8 +1,7 @@
 """配置服务：提供 Config 类、默认值、常量和配置访问函数。"""
 import os
 from .defaults import (
-    _DEFAULTS, _SCHEMA, _ENV_MAP, REBUILD_FIELDS, _GLOBAL_CONFIG_PATH,
-    _deep_merge, _get_dotpath, _set_dotpath, _load_json_file, _save_json_file,
+    _DEFAULTS, _get_dotpath,
     DAILY_DIR_NAME, MEMORY_MD, SESSIONS_FILE, INDEX_DB, FACTS_FILE,
     get_project_path,
 )

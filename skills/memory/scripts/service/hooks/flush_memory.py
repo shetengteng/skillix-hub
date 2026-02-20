@@ -13,7 +13,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../
 
 from service.config import get_project_path
 from service.config import get_memory_dir, is_memory_enabled
-from core.utils import iso_now, today_str, ts_id
 from service.logger import get_logger
 
 log = get_logger("flush_memory")

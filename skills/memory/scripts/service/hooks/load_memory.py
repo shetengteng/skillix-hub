@@ -13,7 +13,7 @@ import argparse
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
-from service.config import get_project_path, MEMORY_MD, SESSIONS_FILE, DAILY_DIR_NAME
+from service.config import MEMORY_MD, SESSIONS_FILE, DAILY_DIR_NAME
 from service.config import get_memory_dir, is_memory_enabled
 from storage.jsonl import read_recent_facts_from_daily, read_last_entry
 from service.logger import get_logger
