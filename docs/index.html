@@ -125,25 +125,26 @@
             </div>
             <div class="grid-skills">
                 <!-- Dynamic Skill Cards -->
-                <div v-for="skill in skills" :key="skill.id" class="card card-hover" @click="showSkillDetail(skill)">
-                    <div class="icon-container">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getIconPath(skill.icon)"/>
-                        </svg>
+                <div v-for="skill in skills" :key="skill.id" class="card card-hover card-skill" @click="showSkillDetail(skill)">
+                    <div class="card-skill-body">
+                        <div class="icon-container">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getIconPath(skill.icon)"/>
+                            </svg>
+                        </div>
+                        <h3 class="font-bold">{{ skill.name }}</h3>
+                        <p class="text-sm text-muted mt-2">
+                            <span class="lang-zh">{{ skill.description.zh }}</span>
+                            <span class="lang-en">{{ skill.description.en }}</span>
+                        </p>
+                        <div class="flex flex-wrap gap-1 mt-4">
+                            <span v-for="tag in skill.tags" :key="tag.en" class="badge">
+                                <span class="lang-zh">{{ tag.zh }}</span>
+                                <span class="lang-en">{{ tag.en }}</span>
+                            </span>
+                        </div>
                     </div>
-                    <h3 class="font-bold">{{ skill.name }}</h3>
-                    <p class="text-sm text-muted mt-2">
-                        <span class="lang-zh">{{ skill.description.zh }}</span>
-                        <span class="lang-en">{{ skill.description.en }}</span>
-                    </p>
-                    <div class="flex flex-wrap gap-1 mt-4">
-                        <span v-for="tag in skill.tags" :key="tag.en" class="badge">
-                            <span class="lang-zh">{{ tag.zh }}</span>
-                            <span class="lang-en">{{ tag.en }}</span>
-                        </span>
-                    </div>
-                    <!-- Features Preview -->
-                    <div class="mt-3 pt-3 border-t border-border">
+                    <div class="card-skill-footer">
                         <div class="text-xs text-muted">
                             <span class="lang-zh">功能：</span>
                             <span class="lang-en">Features: </span>
