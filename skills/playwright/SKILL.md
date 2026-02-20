@@ -5,7 +5,54 @@ description: 通过 Playwright 实现浏览器自动化。导航页面、点击�
 
 # Playwright 浏览器自动化
 
-通过 48 个工具控制真实浏览器（Chrome/Chromium）。每个工具通过 CLI 调用。
+通过 48 个工具控制真实浏览器（Chrome/Chromium）。支持两种调用方式：CLI 命令和 MCP Tools。
+
+## MCP Tools 映射（Playwright MCP Server）
+
+当环境中启用了 `@playwright/mcp` 服务时，以下 22 个 MCP tools 与 Skill CLI 命令的映射关系。**优先使用 Skill CLI 命令**，MCP tools 作为补充。
+
+| 功能 | 对应 CLI 命令 |
+|------|--------------|
+| `browser_navigate` → 导航到 URL | `navigate` |
+| `browser_navigate_back` → 返回上一页 | `goBack` |
+| `browser_snapshot` → 获取页面无障碍树 | `snapshot` |
+| `browser_click` → 点击元素 | `click` |
+| `browser_drag` → 拖拽元素 | `drag` |
+| `browser_hover` → 悬停元素 | `hover` |
+| `browser_type` → 输入文本 | `type` |
+| `browser_select_option` → 选择下拉选项 | `selectOption` |
+| `browser_fill_form` → 批量填写表单 | `fillForm` |
+| `browser_press_key` → 按下键盘按键 | `pressKey` |
+| `browser_take_screenshot` → 截图 | `screenshot` |
+| `browser_evaluate` → 执行 JavaScript | `evaluate` |
+| `browser_run_code` → 执行 Playwright 代码 | `runCode` |
+| `browser_wait_for` → 等待文本/时间 | `waitFor` |
+| `browser_tabs` → 管理标签页 | `tabs` |
+| `browser_console_messages` → 控制台输出 | `consoleMessages` |
+| `browser_network_requests` → 网络请求 | `networkRequests` |
+| `browser_handle_dialog` → 处理对话框 | `handleDialog` |
+| `browser_file_upload` → 上传文件 | `fileUpload` |
+| `browser_close` → 关闭浏览器 | `close` |
+| `browser_resize` → 调整窗口大小 | `resize` |
+| `browser_install` → 安装浏览器 | `install` |
+
+### 仅 CLI 可用的扩展工具
+
+以下 26 个工具无对应 MCP tool，通过 CLI 调用（`node skills/playwright/tool.js <命令>`）：
+
+| 类别 | CLI 命令 |
+|------|----------|
+| 导航扩展 | `goForward`, `reload` |
+| 复选框 | `check`, `uncheck` |
+| 键盘扩展 | `pressSequentially`, `keydown`, `keyup` |
+| 鼠标坐标 | `mouseMove`, `mouseClick`, `mouseDrag`, `mouseDown`, `mouseUp`, `mouseWheel` |
+| Cookie | `cookieList`, `cookieGet`, `cookieSet`, `cookieDelete`, `cookieClear` |
+| 存储状态 | `storageState`, `setStorageState` |
+| Web 存储 | `localStorageList/Get/Set/Delete/Clear`, `sessionStorageList/Get/Set/Delete/Clear` |
+| 网络拦截 | `route`, `routeList`, `unroute` |
+| 控制台扩展 | `consoleClear`, `networkClear` |
+| 测试验证 | `verifyElement`, `verifyText`, `verifyList`, `verifyValue`, `generateLocator` |
+| 高级功能 | `pdf`, `tracingStart`, `tracingStop`, `startVideo`, `stopVideo`, `devtoolsStart`, `getConfig` |
 
 ## 安装
 

@@ -476,13 +476,13 @@ const SKILLS_DATA = [
             { zh: '测试', en: 'Testing' }
         ],
         features: [
-            { zh: '48 个浏览器工具', en: '48 Browser Tools' },
+            { zh: '22 个 MCP Tools 直接调用', en: '22 MCP Tools Direct Call' },
+            { zh: '48 个 CLI 浏览器工具', en: '48 CLI Browser Tools' },
             { zh: '无障碍快照 + ref 系统', en: 'Accessibility Snapshot + Ref System' },
             { zh: '浏览器跨调用持久化', en: 'Browser Persistence Across Calls' },
             { zh: '网络请求拦截', en: 'Network Request Interception' },
             { zh: 'Cookie/Storage 管理', en: 'Cookie/Storage Management' },
             { zh: '截图与 PDF 导出', en: 'Screenshot & PDF Export' },
-            { zh: '代码生成', en: 'Code Generation' },
             { zh: '元素验证', en: 'Element Verification' }
         ],
         scripts: ['tool.js'],
@@ -496,6 +496,14 @@ const SKILLS_DATA = [
                 aiResponse: {
                     zh: '正在安装 Playwright Skill...\n\n1. 克隆仓库\n2. 复制 skills/playwright 到项目\n3. 运行 npm install && npx playwright install chromium\n\n✅ Playwright Skill 安装成功！\n\n包含 48 个浏览器自动化工具，通过 CLI 调用：\nnode skills/playwright/tool.js <命令> \'<JSON参数>\'',
                     en: 'Installing Playwright Skill...\n\n1. Clone repository\n2. Copy skills/playwright to project\n3. Run npm install && npx playwright install chromium\n\n✅ Playwright Skill installed!\n\nIncludes 48 browser automation tools via CLI:\nnode skills/playwright/tool.js <command> \'<json_params>\''
+                }
+            },
+            {
+                title: { zh: '更新 Playwright Skill', en: 'Update Playwright Skill' },
+                userInput: { zh: '帮我从 https://github.com/shetengteng/skillix-hub 更新 playwright skill', en: 'Please update playwright skill from https://github.com/shetengteng/skillix-hub' },
+                aiResponse: {
+                    zh: '正在更新 Playwright Skill...\n\n1. 拉取最新代码\n2. 更新 skill 文件（SKILL.md、tool.js 等）\n3. 运行 npm install 更新依赖\n\n✅ Playwright Skill 已更新到最新版本！\n\n支持 22 个 MCP Tools 直接调用 + 48 个 CLI 工具。',
+                    en: 'Updating Playwright Skill...\n\n1. Pull latest code\n2. Update skill files (SKILL.md, tool.js, etc.)\n3. Run npm install to update dependencies\n\n✅ Playwright Skill updated to latest version!\n\nSupports 22 MCP Tools direct call + 48 CLI tools.'
                 }
             },
             {

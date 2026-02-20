@@ -338,13 +338,72 @@ python3 ~/.cursor/skills/continuous-learning/scripts/setup_rule.py '{"action": "
 
 ## Playwright Skill 使用说明
 
-Playwright Skill 提供 48 个浏览器自动化工具，通过 CLI 命令控制真实浏览器（Chrome/Chromium），复刻自 Playwright MCP 的完整功能。
+Playwright Skill 提供 48 个浏览器自动化工具，通过 CLI 命令控制真实浏览器（Chrome/Chromium），复刻自 Playwright MCP 的完整功能。支持两种调用方式：MCP Tools 直接调用和 CLI 命令调用。
 
 ### 安装
 
 ```bash
 cd skills/playwright && npm install && npx playwright install chromium
 ```
+
+### 更新
+
+```
+帮我从 https://github.com/shetengteng/skillix-hub 更新 playwright skill
+```
+
+手动更新：
+```bash
+git clone https://github.com/shetengteng/skillix-hub.git /tmp/skillix-hub
+cp -r /tmp/skillix-hub/skills/playwright/* <目标路径>/skills/playwright/
+cd <目标路径>/skills/playwright && npm install
+```
+
+### MCP Tools 映射（22 个）
+
+当环境中启用了 `@playwright/mcp` 服务时，以下 MCP tools 与 Skill CLI 命令对应。**优先使用 Skill CLI 命令**：
+
+| MCP Tool → 功能 | CLI 命令 |
+|-----------------|----------|
+| `browser_navigate` → 导航 | `navigate` |
+| `browser_navigate_back` → 返回 | `goBack` |
+| `browser_snapshot` → 快照 | `snapshot` |
+| `browser_click` → 点击 | `click` |
+| `browser_drag` → 拖拽 | `drag` |
+| `browser_hover` → 悬停 | `hover` |
+| `browser_type` → 输入 | `type` |
+| `browser_select_option` → 选择 | `selectOption` |
+| `browser_fill_form` → 填表 | `fillForm` |
+| `browser_press_key` → 按键 | `pressKey` |
+| `browser_take_screenshot` → 截图 | `screenshot` |
+| `browser_evaluate` → 执行 JS | `evaluate` |
+| `browser_run_code` → 执行代码 | `runCode` |
+| `browser_wait_for` → 等待 | `waitFor` |
+| `browser_tabs` → 标签页 | `tabs` |
+| `browser_console_messages` → 控制台 | `consoleMessages` |
+| `browser_network_requests` → 网络 | `networkRequests` |
+| `browser_handle_dialog` → 对话框 | `handleDialog` |
+| `browser_file_upload` → 上传 | `fileUpload` |
+| `browser_close` → 关闭 | `close` |
+| `browser_resize` → 窗口大小 | `resize` |
+| `browser_install` → 安装 | `install` |
+
+### CLI 工具（48 个）
+
+所有命令格式：`node skills/playwright/tool.js <命令> '<JSON参数>'`
+
+| 分类 | 工具 |
+|------|------|
+| 导航 | navigate, goBack, goForward, reload |
+| 交互 | snapshot, click, drag, hover, selectOption, check, uncheck, type, pressKey, fillForm |
+| 鼠标 | mouseMove, mouseClick, mouseDrag, mouseDown, mouseUp, mouseWheel |
+| 观察 | screenshot, consoleMessages, networkRequests, waitFor |
+| 标签页 | tabs (list/new/close/select) |
+| 数据 | cookieList/Get/Set/Delete/Clear, localStorage/sessionStorage 操作, storageState |
+| 网络 | route, routeList, unroute |
+| 高级 | evaluate, runCode, pdf, tracingStart/Stop, startVideo/stopVideo |
+| 测试 | verifyElement, verifyText, verifyList, verifyValue, generateLocator |
+| 系统 | install, getConfig, close, resize |
 
 ### 核心工作流
 
@@ -364,31 +423,6 @@ node skills/playwright/tool.js type '{"ref":"e10","text":"hello@example.com"}'
 # 5. 截图
 node skills/playwright/tool.js screenshot '{"type":"png"}'
 ```
-
-### 浏览器管理
-
-```bash
-node skills/playwright/tool.js start    # 启动浏览器
-node skills/playwright/tool.js stop     # 关闭浏览器
-node skills/playwright/tool.js status   # 检查状态
-```
-
-浏览器在多次调用之间保持运行，首次调用自动启动。
-
-### 工具分类
-
-| 分类 | 工具 |
-|------|------|
-| 导航 | navigate, goBack, goForward, reload |
-| 交互 | snapshot, click, drag, hover, selectOption, check, uncheck, type, pressKey, fillForm |
-| 鼠标 | mouseMove, mouseClick, mouseDrag, mouseDown, mouseUp, mouseWheel |
-| 观察 | screenshot, consoleMessages, networkRequests, waitFor |
-| 标签页 | tabs (list/new/close/select) |
-| 数据 | cookieList/Get/Set/Delete/Clear, localStorage/sessionStorage 操作, storageState |
-| 网络 | route, routeList, unroute |
-| 高级 | evaluate, runCode, pdf, tracingStart/Stop, startVideo/stopVideo |
-| 测试 | verifyElement, verifyText, verifyList, verifyValue, generateLocator |
-| 系统 | install, getConfig, close, resize |
 
 ### 触发词
 
