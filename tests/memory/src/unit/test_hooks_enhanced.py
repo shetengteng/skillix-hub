@@ -533,5 +533,252 @@ class TestThoughtSignalEdgeCases(unittest.TestCase):
         self.assertTrue(len(types) >= 2)
 
 
+class TestStopHookRedirectOrder(IsolatedWorkspaceCase):
+    """验证 stop Hook 中 redirect_to_project 在 log.info 之前执行"""
+
+    def test_stop_hook_does_not_write_to_wrong_dir(self):
+        event = {
+            "status": "completed",
+            "conversation_id": "conv-redirect-order",
+            "workspace_roots": [self.workspace],
+        }
+        result = run_script(
+            "service/hooks/prompt_session_save.py",
+            self.workspace,
+            stdin_data=json.dumps(event),
+        )
+        self.assertEqual(result.returncode, 0)
+        output = json.loads(result.stdout)
+        self.assertIn("followup_message", output)
+
+        log_dir = Path(self.workspace) / ".cursor" / "skills" / "memory-data" / "logs"
+        if log_dir.exists():
+            log_files = list(log_dir.glob("*.log"))
+            for lf in log_files:
+                content = lf.read_text(encoding="utf-8")
+                self.assertIn("stop 触发", content)
+
+
+class TestToolUseStringInput(IsolatedWorkspaceCase):
+    """验证 postToolUse 处理 tool_input 为字符串的 fallback"""
+
+    def test_string_tool_input_parsed_as_command(self):
+        event = {
+            "tool_name": "Shell",
+            "tool_input": "git commit -m 'test string input'",
+            "tool_output": "[main def5678] test string input\n 1 file changed",
+            "workspace_roots": [self.workspace],
+        }
+        result = run_script(
+            "service/hooks/audit_tool_use.py",
+            self.workspace,
+            stdin_data=json.dumps(event),
+        )
+        self.assertEqual(result.returncode, 0)
+
+        daily_file = self.memory_dir / "daily" / f"{today_str()}.jsonl"
+        if daily_file.exists():
+            entries = [json.loads(l) for l in daily_file.read_text(encoding="utf-8").strip().split("\n") if l]
+            audits = [e for e in entries if e.get("type") == "audit" and e.get("action") == "git_commit"]
+            self.assertTrue(len(audits) > 0)
+
+    def test_json_string_tool_input(self):
+        event = {
+            "tool_name": "Shell",
+            "tool_input": json.dumps({"command": "git push origin main"}),
+            "tool_output": "abc1234..def5678 main -> main",
+            "workspace_roots": [self.workspace],
+        }
+        result = run_script(
+            "service/hooks/audit_tool_use.py",
+            self.workspace,
+            stdin_data=json.dumps(event),
+        )
+        self.assertEqual(result.returncode, 0)
+
+
+class TestToolUseSkipsSelfCommands(IsolatedWorkspaceCase):
+    """验证 postToolUse 跳过 memory 自身脚本的调用"""
+
+    def test_skips_save_fact_no_audit(self):
+        event = {
+            "tool_name": "Shell",
+            "tool_input": {"command": "python3 /path/to/save_fact.py --content 'test'"},
+            "tool_output": "ok",
+            "workspace_roots": [self.workspace],
+        }
+        result = run_script(
+            "service/hooks/audit_tool_use.py",
+            self.workspace,
+            stdin_data=json.dumps(event),
+        )
+        self.assertEqual(result.returncode, 0)
+        output = json.loads(result.stdout)
+        self.assertEqual(output, {})
+
+    def test_skips_distill_no_audit(self):
+        event = {
+            "tool_name": "Shell",
+            "tool_input": {"command": "python3 distill_to_memory.py"},
+            "tool_output": "ok",
+            "workspace_roots": [self.workspace],
+        }
+        result = run_script(
+            "service/hooks/audit_tool_use.py",
+            self.workspace,
+            stdin_data=json.dumps(event),
+        )
+        self.assertEqual(result.returncode, 0)
+        output = json.loads(result.stdout)
+        self.assertEqual(output, {})
+
+
+class TestLoadMemoryHookDisabled(IsolatedWorkspaceCase):
+    """验证 load_memory Hook 在 memory 禁用时的行为"""
+
+    def test_disabled_returns_empty_context(self):
+        disable_dir = Path(self.workspace) / ".cursor" / "skills"
+        disable_dir.mkdir(parents=True, exist_ok=True)
+        (disable_dir / ".memory-disable").touch()
+
+        event = {
+            "workspace_roots": [self.workspace],
+            "conversation_id": "conv-disabled-load",
+        }
+        result = run_script(
+            "service/hooks/load_memory.py",
+            self.workspace,
+            stdin_data=json.dumps(event),
+        )
+        self.assertEqual(result.returncode, 0)
+        output = json.loads(result.stdout)
+        self.assertEqual(output.get("additional_context"), "")
+
+
+class TestLoadMemoryHookNoStdin(IsolatedWorkspaceCase):
+    """验证 load_memory 在无 stdin（命令行调用）时的行为"""
+
+    def test_cli_mode_outputs_plain_text(self):
+        result = run_script(
+            "service/hooks/load_memory.py",
+            self.workspace,
+            args=["--project-path", self.workspace],
+        )
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("核心记忆", result.stdout)
+        try:
+            json.loads(result.stdout)
+            self.fail("CLI mode should output plain text, not JSON")
+        except json.JSONDecodeError:
+            pass
+
+
+class TestAuditResponseHookDisabled(IsolatedWorkspaceCase):
+    """验证 audit_response 在 memory 禁用时的行为"""
+
+    def test_disabled_returns_empty(self):
+        disable_dir = Path(self.workspace) / ".cursor" / "skills"
+        disable_dir.mkdir(parents=True, exist_ok=True)
+        (disable_dir / ".memory-disable").touch()
+
+        event = {
+            "text": "我记下来了这个重要信息。",
+            "workspace_roots": [self.workspace],
+        }
+        result = run_script(
+            "service/hooks/audit_response.py",
+            self.workspace,
+            stdin_data=json.dumps(event),
+        )
+        self.assertEqual(result.returncode, 0)
+        output = json.loads(result.stdout)
+        self.assertEqual(output, {})
+
+        daily_file = self.memory_dir / "daily" / f"{today_str()}.jsonl"
+        if daily_file.exists():
+            entries = [json.loads(l) for l in daily_file.read_text(encoding="utf-8").strip().split("\n") if l]
+            audits = [e for e in entries if e.get("type") == "audit"]
+            self.assertEqual(len(audits), 0)
+
+
+class TestAuditThoughtHookDisabled(IsolatedWorkspaceCase):
+    """验证 audit_thought 在 memory 禁用时的行为"""
+
+    def test_disabled_returns_empty(self):
+        disable_dir = Path(self.workspace) / ".cursor" / "skills"
+        disable_dir.mkdir(parents=True, exist_ok=True)
+        (disable_dir / ".memory-disable").touch()
+
+        event = {
+            "text": "需要记住这个架构决策，用户偏好使用 Python 来实现。",
+            "workspace_roots": [self.workspace],
+        }
+        result = run_script(
+            "service/hooks/audit_thought.py",
+            self.workspace,
+            stdin_data=json.dumps(event),
+        )
+        self.assertEqual(result.returncode, 0)
+        output = json.loads(result.stdout)
+        self.assertEqual(output, {})
+
+
+class TestSessionEndHookDisabled(IsolatedWorkspaceCase):
+    """验证 sync_and_cleanup 在 memory 禁用时的行为"""
+
+    def test_disabled_returns_empty(self):
+        disable_dir = Path(self.workspace) / ".cursor" / "skills"
+        disable_dir.mkdir(parents=True, exist_ok=True)
+        (disable_dir / ".memory-disable").touch()
+
+        event = {
+            "conversation_id": "conv-disabled-end",
+            "reason": "completed",
+            "workspace_roots": [self.workspace],
+        }
+        result = run_script(
+            "service/hooks/sync_and_cleanup.py",
+            self.workspace,
+            stdin_data=json.dumps(event),
+        )
+        self.assertEqual(result.returncode, 0)
+        output = json.loads(result.stdout)
+        self.assertEqual(output, {})
+
+
+class TestHooksInvalidStdin(IsolatedWorkspaceCase):
+    """验证所有 Hook 在 stdin 为无效 JSON 时不崩溃"""
+
+    def test_audit_response_handles_invalid_json(self):
+        result = run_script(
+            "service/hooks/audit_response.py",
+            self.workspace,
+            stdin_data="not valid json {{{",
+        )
+        self.assertEqual(result.returncode, 0)
+        output = json.loads(result.stdout)
+        self.assertEqual(output, {})
+
+    def test_audit_thought_handles_invalid_json(self):
+        result = run_script(
+            "service/hooks/audit_thought.py",
+            self.workspace,
+            stdin_data="not valid json",
+        )
+        self.assertEqual(result.returncode, 0)
+        output = json.loads(result.stdout)
+        self.assertEqual(output, {})
+
+    def test_audit_tool_use_handles_invalid_json(self):
+        result = run_script(
+            "service/hooks/audit_tool_use.py",
+            self.workspace,
+            stdin_data="broken",
+        )
+        self.assertEqual(result.returncode, 0)
+        output = json.loads(result.stdout)
+        self.assertEqual(output, {})
+
+
 if __name__ == "__main__":
     unittest.main()
