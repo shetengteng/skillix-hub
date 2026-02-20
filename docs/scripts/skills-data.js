@@ -39,8 +39,8 @@ const SKILLS_DATA = [
                 title: { zh: '安装 Memory Skill', en: 'Install Memory Skill' },
                 userInput: { zh: '帮我从 https://github.com/shetengteng/skillix-hub 安装 memory skill', en: 'Please install memory skill from https://github.com/shetengteng/skillix-hub' },
                 aiResponse: { 
-                    zh: '正在安装 Memory Skill...\n\n1. 克隆仓库\n2. 复制 skills/memory 到 ~/.cursor/skills/\n3. 运行初始化脚本\n\n✅ Memory Skill 安装成功！\n\n已配置：\n• sessionStart Hook → 自动加载记忆\n• preCompact Hook → 上下文压缩前保存事实\n• stop Hook → 会话结束保存摘要\n• memory-rules.mdc → 引导 Agent 执行记忆操作', 
-                    en: 'Installing Memory Skill...\n\n1. Clone repository\n2. Copy skills/memory to ~/.cursor/skills/\n3. Run init script\n\n✅ Memory Skill installed!\n\nConfigured:\n• sessionStart Hook → auto-load memory\n• preCompact Hook → save facts before context compression\n• stop Hook → save summary on session end\n• memory-rules.mdc → guide Agent memory operations' 
+                    zh: '正在安装 Memory Skill...\n\n1. 克隆仓库\n2. 复制 skills/memory 到 ~/.cursor/skills/\n3. 运行初始化脚本\n\n✅ Memory Skill 安装成功！\n\n已配置：\n• sessionStart Hook → 自动加载记忆\n• preCompact Hook → 上下文压缩前保存事实\n• stop Hook → 会话结束保存摘要\n• sessionEnd Hook → 同步索引与清理\n• memory-rules.mdc → 引导 Agent 执行记忆操作\n\n数据目录：\n• 记忆数据存储在各项目本地：<项目>/.cursor/skills/memory-data/\n• 首次会话时自动创建，无需手动初始化', 
+                    en: 'Installing Memory Skill...\n\n1. Clone repository\n2. Copy skills/memory to ~/.cursor/skills/\n3. Run init script\n\n✅ Memory Skill installed!\n\nConfigured:\n• sessionStart Hook → auto-load memory\n• preCompact Hook → save facts before context compression\n• stop Hook → save summary on session end\n• sessionEnd Hook → sync index and cleanup\n• memory-rules.mdc → guide Agent memory operations\n\nData directory:\n• Memory data stored per-project at: <project>/.cursor/skills/memory-data/\n• Auto-created on first session, no manual init needed' 
                 }
             },
             {
