@@ -94,6 +94,9 @@ def main():
     p.add_argument("--output")
     p.add_argument("--scope", choices=["daily", "sessions", "all"])
     p.add_argument("--type")
+    p.add_argument("--days", type=int, help="导出最近 N 天的记忆")
+    p.add_argument("--from", dest="from_date", help="起始日期 YYYY-MM-DD")
+    p.add_argument("--to", help="结束日期 YYYY-MM-DD")
 
     # cleanup
     p = sub.add_parser("cleanup")

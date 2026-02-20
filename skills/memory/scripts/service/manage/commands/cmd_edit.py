@@ -85,6 +85,18 @@ def cmd_export(args):
     if args.type:
         entries = [e for e in entries if e.get("type") == args.type]
 
+    days = getattr(args, "days", None)
+    if days:
+        from datetime import datetime, timedelta
+        cutoff = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
+        entries = [e for e in entries if (e.get("timestamp", "") or "")[:10] >= cutoff]
+    from_date = getattr(args, "from_date", None)
+    if from_date:
+        entries = [e for e in entries if (e.get("timestamp", "") or "")[:10] >= from_date]
+    to_date = getattr(args, "to", None)
+    if to_date:
+        entries = [e for e in entries if (e.get("timestamp", "") or "")[:10] <= to_date]
+
     records = []
     for e in entries:
         clean = {k: v for k, v in e.items() if not k.startswith("_")}

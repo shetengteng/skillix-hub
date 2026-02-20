@@ -24,29 +24,56 @@ def cosine_similarity(a, b):
     return dot / (na * nb)
 
 
-def search_fts(store, query, limit=10):
-    """FTS5 全文搜索，按 BM25 相关性排序"""
+def _build_time_filter(days=None, from_date=None, to_date=None):
+    """构建时间过滤 SQL 条件和参数"""
+    conditions = []
+    params = []
+    if days:
+        from datetime import datetime, timedelta
+        cutoff = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%S")
+        conditions.append("c.timestamp >= ?")
+        params.append(cutoff)
+    if from_date:
+        conditions.append("c.timestamp >= ?")
+        params.append(from_date + "T00:00:00")
+    if to_date:
+        conditions.append("c.timestamp <= ?")
+        params.append(to_date + "T23:59:59")
+    return conditions, params
+
+
+def search_fts(store, query, limit=10, days=None, from_date=None, to_date=None):
+    """FTS5 全文搜索，按 BM25 相关性排序，支持时间过滤"""
     try:
-        cur = store.conn.execute("""
+        time_conds, time_params = _build_time_filter(days, from_date, to_date)
+        where = "chunks_fts MATCH ?"
+        if time_conds:
+            where += " AND " + " AND ".join(time_conds)
+        cur = store.conn.execute(f"""
             SELECT c.id, c.content, c.type, c.memory_type, c.entities,
                    c.confidence, c.source_file, c.timestamp,
                    bm25(chunks_fts) as rank
             FROM chunks_fts f
             JOIN chunks c ON c.rowid = f.rowid
-            WHERE chunks_fts MATCH ?
+            WHERE {where}
             ORDER BY rank
             LIMIT ?
-        """, (query, limit))
+        """, (query, *time_params, limit))
         return [dict(r) for r in cur.fetchall()]
     except sqlite3.OperationalError:
         return []
 
 
-def search_vector(store, query_embedding, limit=10):
-    """向量相似度搜索：遍历所有有嵌入的 chunk，计算余弦相似度"""
+def search_vector(store, query_embedding, limit=10, days=None, from_date=None, to_date=None):
+    """向量相似度搜索，支持时间过滤"""
+    time_conds, time_params = _build_time_filter(days, from_date, to_date)
+    where = "embedding IS NOT NULL"
+    if time_conds:
+        where += " AND " + " AND ".join(c.replace("c.", "") for c in time_conds)
     cur = store.conn.execute(
-        "SELECT id, content, type, memory_type, entities, confidence, "
-        "source_file, timestamp, embedding FROM chunks WHERE embedding IS NOT NULL"
+        f"SELECT id, content, type, memory_type, entities, confidence, "
+        f"source_file, timestamp, embedding FROM chunks WHERE {where}",
+        time_params,
     )
     scored = []
     for row in cur.fetchall():
@@ -59,13 +86,13 @@ def search_vector(store, query_embedding, limit=10):
     return scored[:limit]
 
 
-def hybrid_search(store, query, query_embedding=None, limit=10):
+def hybrid_search(store, query, query_embedding=None, limit=10, days=None, from_date=None, to_date=None):
     """
     混合搜索：结合 FTS5 和向量搜索，使用 RRF(Reciprocal Rank Fusion) 融合排名
 
     RRF 公式：score(d) = Σ 1/(k + rank_i(d))，k=60
     """
-    fts_results = search_fts(store, query, limit=limit * 2)
+    fts_results = search_fts(store, query, limit=limit * 2, days=days, from_date=from_date, to_date=to_date)
 
     # 收集 FTS 排名
     fts_ranks = {}
@@ -76,7 +103,7 @@ def hybrid_search(store, query, query_embedding=None, limit=10):
     vec_ranks = {}
     vec_results = []
     if query_embedding:
-        vec_results = search_vector(store, query_embedding, limit=limit * 2)
+        vec_results = search_vector(store, query_embedding, limit=limit * 2, days=days, from_date=from_date, to_date=to_date)
         for i, r in enumerate(vec_results):
             vec_ranks[r["id"]] = i + 1
 

@@ -118,6 +118,46 @@ rm .cursor/skills/.memory-disable
 
 禁用后所有 Hook 静默跳过，已有数据保留不删除，重新启用后恢复。
 
+### 用户询问时间范围内的活动
+
+当用户问"最近 N 天/周/月做了什么"、"上周的记忆"等时间范围查询时：
+
+**意图映射**：
+
+| 用户可能的说法 | 对应命令 |
+|---|---|
+| "最近1个月做了什么" | `manage list --days 30` |
+| "最近一周的记忆" | `manage list --days 7` |
+| "上个月的决策" | `manage list --from 2026-01-01 --to 2026-01-31 --type W` |
+| "2月份做了什么" | `manage list --from 2026-02-01 --to 2026-02-28` |
+| "今天的记忆" | `manage list --days 1` |
+| "搜索最近一周关于数据库的记忆" | `search_memory.py "数据库" --days 7` |
+| "帮我生成这个月的工作报告" | `manage list --days 30` → 汇总格式化输出 |
+| "给我一个上周的周报" | `manage list --days 7` → 按天整理 |
+| "导出最近一个月的数据" | `manage export --days 30 --output report.json` |
+
+**执行流程**：
+
+1. 解析用户意图，确定时间范围和可选关键词
+2. 如果只需要列出/浏览 → 使用 `manage list`
+3. 如果需要语义搜索 + 时间过滤 → 使用 `search_memory.py`
+4. 如果需要生成报告/周报 → 先获取数据，再格式化输出
+5. 如果需要导出 → 使用 `manage export`
+
+**搜索命令时间参数**：
+
+```bash
+python3 {{SCRIPT_PATH}}/service/memory/search_memory.py "关键词" --days 7
+python3 {{SCRIPT_PATH}}/service/memory/search_memory.py "关键词" --from 2026-02-01 --to 2026-02-28
+```
+
+**导出命令时间参数**：
+
+```bash
+python3 {{SCRIPT_PATH}}/service/manage/index.py export --days 30
+python3 {{SCRIPT_PATH}}/service/manage/index.py export --from 2026-02-01 --to 2026-02-28 --output report.json
+```
+
 ### 用户要求修改配置
 
 当用户用自然语言描述配置变更时（如"多加载几天的记忆"、"把日志级别调成 DEBUG"），执行对应的 `config set` 命令。

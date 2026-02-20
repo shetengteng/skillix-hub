@@ -113,20 +113,17 @@ class SQLiteStore:
               confidence, source_file, source_id, timestamp, emb_blob))
         self.conn.commit()
 
-    def search_fts(self, query, limit=10):
-        """FTS5 全文搜索，按 BM25 相关性排序"""
+    def search_fts(self, query, limit=10, **kwargs):
         from storage.sqlite_search import search_fts as _search_fts
-        return _search_fts(self, query, limit)
+        return _search_fts(self, query, limit, **kwargs)
 
-    def search_vector(self, query_embedding, limit=10):
-        """向量相似度搜索：遍历所有有嵌入的 chunk，计算余弦相似度"""
+    def search_vector(self, query_embedding, limit=10, **kwargs):
         from storage.sqlite_search import search_vector as _search_vector
-        return _search_vector(self, query_embedding, limit)
+        return _search_vector(self, query_embedding, limit, **kwargs)
 
-    def hybrid_search(self, query, query_embedding=None, limit=10):
-        """混合搜索：结合 FTS5 和向量搜索，使用 RRF 融合排名"""
+    def hybrid_search(self, query, query_embedding=None, limit=10, **kwargs):
         from storage.sqlite_search import hybrid_search as _hybrid_search
-        return _hybrid_search(self, query, query_embedding, limit)
+        return _hybrid_search(self, query, query_embedding, limit, **kwargs)
 
     def get_sync_state(self, file_path):
         """获取某文件的同步状态"""
