@@ -23,4 +23,5 @@ Thumbs.db
 
 # Test runtime data
 tests/**/testdata/
+tests/**/reports/
 .test_tmp/
