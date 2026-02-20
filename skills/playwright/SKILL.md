@@ -62,6 +62,23 @@ description: 通过 Playwright 实现浏览器自动化。导航页面、点击�
 cd skills/playwright && npm install && npx playwright install chromium
 ```
 
+## 更新
+
+自然语言更新：
+```
+帮我从 https://github.com/shetengteng/skillix-hub 更新 playwright skill
+```
+
+手动更新：
+```bash
+git clone https://github.com/shetengteng/skillix-hub.git /tmp/skillix-hub
+cp -r /tmp/skillix-hub/skills/playwright/{SKILL.md,tool.js,lib,tools,references,package.json} skills/playwright/
+cd skills/playwright && npm install
+rm -rf /tmp/skillix-hub
+```
+
+> Playwright Skill 无用户数据目录，更新时直接覆盖文件即可。
+
 ## 使用方式
 
 所有命令遵循以下格式：

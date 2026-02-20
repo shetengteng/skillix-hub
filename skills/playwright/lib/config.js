@@ -51,9 +51,17 @@ async function ensureDir(dir) {
 }
 
 async function outputFile(config, prefix, ext, suggestedFilename) {
+  if (suggestedFilename && path.isAbsolute(suggestedFilename)) {
+    await ensureDir(path.dirname(suggestedFilename));
+    return suggestedFilename;
+  }
+  if (suggestedFilename) {
+    const fullPath = path.resolve(process.cwd(), suggestedFilename);
+    await ensureDir(path.dirname(fullPath));
+    return fullPath;
+  }
   const dir = await ensureDir(config.outputDir);
-  const baseName = suggestedFilename || `${prefix}-${new Date().toISOString().replace(/[:.]/g, '-')}.${ext}`;
-  return path.resolve(dir, baseName);
+  return path.resolve(dir, `${prefix}-${new Date().toISOString().replace(/[:.]/g, '-')}.${ext}`);
 }
 
 module.exports = { defaultConfig, resolveConfig, ensureDir, outputFile };

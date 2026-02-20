@@ -48,13 +48,18 @@ async function main() {
     process.exit(1);
   }
 
+  const userDataDir = path.join(stateDir, 'chrome-profile');
+  await ensureDir(userDataDir);
+
   const args = [
     `--remote-debugging-port=${cdpPort}`,
+    `--user-data-dir=${userDataDir}`,
     '--no-first-run',
     '--no-default-browser-check',
     '--disable-background-networking',
     '--disable-default-apps',
     '--disable-sync',
+    '--no-startup-window',
   ];
   if (headless) args.push('--headless=new');
 
@@ -64,7 +69,24 @@ async function main() {
   });
   child.unref();
 
-  await new Promise(r => setTimeout(r, 1500));
+  const CDP_READY_TIMEOUT = 15000;
+  const CDP_POLL_INTERVAL = 500;
+  const startTime = Date.now();
+  let cdpReady = false;
+
+  while (Date.now() - startTime < CDP_READY_TIMEOUT) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${cdpPort}/json/version`);
+      if (res.ok) { cdpReady = true; break; }
+    } catch {}
+    await new Promise(r => setTimeout(r, CDP_POLL_INTERVAL));
+  }
+
+  if (!cdpReady) {
+    try { process.kill(child.pid, 'SIGTERM'); } catch {}
+    process.stderr.write(`CDP port ${cdpPort} not ready after ${CDP_READY_TIMEOUT}ms\n`);
+    process.exit(1);
+  }
 
   await ensureDir(stateDir);
   const stateFile = path.join(stateDir, STATE_FILE);

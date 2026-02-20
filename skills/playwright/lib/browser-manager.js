@@ -93,9 +93,9 @@ class BrowserManager {
     child.stderr.destroy();
     child.unref();
 
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 1500));
 
-    this._browser = await playwright.chromium.connectOverCDP(serverInfo.wsEndpoint, { timeout: 5000 });
+    this._browser = await playwright.chromium.connectOverCDP(serverInfo.wsEndpoint, { timeout: 10000 });
     const contexts = this._browser.contexts();
     this._browserContext = contexts[0] || await this._browser.newContext(this._config.browser.contextOptions);
 
