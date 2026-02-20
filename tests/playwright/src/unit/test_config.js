@@ -54,6 +54,26 @@ async function test_outputFile() {
   assert(filePath.includes('test-'), 'outputFile includes prefix');
 }
 
+async function test_outputFile_absolutePath() {
+  const config = resolveConfig();
+  const absDir = path.join(os.tmpdir(), 'pw-test-abs-' + Date.now(), 'sub');
+  const absPath = path.join(absDir, 'test.png');
+  const result = await outputFile(config, 'page', 'png', absPath);
+  assert(result === absPath, 'absolute path returned as-is');
+  assert(fs.existsSync(absDir), 'absolute path parent dir auto-created');
+  fs.rmSync(path.join(os.tmpdir(), path.basename(path.dirname(absDir))), { recursive: true, force: true });
+}
+
+async function test_outputFile_relativePath() {
+  const config = resolveConfig();
+  const relPath = path.join('pw-test-rel-' + Date.now(), 'test.png');
+  const result = await outputFile(config, 'page', 'png', relPath);
+  const expected = path.resolve(process.cwd(), relPath);
+  assert(result === expected, 'relative path resolved from cwd');
+  assert(fs.existsSync(path.dirname(expected)), 'relative path parent dir auto-created');
+  fs.rmSync(path.resolve(process.cwd(), relPath.split(path.sep)[0]), { recursive: true, force: true });
+}
+
 async function main() {
   console.log('test_config:');
   test_defaultConfig();
@@ -61,6 +81,8 @@ async function main() {
   test_envOverrides();
   await test_ensureDir();
   await test_outputFile();
+  await test_outputFile_absolutePath();
+  await test_outputFile_relativePath();
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed > 0) process.exit(1);
 }
