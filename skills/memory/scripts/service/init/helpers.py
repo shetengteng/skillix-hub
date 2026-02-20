@@ -26,9 +26,13 @@ def _replace_placeholders(text, replacements):
 
 def merge_hooks(target_path, template_path, skill_root_rel):
     """
-    将模板 hooks 与已有 hooks.json 合并，替换 {{SKILL_PATH}}，不重复添加已存在的 command。
+    将模板 hooks 与已有 hooks.json 合并，替换 {{SKILL_PATH}}。
+
+    策略：按 skill 前缀匹配，替换本 skill 的所有 hook 条目（支持属性更新和废弃清理），
+    保留其他 skill 或用户自定义的 hook 条目不变。
     """
-    template = json.loads(open(template_path, "r").read())
+    with open(template_path, "r", encoding="utf-8") as f:
+        template = json.loads(f.read())
 
     for hook_type in template.get("hooks", {}):
         for cmd in template["hooks"][hook_type]:
@@ -36,17 +40,25 @@ def merge_hooks(target_path, template_path, skill_root_rel):
                 "{{SKILL_PATH}}", skill_root_rel
             )
 
+    skill_prefix = f"python3 {skill_root_rel}/"
+
     if os.path.exists(target_path):
-        existing = json.loads(open(target_path, "r").read())
+        with open(target_path, "r", encoding="utf-8") as f:
+            existing = json.loads(f.read())
         existing.setdefault("hooks", {})
-        for hook_type, cmds in template.get("hooks", {}).items():
+
+        all_hook_types = set(existing["hooks"].keys()) | set(template.get("hooks", {}).keys())
+
+        for hook_type in all_hook_types:
             existing_cmds = existing["hooks"].get(hook_type, [])
-            existing_scripts = {c.get("command", "") for c in existing_cmds}
-            for cmd in cmds:
-                # 仅添加尚未存在的 command
-                if cmd["command"] not in existing_scripts:
-                    existing_cmds.append(cmd)
-            existing["hooks"][hook_type] = existing_cmds
+            new_cmds = template.get("hooks", {}).get(hook_type, [])
+            non_skill_cmds = [c for c in existing_cmds
+                              if not c.get("command", "").startswith(skill_prefix)]
+            existing["hooks"][hook_type] = non_skill_cmds + new_cmds
+
+            if not existing["hooks"][hook_type]:
+                del existing["hooks"][hook_type]
+
         result = existing
     else:
         result = template
@@ -106,14 +118,20 @@ def init_memory_dir(project_path):
 
 
 def install_skill_code(source_dir, target_dir, replacements):
-    """将 skill 代码复制到安装目录，排除 __pycache__ 等，并处理 SKILL.md 占位符。"""
+    """将 skill 代码复制到安装目录，排除 __pycache__/templates 等，并处理 SKILL.md 占位符。
+
+    templates/ 目录不复制到安装目录，因为其中的占位符由 merge_hooks / install_rules
+    在安装时单独处理。原样复制会导致安装目录残留未替换的占位符。
+    """
     if os.path.abspath(source_dir) == os.path.abspath(target_dir):
         install_skill_md(target_dir, os.path.join(source_dir, "SKILL.md"), replacements)
         return target_dir
 
+    _SKIP = {"__pycache__", "logs", ".DS_Store", "templates"}
+
     os.makedirs(target_dir, exist_ok=True)
     for item in os.listdir(source_dir):
-        if item in ("__pycache__", "logs", ".DS_Store"):
+        if item in _SKIP:
             continue
         src = os.path.join(source_dir, item)
         dst = os.path.join(target_dir, item)
