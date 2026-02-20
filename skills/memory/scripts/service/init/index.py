@@ -64,13 +64,13 @@ def main():
         "{{MEMORY_DATA_PATH}}": memory_data_rel,
     }
 
-    print("Memory Skill Initializing...")
-    print(f"  Mode: {'global' if args.global_mode else 'local'}")
-    print(f"  Skill path: {skill_install_dir}")
+    print("正在初始化 Memory Skill...")
+    print(f"  模式: {'全局安装' if args.global_mode else '项目安装'}")
+    print(f"  Skill 路径: {skill_install_dir}")
     print()
 
     code_path = install_skill_code(skill_root, skill_install_dir, replacements)
-    print(f"  skill code: {code_path}")
+    print(f"  Skill 代码: {code_path}")
 
     hooks_template = os.path.join(TEMPLATES_DIR, "hooks.json")
     hooks_target = os.path.join(cursor_dir, "hooks.json")
@@ -80,14 +80,14 @@ def main():
     rules_template = os.path.join(TEMPLATES_DIR, "memory-rules.mdc")
     rules_dir = os.path.join(cursor_dir, "rules")
     rules_path = install_rules(rules_dir, rules_template, replacements)
-    print(f"  rules: {rules_path}")
+    print(f"  规则文件: {rules_path}")
 
     memory_dir = init_memory_dir(project_path)
-    print(f"  data dir: {memory_dir}")
+    print(f"  数据目录: {memory_dir}")
 
     readme_path = os.path.join(memory_dir, "README.md")
     if os.path.exists(readme_path):
-        print(f"  readme: {readme_path}")
+        print(f"  说明文件: {readme_path}")
 
     config_json = os.path.join(memory_dir, "config.json")
     if not os.path.exists(config_json):
@@ -98,47 +98,50 @@ def main():
         with open(config_json, "w", encoding="utf-8") as f:
             json.dump(default_config, f, indent=2, ensure_ascii=False)
             f.write("\n")
-        print(f"  config: {config_json}")
+        print(f"  配置文件: {config_json}")
     else:
-        print(f"  config: {config_json} (already exists)")
+        print(f"  配置文件: {config_json}（已存在）")
 
     if not args.skip_model:
         try:
             install_dependencies()
             download_model(_DEFAULTS["embedding"]["model"])
         except Exception as e:
-            print(f"  ⚠ Model download failed: {e}")
-            print("  (You can install manually later: pip install sentence-transformers)")
+            print(f"  ⚠ 模型下载失败: {e}")
+            print("  （可稍后手动安装: pip install sentence-transformers）")
 
     print()
     print("=" * 50)
-    print("  Memory Skill initialized!")
+    print("  ✅ Memory Skill 安装成功！")
     print("=" * 50)
     print()
-    print("Installed components:")
-    print(f"  hooks.json   → sessionStart / preCompact / stop / sessionEnd")
-    print(f"  rules        → memory-rules.mdc")
-    print(f"  data dir     → {memory_data_rel}")
+    print("已配置：")
+    print(f"  • sessionStart Hook → 自动加载记忆")
+    print(f"  • preCompact Hook   → 上下文压缩前保存事实")
+    print(f"  • stop Hook         → 会话结束保存摘要")
+    print(f"  • sessionEnd Hook   → 同步索引与清理")
+    print(f"  • memory-rules.mdc  → 引导 Agent 执行记忆操作")
+    print(f"  • 数据目录          → {memory_data_rel}")
     print()
     if args.global_mode:
-        print("Data directory:")
-        print("  Memory data is always stored per-project at:")
-        print("    <project>/.cursor/skills/memory-data/")
-        print("  It will be auto-created on first session in each project.")
+        print("数据目录说明：")
+        print("  记忆数据始终存储在各项目本地：")
+        print("    <项目>/.cursor/skills/memory-data/")
+        print("  首次会话时自动创建，无需手动初始化。")
         print()
-    print("What you can say to Cursor:")
+    print("你可以对 Cursor 说：")
     print('  "记住这个：项目使用 PostgreSQL"')
     print('  "搜索一下关于数据库的记忆"')
     print('  "帮我看一下记忆统计"')
     print('  "删除关于 MySQL 的记忆"')
-    print('  "这个项目不需要记忆功能"  → disable memory for this project')
+    print('  "这个项目不需要记忆功能"  → 禁用当前项目的记忆')
     print()
-    print("Auto behaviors (no action needed):")
-    print("  New session  → loads MEMORY.md + recent facts + last summary")
-    print("  Long chat    → saves key facts before context compression")
-    print("  Task done    → saves session summary automatically")
+    print("自动行为（无需操作）：")
+    print("  新会话开始 → 加载 MEMORY.md + 近期事实 + 上次摘要")
+    print("  长对话     → 上下文压缩前自动保存关键事实")
+    print("  任务完成   → 自动保存会话摘要")
     print()
-    print("Project-level install (alternative to --global):")
+    print("项目级安装（替代 --global）：")
     print("  python3 init.py --project-path /path/to/project")
 
 
