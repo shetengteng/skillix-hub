@@ -46,7 +46,7 @@
 ```json
 {"ref": "e42", "element": "提交按钮"}
 ```
-可选参数：`doubleClick`（布尔）、`button`（"left"|"right"|"middle"）、`modifiers`（["Alt","Control","Shift","Meta"]）
+可选参数：`doubleClick`（布尔）、`button`（"left"|"right"|"middle"）、`modifiers`（["Alt","Control","Shift","Meta"]）、`forceJsClick`（布尔，使用 JS `element.click()` 替代 Playwright click，适用于 Vue/React 自定义组件事件不触发的场景）
 
 ### drag
 从一个元素拖拽到另一个元素。
@@ -83,7 +83,7 @@
 ## 键盘
 
 ### type
-向元素输入文本。
+向元素输入文本。自动 fallback：`fill()` 失败时尝试内部 `input/textarea`，再失败则用 `pressSequentially` 逐字输入。
 ```json
 {"ref": "e10", "element": "邮箱输入框", "text": "user@example.com"}
 ```
@@ -112,7 +112,7 @@
 ## 表单
 
 ### fillForm
-批量填写多个表单字段。
+批量填写多个表单字段。`textbox` 类型自动 fallback（fill → 内部 input → pressSequentially）。`combobox` 类型自动兼容自定义下拉组件（selectOption 失败时改用 click 展开 → click option）。
 ```json
 {
   "fields": [
@@ -170,7 +170,7 @@
 ## 等待
 
 ### waitFor
-等待文本出现、文本消失或指定时间。
+等待文本出现、文本消失或指定时间。默认超时 60 秒（navigation timeout）。
 ```json
 {"text": "加载完成"}
 ```
@@ -180,6 +180,7 @@
 ```json
 {"time": 3}
 ```
+可选：`timeout`（毫秒，自定义超时时间，如 `{"text":"加载完成","timeout":30000}`）
 
 ---
 

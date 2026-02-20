@@ -11,6 +11,15 @@ async function click(context, params, response) {
   const tab = context.currentTabOrDie();
   response.setIncludeSnapshot();
   const { locator, resolved } = await tab.refLocator(params);
+
+  if (params.forceJsClick) {
+    response.addCode(`await page.${resolved}.evaluate(el => el.click());`);
+    await tab.waitForCompletion(async () => {
+      await locator.evaluate(el => el.click());
+    });
+    return;
+  }
+
   const options = { button: params.button, modifiers: params.modifiers };
   const formatted = formatObject(options, ' ', 'oneline');
   const optionsAttr = formatted !== '{}' ? formatted : '';

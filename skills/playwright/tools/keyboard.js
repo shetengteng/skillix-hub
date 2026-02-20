@@ -23,8 +23,19 @@ async function type(context, params, response) {
       response.addCode(`await page.${resolved}.pressSequentially('${params.text}');`);
       await locator.pressSequentially(params.text);
     } else {
-      response.addCode(`await page.${resolved}.fill('${params.text}');`);
-      await locator.fill(params.text);
+      try {
+        response.addCode(`await page.${resolved}.fill('${params.text}');`);
+        await locator.fill(params.text);
+      } catch {
+        try {
+          await locator.locator('input, textarea').first().fill(params.text);
+          response.addCode(`await page.${resolved}.locator('input, textarea').first().fill('${params.text}');`);
+        } catch {
+          await locator.click();
+          await locator.pressSequentially(params.text);
+          response.addCode(`await page.${resolved}.click();\nawait page.${resolved}.pressSequentially('${params.text}');`);
+        }
+      }
     }
     if (params.submit) {
       response.setIncludeSnapshot();
