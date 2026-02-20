@@ -11,6 +11,7 @@ from test_common import IsolatedWorkspaceCase, run_script, SCRIPTS_DIR
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from service.config import SESSIONS_FILE
+from service.hooks.audit_response import detect_signals
 from core.utils import today_str, iso_now
 
 
@@ -134,6 +135,104 @@ class TestSessionEndSummaryCheck(IsolatedWorkspaceCase):
                     entries.append(json.loads(line))
             warnings = [e for e in entries if e.get("type") == "warning"]
             self.assertEqual(len(warnings), 0, "Should have no warning when summary exists")
+
+
+class TestAuditResponseSignalDetection(unittest.TestCase):
+    """验证 afterAgentResponse 的信号检测逻辑"""
+
+    def test_detects_memory_claim(self):
+        signals = detect_signals("关于测试目录的原则，我记下来了，继续处理下一个任务。")
+        types = [s["type"] for s in signals]
+        self.assertIn("memory_claim", types)
+
+    def test_detects_principle(self):
+        signals = detect_signals("这个规范是：测试文件必须放在 tests/ 目录下。")
+        types = [s["type"] for s in signals]
+        self.assertIn("principle", types)
+
+    def test_detects_decision(self):
+        signals = detect_signals("经过讨论，我们决定使用 PostgreSQL 作为主数据库。")
+        types = [s["type"] for s in signals]
+        self.assertIn("decision", types)
+
+    def test_detects_important_marker(self):
+        signals = detect_signals("重要：这个配置不能修改，否则会导致生产事故。")
+        types = [s["type"] for s in signals]
+        self.assertIn("important_marker", types)
+
+    def test_detects_commit_action(self):
+        signals = detect_signals("已 commit 并 push 完成。")
+        types = [s["type"] for s in signals]
+        self.assertIn("commit_action", types)
+
+    def test_no_signal_in_normal_text(self):
+        signals = detect_signals("这是一段普通的代码说明文本，没有任何特殊信号。")
+        self.assertEqual(len(signals), 0)
+
+    def test_multiple_signals(self):
+        signals = detect_signals("我记下来了这个规范，已经 commit push 完成。")
+        types = [s["type"] for s in signals]
+        self.assertIn("memory_claim", types)
+        self.assertIn("principle", types)
+        self.assertIn("commit_action", types)
+
+
+class TestAuditResponseHook(IsolatedWorkspaceCase):
+    """验证 afterAgentResponse Hook 脚本的完整执行"""
+
+    def test_writes_audit_entry_on_signal(self):
+        event = {
+            "text": "关于测试目录的原则，我记下来了。",
+            "workspace_roots": [self.workspace],
+        }
+        result = run_script(
+            "service/hooks/audit_response.py",
+            self.workspace,
+            stdin_data=json.dumps(event),
+        )
+        self.assertEqual(result.returncode, 0)
+
+        daily_file = self.memory_dir / "daily" / f"{today_str()}.jsonl"
+        self.assertTrue(daily_file.exists())
+        entries = []
+        for line in daily_file.read_text(encoding="utf-8").strip().split("\n"):
+            if line:
+                entries.append(json.loads(line))
+        audits = [e for e in entries if e.get("type") == "audit"]
+        self.assertTrue(len(audits) > 0)
+        self.assertIn("memory_claim", audits[0]["signals"])
+
+    def test_no_audit_on_normal_text(self):
+        event = {
+            "text": "这是一段普通的回复文本。",
+            "workspace_roots": [self.workspace],
+        }
+        result = run_script(
+            "service/hooks/audit_response.py",
+            self.workspace,
+            stdin_data=json.dumps(event),
+        )
+        self.assertEqual(result.returncode, 0)
+
+        daily_file = self.memory_dir / "daily" / f"{today_str()}.jsonl"
+        if daily_file.exists():
+            entries = []
+            for line in daily_file.read_text(encoding="utf-8").strip().split("\n"):
+                if line:
+                    entries.append(json.loads(line))
+            audits = [e for e in entries if e.get("type") == "audit"]
+            self.assertEqual(len(audits), 0)
+
+    def test_empty_text_skips(self):
+        event = {"text": "", "workspace_roots": [self.workspace]}
+        result = run_script(
+            "service/hooks/audit_response.py",
+            self.workspace,
+            stdin_data=json.dumps(event),
+        )
+        self.assertEqual(result.returncode, 0)
+        output = json.loads(result.stdout)
+        self.assertEqual(output, {})
 
 
 if __name__ == "__main__":

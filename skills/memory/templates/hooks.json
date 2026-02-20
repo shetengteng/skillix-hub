@@ -19,6 +19,12 @@
         "loop_limit": 1
       }
     ],
+    "afterAgentResponse": [
+      {
+        "command": "python3 {{SKILL_PATH}}/scripts/service/hooks/audit_response.py",
+        "timeout": 5
+      }
+    ],
     "sessionEnd": [
       {
         "command": "python3 {{SKILL_PATH}}/scripts/service/hooks/sync_and_cleanup.py",
