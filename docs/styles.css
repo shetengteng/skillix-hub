@@ -320,6 +320,12 @@ body {
     margin-top: auto;
 }
 
+.card-skill-footer .text-xs {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .card-dashed {
     border-style: dashed;
     background-color: hsl(var(--muted) / 0.5);
