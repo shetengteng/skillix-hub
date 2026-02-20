@@ -19,7 +19,10 @@ _initialized = False
 
 
 def _get_log_dir():
-    """日志目录优先级：MEMORY_LOG_DIR > MEMORY_PROJECT_PATH/data_dir/logs > cwd/data_dir/logs"""
+    """日志目录优先级：MEMORY_LOG_DIR > MEMORY_PROJECT_PATH/data_dir/logs > cwd/data_dir/logs
+
+    只计算路径不创建目录，目录创建延迟到 _ensure_stream() 或 redirect_to_project()。
+    """
     global _LOG_DIR
     if _LOG_DIR:
         return _LOG_DIR
@@ -31,13 +34,14 @@ def _get_log_dir():
         base = project_path if project_path else os.getcwd()
         data_dir = _DEFAULTS["paths"]["data_dir"]
         _LOG_DIR = os.path.join(base, data_dir, "logs")
-    os.makedirs(_LOG_DIR, exist_ok=True)
     return _LOG_DIR
 
 
 def _cleanup_old_logs():
     """清理超过保留天数的旧日志文件"""
     log_dir = _get_log_dir()
+    if not os.path.isdir(log_dir):
+        return
     cutoff = datetime.now(timezone.utc) - timedelta(days=_DEFAULTS["log"]["retain_days"])
     cutoff_str = cutoff.strftime("%Y-%m-%d")
     for f in glob.glob(os.path.join(log_dir, "*.log")):

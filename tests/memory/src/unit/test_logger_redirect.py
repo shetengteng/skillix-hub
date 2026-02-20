@@ -91,11 +91,12 @@ class TestGetLogDir(_LoggerTestBase):
         r2 = logger_mod._get_log_dir()
         self.assertEqual(r1, r2)
 
-    def test_creates_directory(self):
+    def test_does_not_create_directory(self):
         target = os.path.join(self.tmpdir, "new_dir", "logs")
         os.environ["MEMORY_LOG_DIR"] = target
-        logger_mod._get_log_dir()
-        self.assertTrue(os.path.isdir(target))
+        result = logger_mod._get_log_dir()
+        self.assertEqual(result, target)
+        self.assertFalse(os.path.isdir(target))
 
 
 class TestCleanupOldLogs(_LoggerTestBase):
