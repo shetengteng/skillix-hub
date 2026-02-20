@@ -8,6 +8,19 @@ from .defaults import (
 from .manager import Config
 
 
+def init_hook_context(event: dict) -> str:
+    """Hook 统一初始化：提取项目路径、设置环境变量、重定向日志。
+
+    合并 get_project_path + os.environ + redirect_to_project 三步操作，
+    避免 Hook 脚本遗漏某一步导致日志写入错误目录。
+    """
+    from service.logger import redirect_to_project
+    project_path = get_project_path(event)
+    os.environ["MEMORY_PROJECT_PATH"] = project_path
+    redirect_to_project(project_path)
+    return project_path
+
+
 def get_config(project_path=None):
     """获取配置实例。传入 project_path 会合并项目级配置。"""
     return Config(project_path) if project_path else Config()

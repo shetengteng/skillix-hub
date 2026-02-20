@@ -19,7 +19,7 @@ _initialized = False
 
 
 def _get_log_dir():
-    """日志目录：优先使用 MEMORY_LOG_DIR 环境变量，否则使用 memory-data/logs/"""
+    """日志目录优先级：MEMORY_LOG_DIR > MEMORY_PROJECT_PATH/data_dir/logs > cwd/data_dir/logs"""
     global _LOG_DIR
     if _LOG_DIR:
         return _LOG_DIR
@@ -27,8 +27,10 @@ def _get_log_dir():
     if env_dir:
         _LOG_DIR = env_dir
     else:
+        project_path = os.environ.get("MEMORY_PROJECT_PATH")
+        base = project_path if project_path else os.getcwd()
         data_dir = _DEFAULTS["paths"]["data_dir"]
-        _LOG_DIR = os.path.join(os.getcwd(), data_dir, "logs")
+        _LOG_DIR = os.path.join(base, data_dir, "logs")
     os.makedirs(_LOG_DIR, exist_ok=True)
     return _LOG_DIR
 
@@ -59,35 +61,79 @@ def _ensure_init():
         pass
 
 
-class _DailyFileHandler(logging.FileHandler):
+class _DailyFileHandler(logging.Handler):
     """
-    按天自动轮转的日志文件 Handler
+    按天自动轮转的日志文件 Handler（延迟初始化）
 
+    文件流在第一次 emit() 时才创建，避免模块导入阶段就基于错误的 cwd 创建文件。
     当日期变化时自动关闭旧文件并创建新文件，无需外部管理。
     """
 
     def __init__(self):
+        super().__init__()
         self._current_date = None
         self._log_dir = _get_log_dir()
-        filepath = self._today_path()
-        super().__init__(filepath, mode="a", encoding="utf-8")
+        self._stream = None
+        self.baseFilename = self._today_path()
 
     def _today_path(self):
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         self._current_date = today
         return os.path.join(self._log_dir, f"{today}.log")
 
+    def _ensure_stream(self):
+        if self._stream is None or self._stream.closed:
+            os.makedirs(os.path.dirname(self.baseFilename), exist_ok=True)
+            self._stream = open(self.baseFilename, "a", encoding="utf-8")
+
     def emit(self, record):
-        # 检测日期变化，自动切换文件
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         if today != self._current_date:
             self.close()
             self.baseFilename = self._today_path()
-            self.stream = self._open()
-        super().emit(record)
+        self._ensure_stream()
+        try:
+            msg = self.format(record)
+            self._stream.write(msg + "\n")
+            self._stream.flush()
+        except Exception:
+            self.handleError(record)
+
+    def close(self):
+        if self._stream and not self._stream.closed:
+            self._stream.flush()
+            self._stream.close()
+        self._stream = None
+        super().close()
+
+    def flush(self):
+        if self._stream and not self._stream.closed:
+            self._stream.flush()
 
 
 _file_handler = None  # 全局共享的文件 Handler（避免每个 logger 创建独立文件句柄）
+
+
+def redirect_to_project(project_path: str):
+    """将日志文件 Handler 重定向到项目的 memory-data/logs/ 目录。
+
+    Hook 脚本在解析出 project_path 后调用此函数，
+    解决全局 Hook 启动时 cwd 不是项目目录导致日志写入错误位置的问题。
+
+    由于 _DailyFileHandler 延迟初始化，如果在 redirect 之前没有实际写入日志，
+    则不会在错误目录创建任何文件。
+    """
+    global _LOG_DIR, _file_handler
+    data_dir = _DEFAULTS["paths"]["data_dir"]
+    new_dir = os.path.join(project_path, data_dir, "logs")
+    if _LOG_DIR == new_dir:
+        return
+    _LOG_DIR = new_dir
+    os.makedirs(_LOG_DIR, exist_ok=True)
+    if _file_handler is not None:
+        _file_handler.close()
+        _file_handler._log_dir = _LOG_DIR
+        _file_handler.baseFilename = _file_handler._today_path()
 
 
 def get_logger(name: str) -> logging.Logger:

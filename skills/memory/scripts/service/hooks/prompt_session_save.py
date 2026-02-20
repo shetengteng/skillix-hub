@@ -12,7 +12,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
-from service.config import get_project_path
+from service.config import init_hook_context
 from service.config import get_memory_dir, is_memory_enabled
 from service.logger import get_logger
 
@@ -71,14 +71,14 @@ def main():
     status = event.get("status", "")
     conv_id = event.get("conversation_id", "unknown")
 
+    project_path = init_hook_context(event)
+
     log.info("stop 触发 status=%s conv_id=%s", status, conv_id)
 
     if status not in ("completed", "aborted"):
         log.info("status=%s 非 completed/aborted，跳过摘要保存提示", status)
         print(json.dumps({}))
         return
-
-    project_path = get_project_path(event)
 
     if not is_memory_enabled(project_path):
         log.info("Memory 已禁用（.memory-disable），跳过")

@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
-from test_common import IsolatedWorkspaceCase, run_script, SCRIPTS_DIR
+from test_common import IsolatedWorkspaceCase, run_script, SCRIPTS_DIR  # noqa: E402
 
 sys.path.insert(0, str(SCRIPTS_DIR))
 
@@ -383,6 +383,154 @@ class TestThoughtHook(IsolatedWorkspaceCase):
             stdin_data=json.dumps(event),
         )
         self.assertEqual(result.returncode, 0)
+
+
+class TestFlushMemoryTemplate(IsolatedWorkspaceCase):
+    """验证 preCompact Hook 生成的 [Memory Flush] 提示词"""
+
+    def _run_flush_hook(self, event):
+        return run_script(
+            "service/hooks/flush_memory.py",
+            self.workspace,
+            stdin_data=json.dumps(event),
+        )
+
+    def test_generates_flush_prompt(self):
+        event = {
+            "context_usage_percent": 85,
+            "message_count": 42,
+            "conversation_id": "conv-flush-001",
+            "workspace_roots": [self.workspace],
+        }
+        result = self._run_flush_hook(event)
+        self.assertEqual(result.returncode, 0)
+        output = json.loads(result.stdout)
+        self.assertIn("user_message", output)
+        msg = output["user_message"]
+        self.assertIn("[Memory Flush]", msg)
+        self.assertIn("85", msg)
+        self.assertIn("42", msg)
+        self.assertIn("save_fact", msg)
+
+    def test_includes_save_fact_command(self):
+        event = {
+            "context_usage_percent": 90,
+            "message_count": 10,
+            "conversation_id": "conv-flush-002",
+            "workspace_roots": [self.workspace],
+        }
+        result = self._run_flush_hook(event)
+        output = json.loads(result.stdout)
+        msg = output["user_message"]
+        self.assertIn("save_fact.py", msg)
+        self.assertIn("--content", msg)
+        self.assertIn("--type", msg)
+
+    def test_disabled_memory_returns_empty(self):
+        disable_dir = Path(self.workspace) / ".cursor" / "skills"
+        disable_dir.mkdir(parents=True, exist_ok=True)
+        (disable_dir / ".memory-disable").touch()
+
+        event = {
+            "context_usage_percent": 85,
+            "message_count": 42,
+            "conversation_id": "conv-disabled",
+            "workspace_roots": [self.workspace],
+        }
+        result = self._run_flush_hook(event)
+        self.assertEqual(result.returncode, 0)
+        output = json.loads(result.stdout)
+        self.assertNotIn("user_message", output)
+
+    def test_handles_missing_fields_gracefully(self):
+        event = {"workspace_roots": [self.workspace]}
+        result = self._run_flush_hook(event)
+        self.assertEqual(result.returncode, 0)
+        output = json.loads(result.stdout)
+        self.assertIn("user_message", output)
+        self.assertIn("[Memory Flush]", output["user_message"])
+
+
+class TestAuditResponseEdgeCases(unittest.TestCase):
+    """audit_response 信号检测的边界情况"""
+
+    def test_empty_string(self):
+        self.assertEqual(detect_signals(""), [])
+
+    def test_very_long_text(self):
+        text = "普通文本" * 1000 + "我记下来了" + "普通文本" * 1000
+        signals = detect_signals(text)
+        types = [s["type"] for s in signals]
+        self.assertIn("memory_claim", types)
+
+    def test_matches_limited_to_three(self):
+        text = "记下来了 记下来了 记下来了 记下来了 记下来了"
+        signals = detect_signals(text)
+        for s in signals:
+            self.assertLessEqual(len(s["matches"]), 3)
+
+    def test_chinese_colon_variant(self):
+        signals = detect_signals("重要：这是关键信息")
+        types = [s["type"] for s in signals]
+        self.assertIn("important_marker", types)
+
+    def test_english_colon_variant(self):
+        signals = detect_signals("重要:这是关键信息")
+        types = [s["type"] for s in signals]
+        self.assertIn("important_marker", types)
+
+
+class TestToolUseEdgeCases(unittest.TestCase):
+    """audit_tool_use 的边界情况"""
+
+    def test_skips_sync_index(self):
+        self.assertTrue(should_skip("python3 sync_index.py --project-path /tmp"))
+
+    def test_skips_userinput(self):
+        self.assertTrue(should_skip("tt userinput.py"))
+
+    def test_detects_pip_install(self):
+        action, _ = detect_tool_action("pip install requests", "Successfully installed requests-2.28.0")
+        self.assertEqual(action, "dependency_install")
+
+    def test_detects_yarn_install(self):
+        action, _ = detect_tool_action("yarn install", "")
+        self.assertEqual(action, "dependency_install")
+
+    def test_empty_command(self):
+        action, _ = detect_tool_action("", "")
+        self.assertIsNone(action)
+
+    def test_git_commit_extracts_hash(self):
+        action, extracted = detect_tool_action(
+            "git commit -m 'add feature'",
+            "[main abc1234] add feature\n 3 files changed",
+        )
+        self.assertEqual(action, "git_commit")
+        self.assertIsNotNone(extracted)
+        self.assertIn("abc1234", extracted)
+
+
+class TestThoughtSignalEdgeCases(unittest.TestCase):
+    """audit_thought 信号检测的边界情况"""
+
+    def test_empty_string(self):
+        self.assertEqual(detect_thought_signals(""), [])
+
+    def test_exactly_20_chars(self):
+        text = "a" * 20
+        self.assertEqual(detect_thought_signals(text), [])
+
+    def test_detects_key_finding(self):
+        signals = detect_thought_signals("这是一个关键发现，我们需要重新考虑整个方案的设计。")
+        types = [s["type"] for s in signals]
+        self.assertIn("key_finding", types)
+
+    def test_multiple_thought_signals(self):
+        text = "用户偏好使用 Python，这是一个架构决策，需要记住这个关键发现。"
+        signals = detect_thought_signals(text)
+        types = [s["type"] for s in signals]
+        self.assertTrue(len(types) >= 2)
 
 
 if __name__ == "__main__":

@@ -192,6 +192,9 @@ def main():
     parser.add_argument("--project-path", default=os.getcwd())
     args = parser.parse_args()
 
+    from service.logger import redirect_to_project
+    redirect_to_project(args.project_path)
+
     memory_dir = os.path.join(args.project_path, ".cursor", "skills", "memory-data")
     if not os.path.isdir(memory_dir):
         print(f"Memory directory not found: {memory_dir}", file=sys.stderr)

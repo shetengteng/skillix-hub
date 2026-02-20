@@ -17,7 +17,7 @@ import subprocess
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
-from service.config import get_project_path, _DEFAULTS, SESSIONS_FILE
+from service.config import init_hook_context, _DEFAULTS, SESSIONS_FILE
 from service.config import get_memory_dir, is_memory_enabled
 from storage.jsonl import read_last_entry
 from core.utils import iso_now, today_str, ts_id
@@ -32,9 +32,11 @@ def sync_index(project_path: str):
     """调用 sync_index.py 增量同步 JSONL 到 SQLite"""
     sync_script = os.path.join(_MEMORY_DIR, "sync_index.py")
     try:
+        env = os.environ.copy()
+        env["MEMORY_PROJECT_PATH"] = project_path
         proc = subprocess.run(
             [sys.executable, sync_script, "--project-path", project_path],
-            capture_output=True, text=True, timeout=25,
+            capture_output=True, text=True, timeout=25, env=env,
         )
         if proc.returncode == 0:
             log.info("索引同步完成")
@@ -110,12 +112,12 @@ def log_session_end(memory_dir: str, event: dict):
              entry["reason"], entry.get("duration_ms"))
 
 
-def clean_old_logs():
+def clean_old_logs(project_path: str):
     """清理超过保留天数的日志文件"""
     import glob
     from datetime import datetime, timedelta
 
-    log_dir = os.path.join(os.getcwd(), _DEFAULTS["paths"]["data_dir"], "logs")
+    log_dir = os.path.join(project_path, _DEFAULTS["paths"]["data_dir"], "logs")
     if not os.path.isdir(log_dir):
         return
 
@@ -144,7 +146,7 @@ def main():
     except (json.JSONDecodeError, ValueError):
         pass
 
-    project_path = get_project_path(event)
+    project_path = init_hook_context(event)
 
     if not is_memory_enabled(project_path):
         log.info("Memory 已禁用（.memory-disable），跳过")
@@ -159,7 +161,7 @@ def main():
     check_summary_saved(memory_dir, event)
     distill_facts(project_path)
     log_session_end(memory_dir, event)
-    clean_old_logs()
+    clean_old_logs(project_path)
 
     print(json.dumps({}))
 

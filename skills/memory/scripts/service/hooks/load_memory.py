@@ -14,7 +14,7 @@ import argparse
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
 from service.config import MEMORY_MD, SESSIONS_FILE, DAILY_DIR_NAME
-from service.config import get_memory_dir, is_memory_enabled
+from service.config import get_memory_dir, is_memory_enabled, init_hook_context
 from storage.jsonl import read_recent_facts_from_daily, read_last_entry
 from service.logger import get_logger
 
@@ -115,7 +115,12 @@ def main():
         except (json.JSONDecodeError, ValueError):
             pass
 
-    project_path = event.get("workspace_roots", [None])[0] or args.project_path
+    if event:
+        project_path = init_hook_context(event)
+    else:
+        project_path = args.project_path
+        from service.logger import redirect_to_project
+        redirect_to_project(project_path)
 
     if not is_memory_enabled(project_path):
         log.info("Memory 已禁用（.memory-disable），跳过")

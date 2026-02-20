@@ -214,6 +214,9 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Only show candidates, don't write")
     args = parser.parse_args()
 
+    from service.logger import redirect_to_project
+    redirect_to_project(args.project_path)
+
     if args.dry_run:
         memory_dir = get_memory_dir(args.project_path)
         daily_dir = get_daily_dir(args.project_path)

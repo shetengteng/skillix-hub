@@ -38,6 +38,9 @@ def main():
     parser.add_argument("--project-path", default=os.getcwd())
     args = parser.parse_args()
 
+    from service.logger import redirect_to_project
+    redirect_to_project(args.project_path)
+
     memory_dir = get_memory_dir(args.project_path)
     db_path = os.path.join(memory_dir, INDEX_DB)
 
