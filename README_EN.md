@@ -20,6 +20,7 @@ AI Skill is a reusable AI instruction set that helps AI programming assistants b
 | [continuous-learning](./skills/continuous-learning/) | Continuously learn from user-AI interactions, extract reusable knowledge, generate new skills |
 | [swagger-api-reader](./skills/swagger-api-reader/) | Read and cache Swagger/OpenAPI docs with browser auth support |
 | [uniapp-mp-generator](./skills/uniapp-mp-generator/) | uni-app mini-program code generator, auto-generate Vue3 pages, API, Store from requirements |
+| [playwright](./skills/playwright/) | Browser automation via 48 CLI commands controlling a real browser. Navigate, click, fill forms, screenshot, manage cookies/storage, intercept network, and more |
 
 ## Installation
 
@@ -304,6 +305,43 @@ python3 ~/.cursor/skills/continuous-learning/scripts/setup_rule.py '{"action": "
 - **Disable Learning**: disable continuous learning rules
 - **View Knowledge**: view learned knowledge
 - **Evolve Skills**: evolve instincts
+
+## Playwright Skill
+
+Playwright Skill provides 48 browser automation tools via CLI commands, controlling a real Chrome/Chromium browser. Replicated from Playwright MCP.
+
+### Setup
+
+```bash
+cd skills/playwright && npm install && npx playwright install chromium
+```
+
+### Core Workflow
+
+```bash
+# Navigate to page
+node skills/playwright/tool.js navigate '{"url":"https://example.com"}'
+
+# Get page snapshot with element refs
+node skills/playwright/tool.js snapshot '{}'
+
+# Click element by ref
+node skills/playwright/tool.js click '{"ref":"e6","element":"Learn more"}'
+
+# Type text
+node skills/playwright/tool.js type '{"ref":"e10","text":"hello@example.com"}'
+
+# Take screenshot
+node skills/playwright/tool.js screenshot '{"type":"png"}'
+```
+
+### Browser Management
+
+```bash
+node skills/playwright/tool.js start    # Launch browser
+node skills/playwright/tool.js stop     # Close browser
+node skills/playwright/tool.js status   # Check status
+```
 
 ## Contributing
 

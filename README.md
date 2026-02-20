@@ -20,6 +20,7 @@ AI Skill 是一种可复用的 AI 指令集，帮助 AI 编程助手更好地完
 | [continuous-learning](./skills/continuous-learning/) | 持续学习用户与 AI 的交互模式，自动提取可复用知识，生成新技能 |
 | [swagger-api-reader](./skills/swagger-api-reader/) | 读取并缓存 Swagger/OpenAPI 文档，支持浏览器认证 |
 | [uniapp-mp-generator](./skills/uniapp-mp-generator/) | uni-app 小程序代码生成器，根据需求文档自动生成 Vue3 页面、API、Store 等代码 |
+| [playwright](./skills/playwright/) | 浏览器自动化工具，通过 48 个 CLI 命令控制真实浏览器，支持导航、点击、表单填写、截图、Cookie/存储管理、网络拦截等 |
 
 ## 安装使用
 
@@ -334,6 +335,67 @@ python3 ~/.cursor/skills/continuous-learning/scripts/setup_rule.py '{"action": "
 - **禁用学习**：禁用持续学习规则
 - **查看知识**：查看学习到的知识
 - **演化技能**：演化本能
+
+## Playwright Skill 使用说明
+
+Playwright Skill 提供 48 个浏览器自动化工具，通过 CLI 命令控制真实浏览器（Chrome/Chromium），复刻自 Playwright MCP 的完整功能。
+
+### 安装
+
+```bash
+cd skills/playwright && npm install && npx playwright install chromium
+```
+
+### 核心工作流
+
+```bash
+# 1. 导航到页面
+node skills/playwright/tool.js navigate '{"url":"https://example.com"}'
+
+# 2. 获取页面快照（含元素 ref）
+node skills/playwright/tool.js snapshot '{}'
+
+# 3. 通过 ref 点击元素
+node skills/playwright/tool.js click '{"ref":"e6","element":"Learn more"}'
+
+# 4. 输入文本
+node skills/playwright/tool.js type '{"ref":"e10","text":"hello@example.com"}'
+
+# 5. 截图
+node skills/playwright/tool.js screenshot '{"type":"png"}'
+```
+
+### 浏览器管理
+
+```bash
+node skills/playwright/tool.js start    # 启动浏览器
+node skills/playwright/tool.js stop     # 关闭浏览器
+node skills/playwright/tool.js status   # 检查状态
+```
+
+浏览器在多次调用之间保持运行，首次调用自动启动。
+
+### 工具分类
+
+| 分类 | 工具 |
+|------|------|
+| 导航 | navigate, goBack, goForward, reload |
+| 交互 | snapshot, click, drag, hover, selectOption, check, uncheck, type, pressKey, fillForm |
+| 鼠标 | mouseMove, mouseClick, mouseDrag, mouseDown, mouseUp, mouseWheel |
+| 观察 | screenshot, consoleMessages, networkRequests, waitFor |
+| 标签页 | tabs (list/new/close/select) |
+| 数据 | cookieList/Get/Set/Delete/Clear, localStorage/sessionStorage 操作, storageState |
+| 网络 | route, routeList, unroute |
+| 高级 | evaluate, runCode, pdf, tracingStart/Stop, startVideo/stopVideo |
+| 测试 | verifyElement, verifyText, verifyList, verifyValue, generateLocator |
+| 系统 | install, getConfig, close, resize |
+
+### 触发词
+
+- **浏览器操作**：打开网页、导航到、点击按钮
+- **截图**：截图、截屏
+- **表单**：填写表单、输入文本
+- **测试**：验证元素、检查文本
 
 ## 贡献
 

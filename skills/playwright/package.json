@@ -1,0 +1,14 @@
+{
+  "name": "playwright-skill",
+  "version": "1.0.0",
+  "description": "Playwright browser automation skill - MCP tools replica",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "setup": "npm install && npx playwright install chromium",
+    "install-browsers": "npx playwright install"
+  },
+  "dependencies": {
+    "playwright-core": "^1.58.0"
+  }
+}
