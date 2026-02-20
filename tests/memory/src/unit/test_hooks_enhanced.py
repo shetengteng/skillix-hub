@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """Hook 增强功能的单元测试：stop status 放宽、sessionEnd 兜底检测、load 日志增强"""
 import json
-import os
 import sys
 import unittest
 from pathlib import Path
-from datetime import datetime, timezone
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 from test_common import IsolatedWorkspaceCase, run_script, SCRIPTS_DIR
 
 sys.path.insert(0, str(SCRIPTS_DIR))
+
+from service.config import SESSIONS_FILE
+from core.utils import today_str, iso_now
 
 
 class TestStopHookStatusFilter(IsolatedWorkspaceCase):
@@ -22,12 +23,11 @@ class TestStopHookStatusFilter(IsolatedWorkspaceCase):
             "conversation_id": "test-conv-123",
             "workspace_roots": [self.workspace],
         }
-        result = run_script(
+        return run_script(
             "service/hooks/prompt_session_save.py",
             self.workspace,
             stdin_data=json.dumps(event),
         )
-        return result
 
     def test_completed_triggers_save(self):
         result = self._run_stop_hook("completed")
@@ -81,9 +81,6 @@ class TestSessionEndSummaryCheck(IsolatedWorkspaceCase):
     """验证 sessionEnd 兜底检测：未保存摘要时写入 warning"""
 
     def test_warning_when_no_summary(self):
-        from service.config import SESSIONS_FILE
-        from core.utils import today_str
-
         event = {
             "conversation_id": "test-conv-no-summary",
             "reason": "completed",
@@ -107,9 +104,6 @@ class TestSessionEndSummaryCheck(IsolatedWorkspaceCase):
             self.assertIn("未保存摘要", warnings[0]["content"])
 
     def test_no_warning_when_summary_exists(self):
-        from service.config import SESSIONS_FILE
-        from core.utils import today_str, iso_now
-
         sessions_path = self.memory_dir / SESSIONS_FILE
         summary = {
             "id": "sum-test",
