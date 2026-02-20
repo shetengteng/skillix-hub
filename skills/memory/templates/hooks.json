@@ -19,9 +19,22 @@
         "loop_limit": 1
       }
     ],
+    "postToolUse": [
+      {
+        "command": "python3 {{SKILL_PATH}}/scripts/service/hooks/audit_tool_use.py",
+        "matcher": "Shell",
+        "timeout": 5
+      }
+    ],
     "afterAgentResponse": [
       {
         "command": "python3 {{SKILL_PATH}}/scripts/service/hooks/audit_response.py",
+        "timeout": 5
+      }
+    ],
+    "afterAgentThought": [
+      {
+        "command": "python3 {{SKILL_PATH}}/scripts/service/hooks/audit_thought.py",
         "timeout": 5
       }
     ],
