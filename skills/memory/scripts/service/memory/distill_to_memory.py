@@ -102,6 +102,8 @@ def select_candidates(daily_dir, existing_set, config):
             continue
         if not fact.get("content"):
             continue
+        if fact.get("memory_type") == "S":
+            continue
 
         conf = fact.get("confidence", 0)
         if conf < min_conf:

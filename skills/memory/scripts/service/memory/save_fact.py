@@ -27,8 +27,8 @@ def main():
     """
     parser = argparse.ArgumentParser(description="Save a fact to memory")
     parser.add_argument("--content", required=True, help="Fact content")
-    parser.add_argument("--type", default="W", choices=["W", "B", "O"],
-                        help="W=World, B=Biographical, O=Opinion")
+    parser.add_argument("--type", default="W", choices=["W", "B", "O", "S"],
+                        help="W=World, B=Biographical, O=Opinion, S=Stage Summary")
     parser.add_argument("--entities", default="",
                         help="Comma-separated entity tags")
     parser.add_argument("--confidence", type=float, default=0.9)
@@ -64,6 +64,12 @@ def main():
         f.write(line + "\n")
 
     log.info("保存事实 id=%s type=%s → %s", entry["id"], args.type, daily_file)
+
+    if args.session:
+        from service.memory.session_state import update_fact_count
+        memory_dir = os.path.dirname(daily_dir)
+        update_fact_count(memory_dir, args.session, args.type)
+
     print(json.dumps({"status": "ok", "id": entry["id"]}, ensure_ascii=False))
 
 

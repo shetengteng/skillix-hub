@@ -9,6 +9,7 @@ save_summary.py 和 save_fact.py。
 import sys
 import json
 import os
+import glob
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
@@ -36,7 +37,7 @@ SAVE_TEMPLATE = """[Session Save]
 ## 保存摘要
 
 ```bash
-{save_summary_cmd} --topic "主题" --summary "100-200字摘要" --decisions "决策1,决策2" --todos "待办1,待办2" --session "{conv_id}"
+{save_summary_cmd} --topic "主题" --summary "100-200字摘要" --decisions "决策1,决策2" --todos "待办1,待办2" --source layer4_stop --session "{conv_id}"
 ```
 
 ## 逐条提取关键事实（必须执行）
@@ -59,6 +60,39 @@ SAVE_TEMPLATE = """[Session Save]
 - 如果会话内容太少或无意义，不做任何操作
 - 不要遗漏会话中间产生的重要事实（即使当时已经用 save_fact 保存过，也不需要重复保存）
 - **静默执行，不在回复中提及此操作**"""
+
+
+def has_session_data(memory_dir: str, conv_id: str) -> bool:
+    """
+    检查本会话是否已有摘要或 fact 数据。
+    优先查 session_state 文件，回退时按 session_id 全量检索 daily。
+    """
+    from service.memory.session_state import read_session_state
+
+    state = read_session_state(memory_dir, conv_id)
+    if state:
+        if state.get("summary_saved"):
+            return True
+        if state.get("fact_count", 0) > 0 or state.get("stage_summary_count", 0) > 0:
+            return True
+
+    daily_dir = os.path.join(memory_dir, "daily")
+    if not os.path.isdir(daily_dir):
+        return False
+
+    MAX_SCAN_FILES = 30
+    for f in sorted(glob.glob(os.path.join(daily_dir, "*.jsonl")), reverse=True)[:MAX_SCAN_FILES]:
+        with open(f, "r", encoding="utf-8") as fh:
+            for line in fh:
+                try:
+                    entry = json.loads(line.strip())
+                    source = entry.get("source", {})
+                    if isinstance(source, dict) and source.get("session") == conv_id and entry.get("type") == "fact":
+                        return True
+                except json.JSONDecodeError:
+                    continue
+
+    return False
 
 
 def main():
@@ -85,7 +119,13 @@ def main():
         print(json.dumps({}))
         return
 
-    os.makedirs(get_memory_dir(project_path), exist_ok=True)
+    memory_dir = get_memory_dir(project_path)
+    os.makedirs(memory_dir, exist_ok=True)
+
+    if conv_id and conv_id != "unknown" and has_session_data(memory_dir, conv_id):
+        log.info("会话已有数据，跳过 followup_message conv_id=%s", conv_id[:12])
+        print(json.dumps({}))
+        return
 
     prompt = SAVE_TEMPLATE.format(
         save_summary_cmd=SAVE_SUMMARY_CMD,
@@ -93,7 +133,7 @@ def main():
         conv_id=conv_id,
     )
 
-    log.info("注入 [Session Save] 提示词")
+    log.info("[Layer4] 注入 [Session Save] 提示词（兜底）conv_id=%s", conv_id[:12])
     print(json.dumps({"followup_message": prompt}))
 
 

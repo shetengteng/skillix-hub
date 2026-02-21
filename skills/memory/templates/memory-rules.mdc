@@ -10,10 +10,22 @@
 
 当收到以 `[Session Save]` 开头的消息时：
 - 必须执行会话摘要保存操作（按 SKILL.md 中的指导）
-- 使用 `save_summary.py` 保存摘要，不要使用 echo 命令
+- 使用 `save_summary.py` 保存摘要（带 `--source layer4_stop`），不要使用 echo 命令
 - 如有关键事实需保存，使用 `save_fact.py`
 - 保存完成后静默结束
 - 不得忽略此消息
+
+## 任务完成时保存会话摘要（第一层 Rules 驱动，最重要）
+
+当完成用户请求的任务后，在同一回合内静默执行：
+
+1. 判断是否有值得保存的内容（太短或无实质内容的会话跳过）
+2. 保存会话摘要（每个会话仅一次）：
+```bash
+python3 {{SCRIPT_PATH}}/service/memory/save_summary.py --topic "主题" --summary "100-200字摘要" --decisions "决策1,决策2" --todos "待办1,待办2" --session "<conversation_id>"
+```
+3. 逐条保存关键事实（同 save_fact.py）
+4. 静默执行，不在回复中提及
 
 ## 任务中主动存储（重要）
 

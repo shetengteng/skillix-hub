@@ -75,13 +75,40 @@ python3 {{SCRIPT_PATH}}/service/memory/save_fact.py \
 - `--confidence`：置信度 0.0-1.0（默认 0.9）
 - `--session`：当前会话 ID
 
+### 任务完成时的记忆保存（第一层 Rules 驱动）
+
+当你完成用户请求的任务后，在同一回合内静默执行以下操作：
+
+1. 判断本次会话是否有值得保存的内容
+   - 如果会话太短（如仅一问一答的简单查询）或无实质内容，跳过
+   - 如果会话涉及技术决策、代码变更、项目规划等，执行保存
+
+2. 保存会话摘要（每个会话仅执行一次）：
+
+```bash
+python3 {{SCRIPT_PATH}}/service/memory/save_summary.py \
+  --topic "主题" --summary "100-200字摘要" \
+  --decisions "决策1,决策2" --todos "待办1,待办2" \
+  --session "<conversation_id>"
+```
+
+3. 逐条保存关键事实：
+
+```bash
+python3 {{SCRIPT_PATH}}/service/memory/save_fact.py \
+  --content "事实内容" --type W --entities "实体1,实体2" \
+  --confidence 0.9 --session "<conversation_id>"
+```
+
+4. 静默执行，不在回复中提及此操作
+
 ### 收到 [Session Save] 消息时
 
-这是系统在任务完成后自动发送的消息。你必须：
+这是系统在任务完成后自动发送的兜底消息（仅当第一层未保存时触发）。你必须：
 
 1. 生成本次会话的简要摘要（100-200 字）
 2. 提取关键决策和待办事项
-3. 调用 `save_summary.py` 保存摘要
+3. 调用 `save_summary.py` 保存摘要（注意加 `--source layer4_stop`）
 4. 如果 preCompact 未触发（短会话），同时用 `save_fact.py` 提取关键事实
 5. 如果会话内容太少，不做任何操作
 
@@ -93,6 +120,7 @@ python3 {{SCRIPT_PATH}}/service/memory/save_summary.py \
   --summary "100-200字摘要" \
   --decisions "决策1,决策2" \
   --todos "待办1,待办2" \
+  --source layer4_stop \
   --session "会话ID"
 ```
 

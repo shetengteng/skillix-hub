@@ -41,6 +41,14 @@ FLUSH_TEMPLATE = """[Memory Flush]
 
 memory_type：W=客观事实 / B=项目经历 / O=用户偏好
 
+## 阶段摘要
+
+请同时保存一条阶段摘要，概括截至目前的对话主要内容（50-100字）：
+
+```bash
+{save_fact_cmd} --content "阶段摘要：[概括内容]" --type S --entities "session" --confidence 1.0 --session "{conv_id}"
+```
+
 ## 注意
 
 - 如果没有需要记住的内容，不做任何操作

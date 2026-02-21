@@ -48,6 +48,7 @@ def load_context(project_path):
 
     daily_dir = os.path.join(memory_dir, DAILY_DIR_NAME)
     recent_facts = read_recent_facts_from_daily(daily_dir)
+    recent_facts = [f for f in recent_facts if f.get("memory_type") != "S"]
     fact_count = len(recent_facts) if recent_facts else 0
     log.info("加载近期事实 %d 条（从 daily/ 目录）", fact_count)
     if recent_facts:

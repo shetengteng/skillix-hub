@@ -20,6 +20,7 @@ from commands.cmd_list import cmd_list, cmd_stats
 from commands.cmd_delete import cmd_delete, cmd_restore
 from commands.cmd_edit import cmd_edit, cmd_export, cmd_cleanup
 from commands.cmd_index import cmd_rebuild_index, cmd_doctor
+from commands.cmd_metrics import cmd_metrics
 from commands.cmd_config import (
     cmd_config_show,
     cmd_config_get,
@@ -114,6 +115,10 @@ def main():
     # doctor
     sub.add_parser("doctor")
 
+    # metrics
+    p = sub.add_parser("metrics")
+    p.add_argument("--days", type=int, default=7, help="统计最近 N 天")
+
     # config
     cp = sub.add_parser("config")
     cs = cp.add_subparsers(dest="action")
@@ -161,6 +166,7 @@ def main():
         "cleanup": cmd_cleanup,
         "rebuild-index": cmd_rebuild_index,
         "doctor": cmd_doctor,
+        "metrics": cmd_metrics,
     }
 
     if args.command == "config":

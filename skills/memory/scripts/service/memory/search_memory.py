@@ -32,6 +32,8 @@ def main():
     parser.add_argument("query", help="Search query")
     parser.add_argument("--max-results", type=int, default=10)
     parser.add_argument("--method", choices=["hybrid", "fts", "vector"], default="hybrid")
+    parser.add_argument("--include-stage", action="store_true",
+                        help="Include stage summaries (type S) in search results")
     parser.add_argument("--days", type=int, help="限制搜索最近 N 天的记忆")
     parser.add_argument("--from", dest="from_date", help="起始日期 YYYY-MM-DD")
     parser.add_argument("--to", help="结束日期 YYYY-MM-DD")
@@ -82,6 +84,9 @@ def main():
         results = store.search_vector(query_embedding, limit=args.max_results, **time_kwargs)
     else:
         results = store.hybrid_search(args.query, query_embedding, limit=args.max_results, **time_kwargs)
+
+    if not args.include_stage:
+        results = [r for r in results if r.get("memory_type") != "S"]
 
     store.close()
     elapsed = time.time() - t0
