@@ -21,6 +21,7 @@ AI Skill 是一种可复用的 AI 指令集，帮助 AI 编程助手更好地完
 | [swagger-api-reader](./skills/swagger-api-reader/) | 读取并缓存 Swagger/OpenAPI 文档，支持浏览器认证 |
 | [uniapp-mp-generator](./skills/uniapp-mp-generator/) | uni-app 小程序代码生成器，根据需求文档自动生成 Vue3 页面、API、Store 等代码 |
 | [playwright](./skills/playwright/) | 浏览器自动化工具，通过 48 个 CLI 命令控制真实浏览器，支持导航、点击、表单填写、截图、Cookie/存储管理、网络拦截等 |
+| [api-tracer](./skills/api-tracer/) | 录制和分析浏览器网络请求，通过 CDP 捕获完整 API 信息（URL、headers、cookie、请求/响应体），生成分析报告用于自动化 |
 
 ## 安装使用
 
@@ -430,6 +431,67 @@ node skills/playwright/tool.js screenshot '{"type":"png"}'
 - **截图**：截图、截屏
 - **表单**：填写表单、输入文本
 - **测试**：验证元素、检查文本
+
+## API Tracer Skill 使用说明
+
+API Tracer 录制浏览器中的网络请求，分析 API 端点，生成可用于自动化的报告。通过 CDP 连接 Playwright 浏览器实例，捕获完整的请求/响应信息。
+
+### 前置条件
+
+需要 Playwright Skill 已启动浏览器，API Tracer 通过 CDP 连接到同一浏览器实例。
+
+### 安装
+
+```bash
+cd skills/api-tracer && npm install
+```
+
+### 核心工作流
+
+```bash
+# 1. 用 Playwright 打开网站
+node skills/playwright/tool.js navigate '{"url":"https://app.example.com"}'
+
+# 2. 启动 API 录制
+node skills/api-tracer/tool.js start '{"name": "my-session", "filter": "api/"}'
+
+# 3. 通过 Playwright 操作页面（登录、浏览等）
+node skills/playwright/tool.js click '{"ref":"e5","element":"登录"}'
+
+# 4. 停止录制
+node skills/api-tracer/tool.js stop '{}'
+
+# 5. 生成报告
+node skills/api-tracer/tool.js report '{"name": "my-session", "format": "markdown"}'
+```
+
+### 命令参考
+
+| 命令 | 说明 |
+|------|------|
+| `start` | 启动录制（后台 daemon） |
+| `stop` | 停止录制并保存 |
+| `status` | 查看录制状态 |
+| `sessions` | 列出所有历史会话 |
+| `detail` | 查看会话的请求列表或单个请求详情 |
+| `report` | 生成分析报告（json/markdown/curl） |
+| `delete` | 删除历史会话 |
+
+### 报告内容
+
+- API 端点列表（自动去重）
+- 每个端点的 HTTP 方法、URL 模式
+- 请求头（重要字段）、Cookie 列表
+- 请求体/响应体格式和 schema
+- 认证方式自动识别（Bearer Token / API Key 等）
+- curl 命令导出
+
+### 触发词
+
+- **录制**：开始录制网络请求、停止录制
+- **查看**：录制状态、看看录制了什么
+- **报告**：生成 API 报告、导出为 curl
+- **管理**：有哪些录制、删除录制
 
 ## 贡献
 

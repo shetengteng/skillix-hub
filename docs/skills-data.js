@@ -123,6 +123,30 @@ const SKILLS_DATA = [
         author: 'shetengteng',
         repo: 'https://github.com/shetengteng/skillix-hub/tree/main/skills/uniapp-mp-generator'
     }
+    ,{
+        id: 'api-tracer',
+        name: 'api-tracer',
+        icon: 'globe',
+        description: {
+            zh: '录制和分析浏览器网络请求，通过 CDP 捕获完整 API 信息（URL、headers、cookie、请求/响应体），生成分析报告用于自动化',
+            en: 'Record and analyze browser network requests via CDP, capture full API info (URL, headers, cookies, request/response body), generate reports for automation'
+        },
+        tags: [
+            { zh: '网络', en: 'Network' },
+            { zh: 'API', en: 'API' },
+            { zh: '录制', en: 'Recording' }
+        ],
+        features: [
+            { zh: 'CDP 网络请求捕获', en: 'CDP Network Capture' },
+            { zh: 'API 端点分析', en: 'API Endpoint Analysis' },
+            { zh: 'Schema 自动推断', en: 'Auto Schema Inference' },
+            { zh: 'Markdown/curl 报告', en: 'Markdown/curl Reports' }
+        ],
+        scripts: ['tool.js'],
+        version: '1.0',
+        author: 'shetengteng',
+        repo: 'https://github.com/shetengteng/skillix-hub/tree/main/skills/api-tracer'
+    }
 ];
 
 // 图标 SVG 路径映射
