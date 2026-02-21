@@ -20,7 +20,7 @@ _DEFAULTS = {
         "facts_limit": 15,
     },
     "embedding": {
-        "model": "BAAI/bge-small-zh-v1.5",
+        "model": "Qwen/Qwen3-Embedding-0.6B",
         "cache_dir": os.path.join("~", ".memory", "models"),
     },
     "index": {
