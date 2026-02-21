@@ -23,6 +23,7 @@ AI Skill is a reusable AI instruction set that helps AI programming assistants b
 | [playwright](./skills/playwright/) | Browser automation via 48 CLI commands controlling a real browser. Navigate, click, fill forms, screenshot, manage cookies/storage, intercept network, and more |
 | [api-tracer](./skills/api-tracer/) | Record and analyze browser network requests via CDP, capture full API info (URL, headers, cookies, request/response body), generate reports for automation |
 | [web-content-reader](./skills/web-content-reader/) | Read web page content with automatic SPA detection and browser rendering fallback for Vue/React pages |
+| [skill-builder](./skills/skill-builder/) | Standardized Skill development workflow guide and scaffold tool for skillix-hub, with 8-phase lifecycle and template auto-generation |
 
 ## Installation
 
@@ -496,6 +497,39 @@ node skills/web-content-reader/tool.js read '{"url":"https://example.com","outpu
 - **Read Page**: read this page, show me this webpage
 - **SPA Page**: this is a Vue page, fetch can't get data
 - **Extract Data**: extract page tables, get page links
+
+## Skill Builder
+
+Skill Builder is the standardized Skill development workflow guide and scaffold tool for skillix-hub. It provides a complete 8-phase lifecycle: requirements naming, design document, discussion iteration, code development, unit testing, test report, README sync, docs sync.
+
+### Scaffold Tool
+
+```bash
+# Initialize complete directory structure and template files for a new Skill
+node skills/skill-builder/scaffold.js init '{"name":"my-skill","tech":"node","description":"Brief description"}'
+```
+
+Parameters:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `name` | string | required | Skill name (lowercase + hyphens) |
+| `tech` | string | `node` | Tech stack: `node` / `python` |
+| `description` | string | `""` | Brief description |
+
+### Generated Structure
+
+```
+skills/<name>/          # Skill source (SKILL.md, tool.js, package.json, lib/)
+design/<name>/          # Design documents
+tests/<name>/           # Tests (run_tests.js, src/unit/, reports/)
+```
+
+### Trigger Words
+
+- **Create Skill**: create a new skill, help me write a skill
+- **Init Directory**: initialize skill directory
+- **View Standards**: skill development workflow, design doc template, how to write tests
 
 ## Contributing
 

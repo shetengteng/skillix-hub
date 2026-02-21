@@ -23,6 +23,7 @@ AI Skill 是一种可复用的 AI 指令集，帮助 AI 编程助手更好地完
 | [playwright](./skills/playwright/) | 浏览器自动化工具，通过 48 个 CLI 命令控制真实浏览器，支持导航、点击、表单填写、截图、Cookie/存储管理、网络拦截等 |
 | [api-tracer](./skills/api-tracer/) | 录制和分析浏览器网络请求，通过 CDP 捕获完整 API 信息（URL、headers、cookie、请求/响应体），生成分析报告用于自动化 |
 | [web-content-reader](./skills/web-content-reader/) | 读取网页内容，支持 SPA 页面自动检测与浏览器渲染降级，当普通 fetch 无法获取 Vue/React 等页面数据时自动通过浏览器获取 |
+| [skill-builder](./skills/skill-builder/) | skillix-hub 项目标准化 Skill 开发流程指南和脚手架工具，提供 8 阶段完整生命周期和模板自动生成 |
 
 ## 安装使用
 
@@ -542,6 +543,39 @@ node skills/web-content-reader/tool.js read '{"url":"https://example.com","outpu
 - **读取页面**：读取这个页面、帮我看看这个网页
 - **SPA 页面**：这是个 Vue 页面、fetch 读不到数据
 - **提取数据**：提取页面表格、获取页面链接
+
+## Skill Builder 使用说明
+
+Skill Builder 是 skillix-hub 项目的标准化 Skill 开发流程指南和脚手架工具。提供 8 阶段完整生命周期：需求命名、设计文档、讨论迭代、代码开发、单元测试、测试报告、README 同步、docs 同步。
+
+### 脚手架工具
+
+```bash
+# 初始化新 Skill 的完整目录结构和模板文件
+node skills/skill-builder/scaffold.js init '{"name":"my-skill","tech":"node","description":"简短描述"}'
+```
+
+参数说明：
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `name` | string | 必填 | Skill 名称（小写+连字符） |
+| `tech` | string | `node` | 技术栈：`node` / `python` |
+| `description` | string | `""` | 简短描述 |
+
+### 生成的目录结构
+
+```
+skills/<name>/          # Skill 源码（SKILL.md, tool.js, package.json, lib/）
+design/<name>/          # 设计文档
+tests/<name>/           # 测试（run_tests.js, src/unit/, reports/）
+```
+
+### 触发词
+
+- **创建 Skill**：创建一个新 skill、帮我写个 skill
+- **初始化目录**：初始化 skill 目录
+- **查看规范**：skill 开发流程、设计文档模板、测试怎么写
 
 ## 贡献
 

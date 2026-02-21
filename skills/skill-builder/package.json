@@ -1,0 +1,6 @@
+{
+  "name": "skill-builder",
+  "version": "1.0.0",
+  "description": "Scaffold and guide new Skill development in skillix-hub",
+  "main": "scaffold.js"
+}
