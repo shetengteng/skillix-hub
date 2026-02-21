@@ -22,6 +22,7 @@ AI Skill 是一种可复用的 AI 指令集，帮助 AI 编程助手更好地完
 | [uniapp-mp-generator](./skills/uniapp-mp-generator/) | uni-app 小程序代码生成器，根据需求文档自动生成 Vue3 页面、API、Store 等代码 |
 | [playwright](./skills/playwright/) | 浏览器自动化工具，通过 48 个 CLI 命令控制真实浏览器，支持导航、点击、表单填写、截图、Cookie/存储管理、网络拦截等 |
 | [api-tracer](./skills/api-tracer/) | 录制和分析浏览器网络请求，通过 CDP 捕获完整 API 信息（URL、headers、cookie、请求/响应体），生成分析报告用于自动化 |
+| [web-content-reader](./skills/web-content-reader/) | 读取网页内容，支持 SPA 页面自动检测与浏览器渲染降级，当普通 fetch 无法获取 Vue/React 等页面数据时自动通过浏览器获取 |
 
 ## 安装使用
 
@@ -492,6 +493,55 @@ node skills/api-tracer/tool.js report '{"name": "my-session", "format": "markdow
 - **查看**：录制状态、看看录制了什么
 - **报告**：生成 API 报告、导出为 curl
 - **管理**：有哪些录制、删除录制
+
+## Web Content Reader Skill 使用说明
+
+Web Content Reader 读取任意网页的渲染后内容。自动检测 SPA 页面，在 HTTP fetch 失败时降级到浏览器渲染。完全独立，不依赖其他 Skill。
+
+### 安装
+
+```bash
+cd skills/web-content-reader && npm install
+```
+
+浏览器渲染模式需要系统已安装 Chrome/Chromium。如果未安装：
+
+```bash
+npx playwright install chromium
+```
+
+### 核心工作流
+
+```bash
+# 自动模式（先 fetch，SPA 则降级到浏览器）
+node skills/web-content-reader/tool.js read '{"url":"https://example.com"}'
+
+# 强制浏览器模式（已知 SPA 页面）
+node skills/web-content-reader/tool.js read '{"url":"https://spa-app.com","mode":"browser"}'
+
+# 提取特定区域
+node skills/web-content-reader/tool.js read '{"url":"https://example.com","selector":".content"}'
+
+# 获取全部结构化数据（含表格、链接、元信息）
+node skills/web-content-reader/tool.js read '{"url":"https://example.com","output":"json"}'
+```
+
+### 参数说明
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `url` | string | 必填 | 目标页面 URL |
+| `mode` | string | `auto` | `auto`/`fetch`/`browser` |
+| `selector` | string | - | CSS 选择器，提取特定区域 |
+| `output` | string | `text` | `text`/`html`/`json` |
+| `waitSelector` | string | - | 浏览器模式下等待此选择器出现 |
+| `timeout` | number | `15000` | 浏览器渲染超时（ms） |
+
+### 触发词
+
+- **读取页面**：读取这个页面、帮我看看这个网页
+- **SPA 页面**：这是个 Vue 页面、fetch 读不到数据
+- **提取数据**：提取页面表格、获取页面链接
 
 ## 贡献
 

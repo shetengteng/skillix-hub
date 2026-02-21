@@ -1,0 +1,13 @@
+{
+  "name": "web-content-reader",
+  "version": "1.0.0",
+  "description": "Read web page content with automatic SPA detection and browser rendering fallback",
+  "main": "tool.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "playwright-core": "^1.58.2"
+  }
+}

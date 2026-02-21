@@ -21,6 +21,8 @@ AI Skill is a reusable AI instruction set that helps AI programming assistants b
 | [swagger-api-reader](./skills/swagger-api-reader/) | Read and cache Swagger/OpenAPI docs with browser auth support |
 | [uniapp-mp-generator](./skills/uniapp-mp-generator/) | uni-app mini-program code generator, auto-generate Vue3 pages, API, Store from requirements |
 | [playwright](./skills/playwright/) | Browser automation via 48 CLI commands controlling a real browser. Navigate, click, fill forms, screenshot, manage cookies/storage, intercept network, and more |
+| [api-tracer](./skills/api-tracer/) | Record and analyze browser network requests via CDP, capture full API info (URL, headers, cookies, request/response body), generate reports for automation |
+| [web-content-reader](./skills/web-content-reader/) | Read web page content with automatic SPA detection and browser rendering fallback for Vue/React pages |
 
 ## Installation
 
@@ -342,6 +344,158 @@ node skills/playwright/tool.js start    # Launch browser
 node skills/playwright/tool.js stop     # Close browser
 node skills/playwright/tool.js status   # Check status
 ```
+
+### MCP Tools Mapping (22 tools)
+
+When `@playwright/mcp` is enabled, the following MCP tools map to Skill CLI commands. **Prefer Skill CLI commands**:
+
+| MCP Tool -> Function | CLI Command |
+|---------------------|-------------|
+| `browser_navigate` -> Navigate | `navigate` |
+| `browser_snapshot` -> Snapshot | `snapshot` |
+| `browser_click` -> Click | `click` |
+| `browser_type` -> Type | `type` |
+| `browser_fill_form` -> Fill Form | `fillForm` |
+| `browser_take_screenshot` -> Screenshot | `screenshot` |
+| `browser_evaluate` -> Execute JS | `evaluate` |
+| `browser_wait_for` -> Wait | `waitFor` |
+| `browser_tabs` -> Tabs | `tabs` |
+| `browser_network_requests` -> Network | `networkRequests` |
+| `browser_close` -> Close | `close` |
+
+### CLI Tools (48 total)
+
+All commands: `node skills/playwright/tool.js <command> '<json_params>'`
+
+| Category | Tools |
+|----------|-------|
+| Navigation | navigate, goBack, goForward, reload |
+| Interaction | snapshot, click, drag, hover, selectOption, check, uncheck, type, pressKey, fillForm |
+| Mouse | mouseMove, mouseClick, mouseDrag, mouseDown, mouseUp, mouseWheel |
+| Observation | screenshot, consoleMessages, networkRequests, waitFor |
+| Tabs | tabs (list/new/close/select) |
+| Data | cookieList/Get/Set/Delete/Clear, localStorage/sessionStorage ops, storageState |
+| Network | route, routeList, unroute |
+| Advanced | evaluate, runCode, pdf, tracingStart/Stop, startVideo/stopVideo |
+| Testing | verifyElement, verifyText, verifyList, verifyValue, generateLocator |
+| System | install, getConfig, close, resize |
+
+### Trigger Words
+
+- **Browser Ops**: open webpage, navigate to, click button
+- **Screenshot**: take screenshot, capture screen
+- **Forms**: fill form, type text
+- **Testing**: verify element, check text
+
+## API Tracer Skill
+
+API Tracer records browser network requests, analyzes API endpoints, and generates reports for automation. It connects to the Playwright browser instance via CDP to capture full request/response information.
+
+### Prerequisites
+
+Requires Playwright Skill with a running browser. API Tracer connects to the same browser instance via CDP.
+
+### Setup
+
+```bash
+cd skills/api-tracer && npm install
+```
+
+### Core Workflow
+
+```bash
+# 1. Open website with Playwright
+node skills/playwright/tool.js navigate '{"url":"https://app.example.com"}'
+
+# 2. Start API recording
+node skills/api-tracer/tool.js start '{"name": "my-session", "filter": "api/"}'
+
+# 3. Operate the page via Playwright (login, browse, etc.)
+node skills/playwright/tool.js click '{"ref":"e5","element":"Login"}'
+
+# 4. Stop recording
+node skills/api-tracer/tool.js stop '{}'
+
+# 5. Generate report
+node skills/api-tracer/tool.js report '{"name": "my-session", "format": "markdown"}'
+```
+
+### Command Reference
+
+| Command | Description |
+|---------|-------------|
+| `start` | Start recording (background daemon) |
+| `stop` | Stop recording and save |
+| `status` | Check recording status |
+| `sessions` | List all historical sessions |
+| `detail` | View session request list or single request details |
+| `report` | Generate analysis report (json/markdown/curl) |
+| `delete` | Delete historical session |
+
+### Report Contents
+
+- API endpoint list (auto-deduplicated)
+- HTTP method and URL pattern per endpoint
+- Request headers (key fields) and cookies
+- Request/response body format and schema
+- Auth method auto-detection (Bearer Token / API Key, etc.)
+- curl command export
+
+### Trigger Words
+
+- **Recording**: start recording network requests, stop recording
+- **Viewing**: recording status, show recorded requests
+- **Reports**: generate API report, export as curl
+- **Management**: list recordings, delete recording
+
+## Web Content Reader Skill
+
+Web Content Reader reads rendered content from any web page. It auto-detects SPA pages and falls back to browser rendering when HTTP fetch fails. Fully independent, no dependency on other Skills.
+
+### Setup
+
+```bash
+cd skills/web-content-reader && npm install
+```
+
+Browser rendering mode requires Chrome/Chromium installed. If not available:
+
+```bash
+npx playwright install chromium
+```
+
+### Core Workflow
+
+```bash
+# Auto mode (fetch first, fallback to browser for SPA)
+node skills/web-content-reader/tool.js read '{"url":"https://example.com"}'
+
+# Force browser mode (known SPA page)
+node skills/web-content-reader/tool.js read '{"url":"https://spa-app.com","mode":"browser"}'
+
+# Extract specific area
+node skills/web-content-reader/tool.js read '{"url":"https://example.com","selector":".content"}'
+
+# Get full structured data (tables, links, meta)
+node skills/web-content-reader/tool.js read '{"url":"https://example.com","output":"json"}'
+```
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `url` | string | required | Target page URL |
+| `mode` | string | `auto` | `auto`/`fetch`/`browser` |
+| `selector` | string | - | CSS selector to extract specific area |
+| `output` | string | `text` | `text`/`html`/`json` |
+| `waitSelector` | string | - | Wait for this selector in browser mode |
+| `timeout` | number | `15000` | Browser rendering timeout (ms) |
+
+### Trigger Words
+
+- **Read Page**: read this page, show me this webpage
+- **SPA Page**: this is a Vue page, fetch can't get data
+- **Extract Data**: extract page tables, get page links
 
 ## Contributing
 
