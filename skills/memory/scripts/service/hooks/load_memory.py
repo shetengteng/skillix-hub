@@ -14,28 +14,17 @@ import argparse
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
 from service.config import MEMORY_MD, SESSIONS_FILE, DAILY_DIR_NAME
-from service.config import get_memory_dir, is_memory_enabled, init_hook_context
+from service.config import get_memory_dir, is_memory_enabled, init_hook_context, ensure_memory_dir
 from storage.jsonl import read_recent_facts_from_daily, read_last_entry
 from service.logger import get_logger
 
 log = get_logger("load")
 
 
-def _ensure_memory_md(memory_dir):
-    """首次使用时自动创建 MEMORY.md，避免新项目需要手动 init。"""
-    memory_md_path = os.path.join(memory_dir, MEMORY_MD)
-    if os.path.exists(memory_md_path):
-        return
-    os.makedirs(memory_dir, exist_ok=True)
-    with open(memory_md_path, "w", encoding="utf-8") as f:
-        f.write("# 核心记忆\n\n## 用户偏好\n\n## 项目背景\n\n## 重要决策\n")
-    log.info("自动创建 MEMORY.md: %s", memory_md_path)
-
-
 def load_context(project_path):
     """加载所有记忆数据，返回格式化的上下文文本"""
     memory_dir = get_memory_dir(project_path)
-    _ensure_memory_md(memory_dir)
+    ensure_memory_dir(memory_dir)
     context_parts = []
 
     memory_md_path = os.path.join(memory_dir, MEMORY_MD)
@@ -106,36 +95,45 @@ def main():
     parser.add_argument("--project-path", default=os.getcwd())
     args, _ = parser.parse_known_args()
 
-    # 尝试从 stdin 读取 Hook event（非交互模式下可能无输入）
     event = {}
+    stdin_raw = ""
     if not sys.stdin.isatty():
         try:
-            raw = sys.stdin.read().strip()
-            if raw:
-                event = json.loads(raw)
-        except (json.JSONDecodeError, ValueError):
-            pass
+            stdin_raw = sys.stdin.read().strip()
+            if stdin_raw:
+                event = json.loads(stdin_raw)
+        except (json.JSONDecodeError, ValueError) as e:
+            log.error("stdin JSON 解析失败: %s, raw=%s", e, stdin_raw[:200])
 
-    if event:
-        project_path = init_hook_context(event)
-    else:
-        project_path = args.project_path
-        from service.logger import redirect_to_project
-        redirect_to_project(project_path)
+    try:
+        if event:
+            project_path = init_hook_context(event)
+            conv_id = event.get("conversation_id", "unknown")
+            log.info("sessionStart hook 触发 conv_id=%s project=%s", conv_id, project_path)
+        else:
+            project_path = args.project_path
+            from service.logger import redirect_to_project
+            redirect_to_project(project_path)
+            log.info("命令行调用 project=%s", project_path)
+    except Exception as e:
+        log.error("初始化失败: %s", e, exc_info=True)
+        print(json.dumps({"additional_context": ""}) if event else "")
+        return
 
     if not is_memory_enabled(project_path):
         log.info("Memory 已禁用（.memory-disable），跳过")
         print(json.dumps({"additional_context": ""}) if event else "")
         return
 
-    memory_dir = get_memory_dir(project_path)
+    try:
+        memory_dir = get_memory_dir(project_path)
+        context = load_context(project_path)
+        log_session_start(memory_dir, project_path, event.get("conversation_id", ""))
+        log.info("上下文输出 %d 字符", len(context))
+    except Exception as e:
+        log.error("记忆加载失败: %s", e, exc_info=True)
+        context = ""
 
-    context = load_context(project_path)
-    log_session_start(memory_dir, project_path, event.get("conversation_id", ""))
-
-    log.info("上下文输出 %d 字符", len(context))
-
-    # 如果是 Hook 调用（stdin 有 event），输出 JSON；否则输出纯文本
     if event:
         print(json.dumps({"additional_context": context}))
     else:
