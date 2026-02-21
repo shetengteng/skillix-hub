@@ -1,0 +1,10 @@
+{
+  "name": "api-tracer-skill",
+  "version": "1.0.0",
+  "description": "API Tracer - Record and analyze network requests from browser sessions",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "playwright-core": "^1.58.0"
+  }
+}
