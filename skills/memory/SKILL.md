@@ -213,8 +213,33 @@ python3 {{SCRIPT_PATH}}/service/manage/index.py export --from 2026-02-01 --to 20
 python3 {{SCRIPT_PATH}}/service/manage/index.py config set <字段> <值>
 ```
 
-3. 如果命令返回 `needs_rebuild: true`，提示用户需要重建索引
-4. 向用户确认修改结果
+3. 如果命令返回 `needs_rebuild: true`，**必须立即执行索引重建**（不仅仅是提示）：
+
+```bash
+python3 {{SCRIPT_PATH}}/service/manage/index.py --project-path <项目路径> rebuild-index --full
+```
+
+4. 向用户确认修改结果和重建状态
+
+**嵌入模型切换专项流程**：
+
+当用户要求更换嵌入模型时（如"换个模型"、"用 xxx 模型"），这是高危操作，必须按以下步骤执行：
+
+1. 执行 `config set embedding.model "新模型名"`
+2. 告知用户：新模型的嵌入维度可能与旧模型不同，**必须重建索引**，否则向量搜索将失败
+3. **立即执行全量索引重建**：
+
+```bash
+python3 {{SCRIPT_PATH}}/service/manage/index.py --project-path <项目路径> rebuild-index --full
+```
+
+4. 重建完成后，验证索引状态：
+
+```bash
+python3 {{SCRIPT_PATH}}/service/manage/index.py db stats
+```
+
+5. 向用户报告：旧模型名 → 新模型名，索引已重建，共 N 条记录已更新嵌入向量
 
 **查看当前配置**：
 

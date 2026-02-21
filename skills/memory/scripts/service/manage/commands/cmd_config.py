@@ -40,6 +40,9 @@ def cmd_config_set(cfg, args):
     data = {"field": args.key, "old_value": r["old_value"], "new_value": r["new_value"], "scope": scope, "file": r["file"], "needs_rebuild": r["needs_rebuild"]}
     if r["needs_rebuild"]:
         data["rebuild_reason"] = "需要 rebuild-index --full 重建索引"
+        if args.key == "embedding.model":
+            data["rebuild_reason"] = "嵌入模型已变更，所有现有向量与新模型不兼容，必须立即执行 rebuild-index --full 重建全部嵌入向量"
+            data["warning"] = "模型切换后若不重建索引，向量搜索将返回错误结果或报错"
     _json_out("ok", "config set", data)
 
 
