@@ -113,8 +113,8 @@ def _apply_decay(entries: list) -> list:
         partial_items.extend(day_entries[-LOAD_PARTIAL_PER_DAY:])
 
     result = full_items + partial_items + important_items
-    result.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
-    return result[:LOAD_FACTS_LIMIT]
+    result.sort(key=lambda x: x.get("timestamp", ""))
+    return result[-LOAD_FACTS_LIMIT:]
 
 
 def read_recent_facts(filepath: str) -> list:

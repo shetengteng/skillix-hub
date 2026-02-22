@@ -45,8 +45,9 @@ def load_context(project_path):
         for i, fact in enumerate(recent_facts):
             fid = fact.get("id", "?")
             ftype = fact.get("memory_type", "?")
+            fdate = fact.get("timestamp", "")[:10]
             fcontent = fact.get("content", "")[:80]
-            log.info("  [%d] id=%s type=%s: %s", i + 1, fid, ftype, fcontent)
+            log.info("  [%d] id=%s date=%s type=%s: %s", i + 1, fid, fdate, ftype, fcontent)
         lines = []
         for fact in recent_facts:
             mtype = fact.get("memory_type", "?")
