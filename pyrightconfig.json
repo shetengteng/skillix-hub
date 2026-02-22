@@ -1,7 +1,7 @@
 {
   "extraPaths": [
-    ".",
-    "../../../skills/memory/scripts"
+    "skills/memory/scripts",
+    "tests/memory/src"
   ],
   "reportMissingImports": "warning"
 }
