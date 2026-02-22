@@ -13,8 +13,8 @@ import glob
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
-from service.config import init_hook_context
-from service.config import get_memory_dir, is_memory_enabled
+from service.config import require_hook_memory
+from service.config import get_memory_dir
 from service.logger import get_logger
 
 log = get_logger("stop_hook")
@@ -95,27 +95,16 @@ def has_session_data(memory_dir: str, conv_id: str) -> bool:
     return False
 
 
-def main():
-    """主入口：从 stdin 读取 event，在 status=completed 或 aborted 时生成 [Session Save] 提示词。"""
-    try:
-        event = json.loads(sys.stdin.read())
-    except (json.JSONDecodeError, ValueError):
-        event = {}
-
+@require_hook_memory()
+def main(event, project_path):
+    """主入口：在 status=completed 或 aborted 时生成 [Session Save] 提示词。"""
     status = event.get("status", "")
     conv_id = event.get("conversation_id", "unknown")
-
-    project_path = init_hook_context(event)
 
     log.info("stop 触发 status=%s conv_id=%s", status, conv_id)
 
     if status not in ("completed", "aborted"):
         log.info("status=%s 非 completed/aborted，跳过摘要保存提示", status)
-        print(json.dumps({}))
-        return
-
-    if not is_memory_enabled(project_path):
-        log.info("Memory 已禁用（.memory-disable），跳过")
         print(json.dumps({}))
         return
 

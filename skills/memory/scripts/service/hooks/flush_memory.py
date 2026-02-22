@@ -11,8 +11,8 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
-from service.config import init_hook_context
-from service.config import get_memory_dir, is_memory_enabled
+from service.config import require_hook_memory
+from service.config import get_memory_dir
 from service.logger import get_logger
 
 log = get_logger("flush_memory")
@@ -56,20 +56,9 @@ memory_type：W=客观事实 / B=项目经历 / O=用户偏好
 - 不要重复已存在于 MEMORY.md 中的内容"""
 
 
-def main():
-    """主入口：从 stdin 读取 event，生成 [Memory Flush] 提示词并输出 user_message。"""
-    try:
-        event = json.loads(sys.stdin.read())
-    except (json.JSONDecodeError, ValueError):
-        event = {}
-
-    project_path = init_hook_context(event)
-
-    if not is_memory_enabled(project_path):
-        log.info("Memory 已禁用（.memory-disable），跳过")
-        print(json.dumps({}))
-        return
-
+@require_hook_memory()
+def main(event, project_path):
+    """主入口：生成 [Memory Flush] 提示词并输出 user_message。"""
     os.makedirs(get_memory_dir(project_path), exist_ok=True)
 
     usage = event.get("context_usage_percent", "?")

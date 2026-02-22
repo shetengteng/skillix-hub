@@ -13,12 +13,14 @@ import argparse
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
 from service.config import get_daily_dir
+from service.config import require_memory_enabled
 from core.utils import iso_now, today_str, ts_id
 from service.logger import get_logger
 
 log = get_logger("save_fact")
 
 
+@require_memory_enabled
 def main():
     """
     解析命令行参数，将事实追加写入当日 daily 文件。

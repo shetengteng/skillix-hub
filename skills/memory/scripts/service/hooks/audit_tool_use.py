@@ -14,8 +14,7 @@ import re
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
-from service.config import init_hook_context, get_memory_dir
-from service.config import is_memory_enabled
+from service.config import require_hook_memory, get_memory_dir
 from core.utils import iso_now, today_str, ts_id
 from service.logger import get_logger
 
@@ -69,15 +68,8 @@ def detect_tool_action(command, output):
     return None, None
 
 
-def main():
-    event = {}
-    try:
-        raw = sys.stdin.read().strip()
-        if raw:
-            event = json.loads(raw)
-    except (json.JSONDecodeError, ValueError):
-        pass
-
+@require_hook_memory()
+def main(event, project_path):
     tool_name = event.get("tool_name", "")
     if tool_name != "Shell":
         print(json.dumps({}))
@@ -94,11 +86,6 @@ def main():
     output = event.get("tool_output", "")
 
     if not command or should_skip(command):
-        print(json.dumps({}))
-        return
-
-    project_path = init_hook_context(event)
-    if not is_memory_enabled(project_path):
         print(json.dumps({}))
         return
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""load_memory.py 纯函数单元测试：load_context、_ensure_memory_md、log_session_start"""
+"""load_memory.py 纯函数单元测试：load_context、ensure_memory_dir、log_session_start"""
 import json
 import sys
 import unittest
@@ -10,19 +10,20 @@ from test_common import IsolatedWorkspaceCase, SCRIPTS_DIR
 
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-from service.hooks.load_memory import load_context, _ensure_memory_md, log_session_start
-from service.config import MEMORY_MD, SESSIONS_FILE
+from service.hooks.load_memory import load_context, log_session_start
+from service.config import MEMORY_MD, SESSIONS_FILE, ensure_memory_dir, _DIR_ENSURED
 from core.utils import today_str, iso_now
 
 
-class TestEnsureMemoryMd(IsolatedWorkspaceCase):
+class TestEnsureMemoryDir(IsolatedWorkspaceCase):
 
-    def test_creates_when_missing(self):
+    def test_creates_memory_md_when_missing(self):
         md_path = self.memory_dir / MEMORY_MD
         md_path.unlink()
         self.assertFalse(md_path.exists())
 
-        _ensure_memory_md(str(self.memory_dir))
+        _DIR_ENSURED.discard(str(self.memory_dir))
+        ensure_memory_dir(str(self.memory_dir))
 
         self.assertTrue(md_path.exists())
         content = md_path.read_text(encoding="utf-8")
@@ -33,14 +34,21 @@ class TestEnsureMemoryMd(IsolatedWorkspaceCase):
         md_path = self.memory_dir / MEMORY_MD
         original = md_path.read_text(encoding="utf-8")
 
-        _ensure_memory_md(str(self.memory_dir))
+        _DIR_ENSURED.discard(str(self.memory_dir))
+        ensure_memory_dir(str(self.memory_dir))
 
         self.assertEqual(md_path.read_text(encoding="utf-8"), original)
 
-    def test_creates_directory_if_needed(self):
-        new_dir = Path(self.workspace) / "new_memory_dir"
-        _ensure_memory_md(str(new_dir))
-        self.assertTrue((new_dir / MEMORY_MD).exists())
+    def test_creates_daily_dir(self):
+        import shutil
+        daily_dir = self.memory_dir / "daily"
+        if daily_dir.exists():
+            shutil.rmtree(daily_dir)
+
+        _DIR_ENSURED.discard(str(self.memory_dir))
+        ensure_memory_dir(str(self.memory_dir))
+
+        self.assertTrue(daily_dir.exists())
 
 
 class TestLoadContext(IsolatedWorkspaceCase):

@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../
 
 from service.config import get_memory_dir
 from service.config import SESSIONS_FILE
+from service.config import require_memory_enabled
 from core.utils import iso_now, ts_id
 from core.file_lock import FileLock
 from service.logger import get_logger
@@ -21,6 +22,7 @@ from service.logger import get_logger
 log = get_logger("save_summary")
 
 
+@require_memory_enabled
 def main():
     """
     解析命令行参数，将会话摘要追加写入 sessions.jsonl。

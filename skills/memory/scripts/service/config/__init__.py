@@ -1,7 +1,9 @@
 """配置服务：提供 Config 类、默认值、常量和配置访问函数。"""
 import os
+import sys
 import json
 import copy
+import functools
 from .defaults import (
     _DEFAULTS, _get_dotpath,
     DAILY_DIR_NAME, MEMORY_MD, SESSIONS_FILE, INDEX_DB, FACTS_FILE,
@@ -80,3 +82,72 @@ def is_memory_enabled(project_path):
     """检查项目是否启用 Memory 功能（.cursor/skills/.memory-disable 不存在即启用）。"""
     disable_file = os.path.join(project_path, ".cursor", "skills", DISABLE_FILE)
     return not os.path.exists(disable_file)
+
+
+def _extract_project_path_from_argv():
+    """从 sys.argv 中提取 --project-path 参数值，默认返回 cwd。"""
+    argv = sys.argv[1:]
+    for i, arg in enumerate(argv):
+        if arg == "--project-path" and i + 1 < len(argv):
+            return argv[i + 1]
+    return os.getcwd()
+
+
+def require_memory_enabled(main_fn):
+    """装饰器：CLI 脚本的 main() 在执行前检查 .memory-disable。
+
+    从 sys.argv 提取 --project-path（默认 cwd），
+    disable 时输出 {"status": "skipped", "reason": "memory_disabled"} 并跳过执行。
+    """
+    @functools.wraps(main_fn)
+    def wrapper(*args, **kwargs):
+        project_path = _extract_project_path_from_argv()
+        if not is_memory_enabled(project_path):
+            print(json.dumps({"status": "skipped", "reason": "memory_disabled"}))
+            return
+        return main_fn(*args, **kwargs)
+    return wrapper
+
+
+def require_hook_memory(disabled_output=None):
+    """装饰器：Hook 脚本的 main() 在 init_hook_context 之后检查 .memory-disable。
+
+    disabled_output: disable 时输出的 JSON 对象，默认 {}。
+    装饰器从 stdin 读取 event，调用 init_hook_context 初始化，
+    disable 时直接输出 disabled_output 并跳过执行。
+    enable 时将 (event, project_path) 作为参数传给被装饰函数。
+
+    用法：
+        @require_hook_memory()
+        def main(event, project_path):
+            ...
+
+        @require_hook_memory(disabled_output={"additional_context": ""})
+        def main(event, project_path):
+            ...
+    """
+    if disabled_output is None:
+        disabled_output = {}
+
+    def decorator(main_fn):
+        @functools.wraps(main_fn)
+        def wrapper():
+            event = {}
+            try:
+                raw = sys.stdin.read().strip()
+                if raw:
+                    event = json.loads(raw)
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+            project_path = init_hook_context(event)
+
+            if not is_memory_enabled(project_path):
+                from service.logger import get_logger
+                get_logger("hook").info("Memory 已禁用（.memory-disable），跳过")
+                print(json.dumps(disabled_output))
+                return
+
+            return main_fn(event, project_path)
+        return wrapper
+    return decorator

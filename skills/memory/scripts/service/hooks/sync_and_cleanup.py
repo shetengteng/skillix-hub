@@ -19,8 +19,8 @@ from datetime import timedelta
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
-from service.config import init_hook_context, _DEFAULTS, SESSIONS_FILE
-from service.config import get_memory_dir, is_memory_enabled
+from service.config import _DEFAULTS, SESSIONS_FILE, require_hook_memory
+from service.config import get_memory_dir
 from storage.jsonl import read_last_entry, read_jsonl
 from core.utils import iso_now, today_str, ts_id, utcnow, parse_iso
 from service.logger import get_logger
@@ -284,22 +284,8 @@ def log_session_metrics(memory_dir: str, event: dict):
         f.write(json.dumps(metrics_entry, ensure_ascii=False) + "\n")
 
 
-def main():
-    event = {}
-    try:
-        raw = sys.stdin.read().strip()
-        if raw:
-            event = json.loads(raw)
-    except (json.JSONDecodeError, ValueError):
-        pass
-
-    project_path = init_hook_context(event)
-
-    if not is_memory_enabled(project_path):
-        log.info("Memory 已禁用（.memory-disable），跳过")
-        print(json.dumps({}))
-        return
-
+@require_hook_memory()
+def main(event, project_path):
     memory_dir = get_memory_dir(project_path)
 
     log.info("sessionEnd 触发 reason=%s", event.get("reason", "unknown"))
