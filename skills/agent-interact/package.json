@@ -1,0 +1,12 @@
+{
+  "name": "agent-interact",
+  "version": "1.0.0",
+  "description": "AI Agent 与用户之间的可视化交互桥梁，支持确认选择、等待操作、图表展示",
+  "private": true,
+  "type": "commonjs",
+  "main": "tool.js",
+  "dependencies": {
+    "express": "^4.21.0",
+    "ws": "^8.18.0"
+  }
+}

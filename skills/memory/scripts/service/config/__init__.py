@@ -132,6 +132,10 @@ def require_hook_memory(disabled_output=None):
     def decorator(main_fn):
         @functools.wraps(main_fn)
         def wrapper():
+            import datetime as _dt
+            with open("/tmp/memory_hook_debug.log", "a") as _f:
+                _f.write(f"{_dt.datetime.now()} {main_fn.__name__} called\n")
+
             event = {}
             try:
                 raw = sys.stdin.read().strip()

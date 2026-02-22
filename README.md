@@ -23,6 +23,7 @@ AI Skill 是一种可复用的 AI 指令集，帮助 AI 编程助手更好地完
 | [playwright](./skills/playwright/) | 浏览器自动化工具，通过 48 个 CLI 命令控制真实浏览器，支持导航、点击、表单填写、截图、Cookie/存储管理、网络拦截等 |
 | [api-tracer](./skills/api-tracer/) | 录制和分析浏览器网络请求，通过 CDP 捕获完整 API 信息（URL、headers、cookie、请求/响应体），生成分析报告用于自动化 |
 | [web-content-reader](./skills/web-content-reader/) | 读取网页内容，支持 SPA 页面自动检测与浏览器渲染降级，当普通 fetch 无法获取 Vue/React 等页面数据时自动通过浏览器获取 |
+| [agent-interact](./skills/agent-interact/) | AI Agent 与用户之间的可视化交互桥梁，支持确认选择、等待操作、图表展示三种弹框场景 |
 | [skill-builder](./skills/skill-builder/) | skillix-hub 项目标准化 Skill 开发流程指南和脚手架工具，提供 8 阶段完整生命周期和模板自动生成 |
 
 ## 安装使用
@@ -543,6 +544,43 @@ node skills/web-content-reader/tool.js read '{"url":"https://example.com","outpu
 - **读取页面**：读取这个页面、帮我看看这个网页
 - **SPA 页面**：这是个 Vue 页面、fetch 读不到数据
 - **提取数据**：提取页面表格、获取页面链接
+
+## Agent Interact Skill 使用说明
+
+Agent Interact 为 AI Agent 提供可视化的用户交互能力。通过本地 Web Server + shadcn-vue 前端，支持确认选择、等待操作、图表展示三种弹框场景。
+
+### 安装
+
+```bash
+cd skills/agent-interact && npm install
+cd ui && npm install && npm run build && cd ..
+```
+
+### 核心工作流
+
+```bash
+# 启动交互服务
+node skills/agent-interact/tool.js start
+
+# 确认选择弹框
+node skills/agent-interact/tool.js dialog '{"type":"confirm","title":"选择环境","options":[{"id":"dev","label":"开发"},{"id":"prod","label":"生产"}]}'
+
+# 等待操作弹框
+node skills/agent-interact/tool.js dialog '{"type":"wait","title":"等待验证","message":"请完成指纹验证"}'
+
+# 图表展示弹框
+node skills/agent-interact/tool.js dialog '{"type":"chart","title":"分析","chartType":"line","data":{"labels":["Mon","Tue"],"datasets":[{"label":"P99","data":[120,90]}]}}'
+
+# 停止服务
+node skills/agent-interact/tool.js stop
+```
+
+### 触发词
+
+- **确认选择**：弹个框让我选、让我确认一下
+- **等待操作**：等我操作完、等我验证
+- **图表展示**：画个图、展示数据、可视化
+- **服务管理**：启动交互服务、停止交互服务
 
 ## Skill Builder 使用说明
 

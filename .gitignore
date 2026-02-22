@@ -19,6 +19,8 @@ __pycache__/
 
 # Node
 node_modules/
+skills/agent-interact/ui/dist/
+skills/agent-interact/.server.pid
 
 # OS
 .DS_Store

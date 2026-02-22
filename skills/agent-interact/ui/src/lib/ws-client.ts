@@ -1,0 +1,69 @@
+import { ref } from 'vue'
+import type { DialogData, WsMessage } from './types'
+
+const dialogs = ref<DialogData[]>([])
+const connected = ref(false)
+
+let ws: WebSocket | null = null
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+
+function getWsUrl(): string {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${proto}//${location.host}/ws`
+}
+
+function connect() {
+  if (ws && ws.readyState <= 1) return
+
+  ws = new WebSocket(getWsUrl())
+
+  ws.onopen = () => {
+    connected.value = true
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer)
+      reconnectTimer = null
+    }
+  }
+
+  ws.onmessage = (event) => {
+    try {
+      const msg: WsMessage = JSON.parse(event.data)
+      if (msg.event === 'dialog:open') {
+        const d = msg.data as DialogData
+        if (!dialogs.value.find((x) => x.id === d.id)) {
+          dialogs.value.push(d)
+        }
+      } else if (msg.event === 'dialog:close') {
+        const { id } = msg.data as { id: string }
+        dialogs.value = dialogs.value.filter((x) => x.id !== id)
+      }
+    } catch { /* ignore */ }
+  }
+
+  ws.onclose = () => {
+    connected.value = false
+    scheduleReconnect()
+  }
+
+  ws.onerror = () => {
+    ws?.close()
+  }
+}
+
+function scheduleReconnect() {
+  if (reconnectTimer) return
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null
+    connect()
+  }, 2000)
+}
+
+function respond(id: string, action: string, data?: unknown) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return
+  ws.send(JSON.stringify({ event: 'dialog:response', data: { id, action, data } }))
+  dialogs.value = dialogs.value.filter((x) => x.id !== id)
+}
+
+export function useWsClient() {
+  return { dialogs, connected, connect, respond }
+}

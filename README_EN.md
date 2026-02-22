@@ -23,6 +23,7 @@ AI Skill is a reusable AI instruction set that helps AI programming assistants b
 | [playwright](./skills/playwright/) | Browser automation via 48 CLI commands controlling a real browser. Navigate, click, fill forms, screenshot, manage cookies/storage, intercept network, and more |
 | [api-tracer](./skills/api-tracer/) | Record and analyze browser network requests via CDP, capture full API info (URL, headers, cookies, request/response body), generate reports for automation |
 | [web-content-reader](./skills/web-content-reader/) | Read web page content with automatic SPA detection and browser rendering fallback for Vue/React pages |
+| [agent-interact](./skills/agent-interact/) | Visual interaction bridge between AI Agent and user, supporting confirm dialogs, wait-for-action, and chart display |
 | [skill-builder](./skills/skill-builder/) | Standardized Skill development workflow guide and scaffold tool for skillix-hub, with 8-phase lifecycle and template auto-generation |
 
 ## Installation
@@ -497,6 +498,43 @@ node skills/web-content-reader/tool.js read '{"url":"https://example.com","outpu
 - **Read Page**: read this page, show me this webpage
 - **SPA Page**: this is a Vue page, fetch can't get data
 - **Extract Data**: extract page tables, get page links
+
+## Agent Interact Skill
+
+Agent Interact provides visual interaction capabilities for AI Agents. Through a local Web Server + shadcn-vue frontend, it supports confirm dialogs, wait-for-action, and chart display.
+
+### Installation
+
+```bash
+cd skills/agent-interact && npm install
+cd ui && npm install && npm run build && cd ..
+```
+
+### Core Workflow
+
+```bash
+# Start the interaction server
+node skills/agent-interact/tool.js start
+
+# Confirm dialog
+node skills/agent-interact/tool.js dialog '{"type":"confirm","title":"Select env","options":[{"id":"dev","label":"Dev"},{"id":"prod","label":"Prod"}]}'
+
+# Wait-for-action dialog
+node skills/agent-interact/tool.js dialog '{"type":"wait","title":"Waiting","message":"Please complete verification"}'
+
+# Chart display dialog
+node skills/agent-interact/tool.js dialog '{"type":"chart","title":"Analysis","chartType":"line","data":{"labels":["Mon","Tue"],"datasets":[{"label":"P99","data":[120,90]}]}}'
+
+# Stop server
+node skills/agent-interact/tool.js stop
+```
+
+### Trigger Words
+
+- **Confirm**: show me options, let me choose, confirm
+- **Wait**: wait for me, waiting for verification
+- **Chart**: show chart, visualize data, display graph
+- **Server**: start interaction server, stop interaction server
 
 ## Skill Builder
 

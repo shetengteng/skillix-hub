@@ -92,6 +92,10 @@ def log_session_start(memory_dir: str, workspace: str, conv_id: str):
 
 
 def main():
+    import tempfile, datetime
+    with open("/tmp/memory_hook_debug.log", "a") as f:
+        f.write(f"{datetime.datetime.now()} sessionStart called\n")
+
     parser = argparse.ArgumentParser(description="Load memory context")
     parser.add_argument("--project-path", default=os.getcwd())
     args, _ = parser.parse_known_args()
