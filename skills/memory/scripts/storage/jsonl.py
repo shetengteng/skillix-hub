@@ -11,12 +11,12 @@ from core.utils import utcnow, parse_iso
 from service.config import _DEFAULTS
 
 _M = _DEFAULTS["memory"]
-LOAD_DAYS_FULL = _M["load_days_full"]
-LOAD_DAYS_PARTIAL = _M["load_days_partial"]
-LOAD_DAYS_MAX = _M["load_days_max"]
-LOAD_PARTIAL_PER_DAY = _M["partial_per_day"]
-LOAD_IMPORTANT_CONFIDENCE = _M["important_confidence"]
-LOAD_FACTS_LIMIT = _M["facts_limit"]
+LOAD_DAYS_FULL: int = _M["load_days_full"]  # type: ignore[assignment]
+LOAD_DAYS_PARTIAL: int = _M["load_days_partial"]  # type: ignore[assignment]
+LOAD_DAYS_MAX: int = _M["load_days_max"]  # type: ignore[assignment]
+LOAD_PARTIAL_PER_DAY: int = _M["partial_per_day"]  # type: ignore[assignment]
+LOAD_IMPORTANT_CONFIDENCE: float = _M["important_confidence"]  # type: ignore[assignment]
+LOAD_FACTS_LIMIT: int = _M["facts_limit"]  # type: ignore[assignment]
 
 
 def read_jsonl(filepath: str) -> list:
