@@ -15,7 +15,7 @@ import json
 import os
 import glob
 import subprocess
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
@@ -116,19 +116,16 @@ def log_session_end(memory_dir: str, event: dict):
 
 def clean_old_logs(project_path: str):
     """清理超过保留天数的日志文件"""
-    import glob
-    from datetime import datetime, timedelta
-
     log_dir = os.path.join(project_path, _DEFAULTS["paths"]["data_dir"], "logs")
     if not os.path.isdir(log_dir):
         return
 
-    cutoff = datetime.now() - timedelta(days=_DEFAULTS["log"]["retain_days"])
+    cutoff = datetime.now(timezone.utc) - timedelta(days=_DEFAULTS["log"]["retain_days"])
     removed = 0
     for f in glob.glob(os.path.join(log_dir, "*.log")):
         basename = os.path.basename(f)
         try:
-            file_date = datetime.strptime(basename.replace(".log", ""), "%Y-%m-%d")
+            file_date = datetime.strptime(basename.replace(".log", ""), "%Y-%m-%d").replace(tzinfo=timezone.utc)
             if file_date < cutoff:
                 os.remove(f)
                 removed += 1
@@ -226,14 +223,15 @@ def auto_generate_summary(memory_dir: str, event: dict):
              entry["id"], topic[:30], len(session_facts), len(session_summaries))
 
 
-def clean_old_session_states(memory_dir: str, retain_days: int = 7):
-    """清理超过保留天数的会话状态文件"""
+def clean_old_session_states(memory_dir: str, retain_days: int = 2):
+    """清理超过保留天数的会话状态文件及其 lock 文件"""
     state_dir = os.path.join(memory_dir, "session_state")
     if not os.path.isdir(state_dir):
         return
 
     cutoff = utcnow() - timedelta(days=retain_days)
     removed = 0
+    active_sessions = set()
 
     for f in os.listdir(state_dir):
         if not f.endswith(".json"):
@@ -245,12 +243,29 @@ def clean_old_session_states(memory_dir: str, retain_days: int = 7):
             created = parse_iso(state.get("created_at", ""))
             if created < cutoff:
                 os.remove(fpath)
+                lock = os.path.join(state_dir, f".{f.replace('.json', '')}.lock")
+                if os.path.exists(lock):
+                    os.remove(lock)
                 removed += 1
+            else:
+                active_sessions.add(f.replace(".json", ""))
         except (json.JSONDecodeError, OSError):
             continue
 
-    if removed:
-        log.info("清理过期会话状态 %d 个", removed)
+    orphan_locks = 0
+    for f in os.listdir(state_dir):
+        if not f.startswith(".") or not f.endswith(".lock"):
+            continue
+        session_id = f[1:].replace(".lock", "")
+        if session_id not in active_sessions:
+            try:
+                os.remove(os.path.join(state_dir, f))
+                orphan_locks += 1
+            except OSError:
+                continue
+
+    if removed or orphan_locks:
+        log.info("清理过期会话状态 %d 个, 孤立锁文件 %d 个", removed, orphan_locks)
 
 
 def log_session_metrics(memory_dir: str, event: dict):

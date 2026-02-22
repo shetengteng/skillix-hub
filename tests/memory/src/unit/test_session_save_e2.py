@@ -364,7 +364,7 @@ class TestCleanOldSessionStates(IsolatedWorkspaceCase):
         from service.hooks.sync_and_cleanup import clean_old_session_states
         clean_old_session_states(str(self.memory_dir), retain_days=7)
 
-    def test_ignores_non_json_files(self):
+    def test_cleans_orphan_lock_files(self):
         from service.hooks.sync_and_cleanup import clean_old_session_states
 
         state_dir = self.memory_dir / "session_state"
@@ -372,7 +372,23 @@ class TestCleanOldSessionStates(IsolatedWorkspaceCase):
         (state_dir / ".some-lock.lock").write_text("lock", encoding="utf-8")
 
         clean_old_session_states(str(self.memory_dir), retain_days=7)
-        self.assertTrue((state_dir / ".some-lock.lock").exists())
+        self.assertFalse((state_dir / ".some-lock.lock").exists())
+
+    def test_keeps_lock_for_active_session(self):
+        from service.hooks.sync_and_cleanup import clean_old_session_states
+
+        state_dir = self.memory_dir / "session_state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        recent_time = iso_now()
+        (state_dir / "active-session.json").write_text(
+            json.dumps({"session_id": "active", "created_at": recent_time}),
+            encoding="utf-8",
+        )
+        (state_dir / ".active-session.lock").write_text("lock", encoding="utf-8")
+
+        clean_old_session_states(str(self.memory_dir), retain_days=7)
+        self.assertTrue((state_dir / "active-session.json").exists())
+        self.assertTrue((state_dir / ".active-session.lock").exists())
 
 
 class TestLogSessionMetrics(IsolatedWorkspaceCase):

@@ -10,6 +10,7 @@ Memory Skill 统一日志模块
 import os
 import logging
 import glob
+import time
 from datetime import datetime, timezone, timedelta
 
 from service.config.defaults import _DEFAULTS
@@ -164,6 +165,7 @@ def get_logger(name: str) -> logging.Logger:
         "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
+    fmt.converter = time.gmtime
 
     # stderr Handler：日志输出到标准错误流（不影响 Hook 的 stdout JSON 输出）
     stderr_handler = logging.StreamHandler()
