@@ -1,0 +1,7 @@
+{
+  "extraPaths": [
+    ".",
+    "../../../skills/memory/scripts"
+  ],
+  "reportMissingImports": "warning"
+}
