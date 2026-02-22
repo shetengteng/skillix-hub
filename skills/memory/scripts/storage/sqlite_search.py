@@ -6,6 +6,7 @@ SQLite 搜索功能：FTS5 全文搜索、向量相似度搜索、混合搜索�
 import sqlite3
 import struct
 import math
+from datetime import datetime, timedelta
 
 
 def deserialize_embedding(blob):
@@ -29,7 +30,6 @@ def _build_time_filter(days=None, from_date=None, to_date=None):
     conditions = []
     params = []
     if days:
-        from datetime import datetime, timedelta
         cutoff = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%S")
         conditions.append("c.timestamp >= ?")
         params.append(cutoff)

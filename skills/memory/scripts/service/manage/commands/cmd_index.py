@@ -3,6 +3,7 @@ import sys
 import os
 import json
 import glob
+import sqlite3
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../.."))
 
@@ -78,7 +79,6 @@ def cmd_doctor(args):
     idx_path = os.path.join(memory_dir, INDEX_DB)
     if os.path.isfile(idx_path):
         try:
-            import sqlite3
             conn = sqlite3.connect(idx_path)
             chunk_count = conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
             conn.close()
@@ -90,7 +90,6 @@ def cmd_doctor(args):
 
     if os.path.isfile(idx_path):
         try:
-            import sqlite3
             conn = sqlite3.connect(idx_path)
             row = conn.execute("SELECT value FROM meta WHERE key='last_sync'").fetchone()
             conn.close()

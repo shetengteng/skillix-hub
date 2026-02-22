@@ -5,6 +5,7 @@ JSONL 文件读写工具
 """
 import json
 import os
+import glob
 from datetime import timedelta
 from core.utils import utcnow, parse_iso
 from service.config import _DEFAULTS
@@ -58,7 +59,6 @@ def read_daily_facts(daily_dir: str) -> list:
     读取 daily/ 目录下所有 .jsonl 文件，合并返回 type=fact 的条目。
     按时间降序排列。
     """
-    import glob
     if not os.path.isdir(daily_dir):
         return []
     all_entries = []

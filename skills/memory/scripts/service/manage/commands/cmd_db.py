@@ -2,6 +2,7 @@
 import sys
 import os
 import json
+import sqlite3
 import subprocess
 import webbrowser
 
@@ -18,7 +19,6 @@ def _get_db_path(project_path):
 
 
 def _connect(db_path):
-    import sqlite3
     if not os.path.isfile(db_path):
         return None, f"数据库文件不存在: {db_path}"
     conn = sqlite3.connect(db_path)

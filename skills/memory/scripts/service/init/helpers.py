@@ -7,6 +7,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 import json
 import shutil
+import subprocess
 
 from service.config import _DEFAULTS, DAILY_DIR_NAME
 
@@ -148,7 +149,6 @@ def install_skill_code(source_dir, target_dir, replacements):
 
 def install_dependencies():
     """通过 pip 安装 sentence-transformers。"""
-    import subprocess
     print("  Installing dependencies (sentence-transformers)...")
     proc = subprocess.run(
         [sys.executable, "-m", "pip", "install", "sentence-transformers", "--progress-bar", "on"],

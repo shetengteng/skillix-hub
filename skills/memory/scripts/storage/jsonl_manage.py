@@ -3,6 +3,7 @@ JSONL 管理操作：读取全部、筛选、软删除、恢复、物理删除�
 """
 import json
 import os
+import glob
 from .jsonl import read_jsonl
 from core.utils import iso_now
 
@@ -13,7 +14,6 @@ def read_all_entries(daily_dir: str, sessions_path: str, scope: str = "all",
     读取指定 scope 内的全部条目。
     scope: "daily" | "sessions" | "all"
     """
-    import glob
     entries = []
     if scope in ("daily", "all") and os.path.isdir(daily_dir):
         for fpath in sorted(glob.glob(os.path.join(daily_dir, "*.jsonl"))):
@@ -66,7 +66,6 @@ def _rewrite_jsonl(filepath: str, entries: list):
 def soft_delete_entries(daily_dir: str, sessions_path: str,
                         ids_to_delete: set, actor: str = "agent") -> dict:
     """软删除：为匹配 ID 的条目添加 deleted_at / deleted_by 标记"""
-    import glob
     affected_files = []
     deleted = 0
     now = iso_now()
@@ -103,7 +102,6 @@ def soft_delete_entries(daily_dir: str, sessions_path: str,
 
 def restore_entries(daily_dir: str, sessions_path: str, ids_to_restore: set) -> dict:
     """移除 deleted_at / deleted_by 标记，恢复软删除的条目"""
-    import glob
     restored = 0
 
     if os.path.isdir(daily_dir):
@@ -136,7 +134,6 @@ def restore_entries(daily_dir: str, sessions_path: str, ids_to_restore: set) -> 
 
 def purge_entries(daily_dir: str, sessions_path: str, ids_to_purge: set) -> dict:
     """物理删除：从 JSONL 文件中移除匹配 ID 的条目"""
-    import glob
     purged = 0
     affected_files = []
 

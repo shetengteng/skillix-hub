@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../
 from service.config import get_memory_dir
 from service.config import INDEX_DB
 from storage.sqlite_store import SQLiteStore
-from service.logger import get_logger
+from service.logger import get_logger, redirect_to_project
 
 log = get_logger("search")
 
@@ -40,7 +40,6 @@ def main():
     parser.add_argument("--project-path", default=os.getcwd())
     args = parser.parse_args()
 
-    from service.logger import redirect_to_project
     redirect_to_project(args.project_path)
 
     memory_dir = get_memory_dir(args.project_path)

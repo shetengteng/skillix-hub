@@ -16,7 +16,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../
 from service.config import MEMORY_MD, SESSIONS_FILE, DAILY_DIR_NAME
 from service.config import get_memory_dir, is_memory_enabled, init_hook_context, ensure_memory_dir
 from storage.jsonl import read_recent_facts_from_daily, read_last_entry
-from service.logger import get_logger
+from core.utils import iso_now, today_str, ts_id
+from service.logger import get_logger, redirect_to_project
 
 log = get_logger("load")
 
@@ -72,7 +73,6 @@ def load_context(project_path):
 
 def log_session_start(memory_dir: str, workspace: str, conv_id: str):
     """将 session_start 事件写入 daily/YYYY-MM-DD.jsonl"""
-    from core.utils import iso_now, today_str, ts_id
     daily_dir = os.path.join(memory_dir, "daily")
     os.makedirs(daily_dir, exist_ok=True)
     daily_file = os.path.join(daily_dir, f"{today_str()}.jsonl")
@@ -112,7 +112,6 @@ def main():
             log.info("sessionStart hook 触发 conv_id=%s project=%s", conv_id, project_path)
         else:
             project_path = args.project_path
-            from service.logger import redirect_to_project
             redirect_to_project(project_path)
             log.info("命令行调用 project=%s", project_path)
     except Exception as e:

@@ -15,7 +15,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../
 from service.config import get_daily_dir
 from service.config import require_memory_enabled
 from core.utils import iso_now, today_str, ts_id
-from service.logger import get_logger
+from service.memory.session_state import update_fact_count
+from service.logger import get_logger, redirect_to_project
 
 log = get_logger("save_fact")
 
@@ -38,7 +39,6 @@ def main():
     parser.add_argument("--project-path", default=os.getcwd())
     args = parser.parse_args()
 
-    from service.logger import redirect_to_project
     redirect_to_project(args.project_path)
 
     daily_dir = get_daily_dir(args.project_path)
@@ -68,7 +68,6 @@ def main():
     log.info("保存事实 id=%s type=%s → %s", entry["id"], args.type, daily_file)
 
     if args.session:
-        from service.memory.session_state import update_fact_count
         memory_dir = os.path.dirname(daily_dir)
         update_fact_count(memory_dir, args.session, args.type)
 

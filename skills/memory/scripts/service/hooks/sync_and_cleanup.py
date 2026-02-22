@@ -23,6 +23,8 @@ from service.config import _DEFAULTS, SESSIONS_FILE, require_hook_memory
 from service.config import get_memory_dir
 from storage.jsonl import read_last_entry, read_jsonl
 from core.utils import iso_now, today_str, ts_id, utcnow, parse_iso
+from service.memory.session_state import is_summary_saved, mark_summary_saved, read_session_state
+from service.memory.distill_to_memory import distill
 from service.logger import get_logger
 
 log = get_logger("end_session")
@@ -53,7 +55,6 @@ def sync_index(project_path: str):
 def distill_facts(project_path: str):
     """调用 distill_to_memory.py 将高价值事实提炼到 MEMORY.md"""
     try:
-        from service.memory.distill_to_memory import distill
         count = distill(project_path)
         if count > 0:
             log.info("事实提炼完成: %d 条写入 MEMORY.md", count)
@@ -159,8 +160,6 @@ def auto_generate_summary(memory_dir: str, event: dict):
     conv_id = event.get("conversation_id", "")
     if not conv_id:
         return
-
-    from service.memory.session_state import is_summary_saved, mark_summary_saved
 
     if is_summary_saved(memory_dir, conv_id):
         log.info("摘要已保存，跳过自动生成 conv_id=%s", conv_id[:12])
@@ -273,8 +272,6 @@ def log_session_metrics(memory_dir: str, event: dict):
     conv_id = event.get("conversation_id", "")
     if not conv_id:
         return
-
-    from service.memory.session_state import read_session_state
 
     state = read_session_state(memory_dir, conv_id)
     if not state:

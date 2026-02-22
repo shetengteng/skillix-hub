@@ -2,6 +2,8 @@
 import sys
 import os
 import glob
+import sqlite3
+from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../.."))
 
@@ -32,7 +34,6 @@ def cmd_list(args):
 
     days = getattr(args, "days", None)
     if days:
-        from datetime import datetime, timedelta
         cutoff = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
         entries = [e for e in entries if (e.get("timestamp", "") or "")[:10] >= cutoff]
 
@@ -113,7 +114,6 @@ def cmd_stats(args):
     if os.path.isfile(idx_path):
         idx_data["size_kb"] = round(os.path.getsize(idx_path) / 1024, 1)
         try:
-            import sqlite3
             conn = sqlite3.connect(idx_path)
             idx_data["chunks"] = conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
             row = conn.execute("SELECT value FROM meta WHERE key='last_sync'").fetchone()

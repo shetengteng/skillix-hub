@@ -45,7 +45,7 @@ class DetailContextFlowTests(IsolatedWorkspaceCase):
         )
         self.assertEqual(save.returncode, 0, msg=save.stderr)
 
-        # 4) stop
+        # 4) stop — session already has fact data, so followup_message should be skipped
         stop_event = json.dumps(
             {"type": "stop", "conversation_id": "ctx-1", "workspace_roots": [self.workspace], "status": "completed"},
             ensure_ascii=False,
@@ -53,7 +53,8 @@ class DetailContextFlowTests(IsolatedWorkspaceCase):
         stop = run_script("service/hooks/prompt_session_save.py", self.workspace, stdin_data=stop_event)
         self.assertEqual(stop.returncode, 0, msg=stop.stderr)
         out_stop = json.loads(stop.stdout)
-        self.assertTrue(out_stop.get("followup_message", "").startswith("[Session Save]"))
+        self.assertEqual(out_stop.get("followup_message", ""), "",
+                         "stop hook should skip [Session Save] when session already has fact data")
 
         # 5) 下一个会话可见新增事实
         start_event_2 = json.dumps(

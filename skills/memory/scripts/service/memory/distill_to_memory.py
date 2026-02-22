@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../
 from service.config import MEMORY_MD, get_memory_dir, get_daily_dir
 from storage.jsonl import read_daily_facts
 from core.utils import utcnow, parse_iso
-from service.logger import get_logger
+from service.logger import get_logger, redirect_to_project
 from datetime import timedelta
 
 log = get_logger("distill")
@@ -216,7 +216,6 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Only show candidates, don't write")
     args = parser.parse_args()
 
-    from service.logger import redirect_to_project
     redirect_to_project(args.project_path)
 
     if args.dry_run:

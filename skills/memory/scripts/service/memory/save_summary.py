@@ -17,7 +17,8 @@ from service.config import SESSIONS_FILE
 from service.config import require_memory_enabled
 from core.utils import iso_now, ts_id
 from core.file_lock import FileLock
-from service.logger import get_logger
+from service.memory.session_state import save_summary_atomic, SaveResult, _sessions_lock_path
+from service.logger import get_logger, redirect_to_project
 
 log = get_logger("save_summary")
 
@@ -43,7 +44,6 @@ def main():
     parser.add_argument("--project-path", default=os.getcwd())
     args = parser.parse_args()
 
-    from service.logger import redirect_to_project
     redirect_to_project(args.project_path)
 
     memory_dir = get_memory_dir(args.project_path)
@@ -71,7 +71,6 @@ def main():
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
     if args.session:
-        from service.memory.session_state import save_summary_atomic, SaveResult, _sessions_lock_path
         result = save_summary_atomic(memory_dir, args.session, args.source, do_write)
         if result.status == SaveResult.EXISTS:
             log.info("摘要已存在，跳过 session=%s", args.session[:12])
@@ -82,7 +81,6 @@ def main():
             print(json.dumps({"status": "error", "reason": result.reason}))
             return
     else:
-        from service.memory.session_state import _sessions_lock_path
         with FileLock(_sessions_lock_path(memory_dir), timeout=5):
             do_write()
 

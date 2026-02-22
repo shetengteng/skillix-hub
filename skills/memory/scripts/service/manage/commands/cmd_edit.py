@@ -2,6 +2,7 @@
 import sys
 import os
 import json
+from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../.."))
 
@@ -87,7 +88,6 @@ def cmd_export(args):
 
     days = getattr(args, "days", None)
     if days:
-        from datetime import datetime, timedelta
         cutoff = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
         entries = [e for e in entries if (e.get("timestamp", "") or "")[:10] >= cutoff]
     from_date = getattr(args, "from_date", None)
@@ -137,7 +137,6 @@ def cmd_cleanup(args):
     elif args.system_events:
         matched = [e for e in entries if e.get("type") in ("session_start", "session_end")]
     elif args.older_than:
-        from datetime import datetime, timedelta
         cutoff = (datetime.utcnow() - timedelta(days=args.older_than)).strftime("%Y-%m-%d")
         matched = [e for e in entries if (e.get("timestamp", "") or "")[:10] < cutoff]
     else:

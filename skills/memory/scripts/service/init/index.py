@@ -8,6 +8,7 @@
 import sys
 import os
 import json
+import copy
 import argparse
 
 _INIT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -91,8 +92,6 @@ def main():
 
     config_json = os.path.join(memory_dir, "config.json")
     if not os.path.exists(config_json):
-        from service.config import _DEFAULTS
-        import copy
         default_config = copy.deepcopy(_DEFAULTS)
         default_config["version"] = 1
         with open(config_json, "w", encoding="utf-8") as f:

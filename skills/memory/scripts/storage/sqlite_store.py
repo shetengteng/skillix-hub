@@ -7,6 +7,11 @@ SQLite 存储引擎
 import sqlite3
 import struct
 import os
+import time
+
+from storage.sqlite_search import search_fts as _search_fts
+from storage.sqlite_search import search_vector as _search_vector
+from storage.sqlite_search import hybrid_search as _hybrid_search
 
 
 SCHEMA_VERSION = "1"
@@ -114,15 +119,12 @@ class SQLiteStore:
         self.conn.commit()
 
     def search_fts(self, query, limit=10, **kwargs):
-        from storage.sqlite_search import search_fts as _search_fts
         return _search_fts(self, query, limit, **kwargs)
 
     def search_vector(self, query_embedding, limit=10, **kwargs):
-        from storage.sqlite_search import search_vector as _search_vector
         return _search_vector(self, query_embedding, limit, **kwargs)
 
     def hybrid_search(self, query, query_embedding=None, limit=10, **kwargs):
-        from storage.sqlite_search import hybrid_search as _hybrid_search
         return _hybrid_search(self, query, query_embedding, limit, **kwargs)
 
     def get_sync_state(self, file_path):
@@ -135,7 +137,6 @@ class SQLiteStore:
 
     def update_sync_state(self, file_path, last_line, last_id, mtime):
         """更新某文件的同步状态"""
-        import time
         self.conn.execute("""
             INSERT OR REPLACE INTO sync_state(file_path, last_line, last_id, mtime, synced_at)
             VALUES (?, ?, ?, ?, ?)

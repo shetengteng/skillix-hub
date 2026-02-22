@@ -12,12 +12,16 @@ import glob
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
+import argparse
+
 from service.config import MEMORY_MD, FACTS_FILE, SESSIONS_FILE, INDEX_DB, DAILY_DIR_NAME, _DEFAULTS
 from service.config import get_memory_dir
 from storage.sqlite_store import SQLiteStore
 from storage.chunker import chunk_markdown
 from storage.jsonl import read_jsonl
-from service.logger import get_logger
+from core.utils import iso_now
+from core.embedding import is_available as embedding_is_available
+from service.logger import get_logger, redirect_to_project
 
 log = get_logger("sync")
 
@@ -172,11 +176,8 @@ def sync_all(memory_dir, rebuild=False):
 
     total_chunks = store.count_chunks()
     store.set_meta("total_chunks", total_chunks)
-    from core.utils import iso_now
     store.set_meta("last_sync", iso_now())
-    from service.config import _DEFAULTS
-    from core.embedding import is_available
-    if is_available():
+    if embedding_is_available():
         store.set_meta("embedding_model", _DEFAULTS["embedding"]["model"])
 
     store.close()
@@ -186,13 +187,11 @@ def sync_all(memory_dir, rebuild=False):
 
 def main():
     """CLI 入口：解析 --rebuild、--project-path，执行 sync_all。"""
-    import argparse
     parser = argparse.ArgumentParser(description="Sync JSONL → SQLite")
     parser.add_argument("--rebuild", action="store_true")
     parser.add_argument("--project-path", default=os.getcwd())
     args = parser.parse_args()
 
-    from service.logger import redirect_to_project
     redirect_to_project(args.project_path)
 
     memory_dir = os.path.join(args.project_path, ".cursor", "skills", "memory-data")

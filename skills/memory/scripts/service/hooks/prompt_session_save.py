@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../
 
 from service.config import require_hook_memory
 from service.config import get_memory_dir
+from service.memory.session_state import read_session_state
 from service.logger import get_logger
 
 log = get_logger("stop_hook")
@@ -67,8 +68,6 @@ def has_session_data(memory_dir: str, conv_id: str) -> bool:
     检查本会话是否已有摘要或 fact 数据。
     优先查 session_state 文件，回退时按 session_id 全量检索 daily。
     """
-    from service.memory.session_state import read_session_state
-
     state = read_session_state(memory_dir, conv_id)
     if state:
         if state.get("summary_saved"):

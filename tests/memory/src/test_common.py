@@ -36,7 +36,7 @@ def run_script(script_name, workspace, stdin_data=None, args=None, timeout=180):
     env["MEMORY_LOG_DIR"] = str(Path(workspace) / ".cursor" / "skills" / "memory-data" / "logs")
     return subprocess.run(
         cmd,
-        input=stdin_data,
+        input=stdin_data if stdin_data is not None else "",
         capture_output=True,
         text=True,
         cwd=workspace,
