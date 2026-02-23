@@ -220,7 +220,44 @@ const COMMANDS = {
     }
   },
 
-  async install() {
+  async install(params) {
+    const target = params.target;
+    if (target) {
+      const srcDir = __dirname;
+      const destDir = path.resolve(target.replace(/^~/, process.env.HOME || ''));
+      const destUiDir = path.join(destDir, 'ui');
+
+      const COPY_ITEMS = ['SKILL.md', 'tool.js', 'demo.js', 'package.json', 'package-lock.json', 'lib', 'electron'];
+
+      try {
+        fs.mkdirSync(destDir, { recursive: true });
+
+        for (const item of COPY_ITEMS) {
+          const src = path.join(srcDir, item);
+          if (!fs.existsSync(src)) continue;
+          const dest = path.join(destDir, item);
+          fs.cpSync(src, dest, { recursive: true, force: true });
+        }
+
+        fs.mkdirSync(destUiDir, { recursive: true });
+        const uiSrcDir = path.join(srcDir, 'ui');
+        const uiEntries = fs.readdirSync(uiSrcDir);
+        const UI_SKIP = new Set(['node_modules', 'dist', '.vite']);
+        for (const entry of uiEntries) {
+          if (UI_SKIP.has(entry)) continue;
+          fs.cpSync(path.join(uiSrcDir, entry), path.join(destUiDir, entry), { recursive: true, force: true });
+        }
+
+        execSync('npm install', { cwd: destDir, stdio: 'inherit' });
+        execSync('npm install', { cwd: destUiDir, stdio: 'inherit' });
+        execSync('npm run build', { cwd: destUiDir, stdio: 'inherit' });
+
+        return success({ message: `Installed to ${destDir} (copy + dependencies + UI build)`, path: destDir });
+      } catch (e) {
+        return error(`Install to ${destDir} failed: ${e.message}`);
+      }
+    }
+
     const ROOT_DIR = __dirname;
     try {
       execSync('npm install', { cwd: ROOT_DIR, stdio: 'inherit' });
@@ -232,19 +269,50 @@ const COMMANDS = {
     }
   },
 
-  async update() {
-    const ROOT_DIR = __dirname;
+  async update(params) {
+    const target = params.target;
+    const ROOT_DIR = target
+      ? path.resolve(target.replace(/^~/, process.env.HOME || ''))
+      : __dirname;
+    const uiDir = path.join(ROOT_DIR, 'ui');
+
+    if (target) {
+      const srcDir = __dirname;
+      const COPY_ITEMS = ['SKILL.md', 'tool.js', 'demo.js', 'package.json', 'package-lock.json', 'lib', 'electron'];
+      try {
+        for (const item of COPY_ITEMS) {
+          const src = path.join(srcDir, item);
+          if (!fs.existsSync(src)) continue;
+          const dest = path.join(ROOT_DIR, item);
+          if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true });
+          fs.cpSync(src, dest, { recursive: true, force: true });
+        }
+
+        const uiSrcDir = path.join(srcDir, 'ui');
+        const uiEntries = fs.readdirSync(uiSrcDir);
+        const UI_SKIP = new Set(['node_modules', 'dist', '.vite']);
+        for (const entry of uiEntries) {
+          if (UI_SKIP.has(entry)) continue;
+          const dest = path.join(uiDir, entry);
+          if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true });
+          fs.cpSync(path.join(uiSrcDir, entry), dest, { recursive: true, force: true });
+        }
+      } catch (e) {
+        return error(`Update copy failed: ${e.message}`);
+      }
+    }
+
     const rootNm = path.join(ROOT_DIR, 'node_modules');
-    const uiNm = path.join(UI_DIR, 'node_modules');
-    const uiDist = path.join(UI_DIR, 'dist');
+    const uiNm = path.join(uiDir, 'node_modules');
+    const uiDist = path.join(uiDir, 'dist');
     try {
       if (fs.existsSync(rootNm)) fs.rmSync(rootNm, { recursive: true });
       if (fs.existsSync(uiNm)) fs.rmSync(uiNm, { recursive: true });
       if (fs.existsSync(uiDist)) fs.rmSync(uiDist, { recursive: true });
       execSync('npm install', { cwd: ROOT_DIR, stdio: 'inherit' });
-      execSync('npm install', { cwd: UI_DIR, stdio: 'inherit' });
-      execSync('npm run build', { cwd: UI_DIR, stdio: 'inherit' });
-      return success({ message: 'Update completed (clean reinstall + UI rebuild)' });
+      execSync('npm install', { cwd: uiDir, stdio: 'inherit' });
+      execSync('npm run build', { cwd: uiDir, stdio: 'inherit' });
+      return success({ message: `Update completed${target ? ` at ${ROOT_DIR}` : ''} (clean reinstall + UI rebuild)` });
     } catch (e) {
       return error(`Update failed: ${e.message}`);
     }

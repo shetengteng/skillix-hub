@@ -552,11 +552,17 @@ Agent Interact 为 AI Agent 提供可视化的用户交互能力。通过 Electr
 ### 安装 / 更新
 
 ```bash
-# 安装（安装依赖 + 构建 UI）
+# 本地安装（安装依赖 + 构建 UI）
 node skills/agent-interact/tool.js install
 
-# 更新（删除 node_modules + dist → 重新安装 + 构建）
+# 全局安装（复制到 ~/.cursor/skills/ + 安装依赖 + 构建）
+node skills/agent-interact/tool.js install '{"target":"~/.cursor/skills/agent-interact"}'
+
+# 本地更新
 node skills/agent-interact/tool.js update
+
+# 全局更新（从源码覆盖 + 清理重装 + 重新构建）
+node skills/agent-interact/tool.js update '{"target":"~/.cursor/skills/agent-interact"}'
 ```
 
 ### LLM 自主触发示例

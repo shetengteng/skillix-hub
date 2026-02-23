@@ -12,9 +12,14 @@ description: |
 ## 快速开始
 
 ```bash
-# 首次使用：安装依赖 + 构建前端
-cd skills/agent-interact && npm install
-cd ui && npm install && npm run build && cd ..
+# 安装（安装依赖 + 构建前端）
+node skills/agent-interact/tool.js install
+
+# 全局安装（复制到 ~/.cursor/skills/ + 安装依赖 + 构建）
+node skills/agent-interact/tool.js install '{"target":"~/.cursor/skills/agent-interact"}'
+
+# 更新（从源码覆盖 + 清理重装 + 重新构建）
+node skills/agent-interact/tool.js update '{"target":"~/.cursor/skills/agent-interact"}'
 
 # 启动服务（同时启动 Electron）
 node skills/agent-interact/tool.js start
