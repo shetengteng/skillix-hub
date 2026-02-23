@@ -1,11 +1,26 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { DialogData, WsMessage } from './types'
 
-const dialogs = ref<DialogData[]>([])
+const allDialogs = ref<DialogData[]>([])
 const connected = ref(false)
 
 let ws: WebSocket | null = null
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+
+function getTargetDialogId(): string | null {
+  const params = new URLSearchParams(window.location.search)
+  return params.get('dialogId')
+}
+
+const targetDialogId = getTargetDialogId()
+const isElectron = !!(window as any).electronAPI?.isElectron
+
+const dialogs = computed(() => {
+  if (targetDialogId) {
+    return allDialogs.value.filter((d) => d.id === targetDialogId)
+  }
+  return allDialogs.value
+})
 
 function getWsUrl(): string {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -30,12 +45,12 @@ function connect() {
       const msg: WsMessage = JSON.parse(event.data)
       if (msg.event === 'dialog:open') {
         const d = msg.data as DialogData
-        if (!dialogs.value.find((x) => x.id === d.id)) {
-          dialogs.value.push(d)
+        if (!allDialogs.value.find((x) => x.id === d.id)) {
+          allDialogs.value.push(d)
         }
       } else if (msg.event === 'dialog:close') {
         const { id } = msg.data as { id: string }
-        dialogs.value = dialogs.value.filter((x) => x.id !== id)
+        allDialogs.value = allDialogs.value.filter((x) => x.id !== id)
       }
     } catch { /* ignore */ }
   }
@@ -61,9 +76,9 @@ function scheduleReconnect() {
 function respond(id: string, action: string, data?: unknown) {
   if (!ws || ws.readyState !== WebSocket.OPEN) return
   ws.send(JSON.stringify({ event: 'dialog:response', data: { id, action, data } }))
-  dialogs.value = dialogs.value.filter((x) => x.id !== id)
+  allDialogs.value = allDialogs.value.filter((x) => x.id !== id)
 }
 
 export function useWsClient() {
-  return { dialogs, connected, connect, respond }
+  return { dialogs, connected, connect, respond, isElectron }
 }

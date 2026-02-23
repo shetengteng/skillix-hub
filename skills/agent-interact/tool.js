@@ -11,6 +11,8 @@ const { DEFAULT_PORT, PORT_RANGE, PID_FILE } = require('./lib/config');
 
 const UI_DIR = path.join(__dirname, 'ui');
 const UI_DIST = path.join(UI_DIR, 'dist');
+const ELECTRON_PID_FILE = path.join(__dirname, '.electron.pid');
+const ELECTRON_MAIN = path.join(__dirname, 'electron', 'main.js');
 
 function getPort(params) {
   return params.port || DEFAULT_PORT;
@@ -43,7 +45,52 @@ function ensureUiBuild() {
   execSync('npm run build', { cwd: UI_DIR, stdio: 'ignore' });
 }
 
-function openBrowser(url) {
+function getElectronBin() {
+  try {
+    return require('electron');
+  } catch {
+    return null;
+  }
+}
+
+function isElectronRunning() {
+  if (!fs.existsSync(ELECTRON_PID_FILE)) return false;
+  const pid = parseInt(fs.readFileSync(ELECTRON_PID_FILE, 'utf-8').trim(), 10);
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    try { fs.unlinkSync(ELECTRON_PID_FILE); } catch { /* ok */ }
+    return false;
+  }
+}
+
+function startElectron(port) {
+  const electronBin = getElectronBin();
+  if (!electronBin || !fs.existsSync(ELECTRON_MAIN)) return null;
+
+  const child = spawn(electronBin, [ELECTRON_MAIN, String(port)], {
+    detached: true,
+    stdio: 'ignore',
+    env: { ...process.env, ELECTRON_DISABLE_SECURITY_WARNINGS: 'true' },
+  });
+  child.unref();
+
+  try {
+    fs.writeFileSync(ELECTRON_PID_FILE, String(child.pid));
+  } catch { /* ok */ }
+
+  return child.pid;
+}
+
+function stopElectron() {
+  if (!fs.existsSync(ELECTRON_PID_FILE)) return;
+  const pid = parseInt(fs.readFileSync(ELECTRON_PID_FILE, 'utf-8').trim(), 10);
+  try { process.kill(pid, 'SIGTERM'); } catch { /* already dead */ }
+  try { fs.unlinkSync(ELECTRON_PID_FILE); } catch { /* ok */ }
+}
+
+function openBrowserFallback(url) {
   if (process.platform === 'darwin') {
     try {
       execSync(
@@ -51,24 +98,11 @@ function openBrowser(url) {
         { stdio: 'ignore' }
       );
       return;
-    } catch { /* Chrome not available, fallback */ }
+    } catch { /* fallback */ }
     try { execSync(`open -n "${url}"`, { stdio: 'ignore' }); return; } catch { /* ok */ }
   }
   const cmd = process.platform === 'win32' ? 'start' : 'xdg-open';
   try { execSync(`${cmd} "${url}"`, { stdio: 'ignore' }); } catch { /* ok */ }
-}
-
-function sendSystemNotification(title, message) {
-  if (process.platform === 'darwin') {
-    const escaped = message.replace(/"/g, '\\"');
-    const escapedTitle = title.replace(/"/g, '\\"');
-    try {
-      execSync(
-        `osascript -e 'display notification "${escaped}" with title "Agent Interact" subtitle "${escapedTitle}" sound name "Glass"'`,
-        { stdio: 'ignore' }
-      );
-    } catch { /* ok */ }
-  }
 }
 
 function httpRequest(method, urlPath, port, body) {
@@ -93,10 +127,19 @@ function isRunning(port) {
     .catch(() => false);
 }
 
+function ensureElectron(port) {
+  if (isElectronRunning()) return 'running';
+  const pid = startElectron(port);
+  if (pid) return 'started';
+  openBrowserFallback(`http://127.0.0.1:${port}`);
+  return 'browser_fallback';
+}
+
 const COMMANDS = {
   async start(params) {
     const requestedPort = getPort(params);
     if (await isRunning(requestedPort)) {
+      ensureElectron(requestedPort);
       return success({ message: `Server already running on port ${requestedPort}` });
     }
 
@@ -122,8 +165,9 @@ const COMMANDS = {
         const msg = port !== requestedPort
           ? `Port ${requestedPort} occupied, started on ${url}`
           : `Server started on ${url}`;
-        if (!params.noBrowser) openBrowser(url);
-        return success({ message: msg, url, pid: child.pid });
+
+        const electronStatus = ensureElectron(port);
+        return success({ message: msg, url, pid: child.pid, electron: electronStatus });
       }
     }
     return error('Server failed to start within timeout');
@@ -131,6 +175,7 @@ const COMMANDS = {
 
   async stop(params) {
     const port = getPort(params);
+    stopElectron();
     if (!(await isRunning(port))) {
       return success({ message: 'Server is not running' });
     }
@@ -146,9 +191,9 @@ const COMMANDS = {
     const port = getPort(params);
     try {
       const data = await httpRequest('GET', '/api/status', port);
-      return success(data);
+      return success({ ...data, electron: isElectronRunning() ? 'running' : 'stopped' });
     } catch {
-      return success({ status: 'stopped' });
+      return success({ status: 'stopped', electron: isElectronRunning() ? 'running' : 'stopped' });
     }
   },
 
@@ -159,21 +204,11 @@ const COMMANDS = {
       const startResult = await COMMANDS.start({ port });
       if (startResult.error) return startResult;
     } else {
-      try {
-        const status = await httpRequest('GET', '/api/status', port);
-        if (status.connectedClients === 0) {
-          openBrowser(`http://127.0.0.1:${port}`);
-          await new Promise((r) => setTimeout(r, 1500));
-        }
-      } catch { /* proceed anyway */ }
+      ensureElectron(port);
     }
 
     const { type, port: _p, ...rest } = params;
     if (!type) return error('type is required');
-
-    if (type !== 'notification') {
-      sendSystemNotification(rest.title || 'Agent 需要你的操作', '请切换到浏览器窗口进行操作');
-    }
 
     const body = { type, ...rest };
 

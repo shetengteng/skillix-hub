@@ -1,13 +1,13 @@
 ---
 name: agent-interact
 description: |
-  AI Agent 与用户之间的可视化交互桥梁。通过本地 Web Server + shadcn-vue 前端，
-  支持确认选择、等待操作、图表展示三种弹框场景。任何 Agent 都可通过 HTTP API 调用。
+  AI Agent 与用户之间的可视化交互桥梁。通过 Electron 独立窗口 + shadcn-vue 前端，
+  支持 7 种交互场景。Agent 发起交互时自动弹出置顶窗口，用户无需切换应用。
 ---
 
 # Agent Interact
 
-为 AI Agent 提供可视化的用户交互能力。
+为 AI Agent 提供可视化的用户交互能力。交互弹框通过 Electron 独立窗口弹出，置顶显示在屏幕最前面。
 
 ## 快速开始
 
@@ -16,20 +16,20 @@ description: |
 cd skills/agent-interact && npm install
 cd ui && npm install && npm run build && cd ..
 
-# 启动服务
+# 启动服务（同时启动 Electron）
 node skills/agent-interact/tool.js start
 
-# 发送弹框
+# 发送弹框（Electron 窗口自动弹出）
 node skills/agent-interact/tool.js dialog '{"type":"confirm","title":"选择环境","options":[{"id":"dev","label":"开发"},{"id":"prod","label":"生产"}]}'
 ```
 
 ## CLI 命令
 
 ```bash
-node skills/agent-interact/tool.js start          # 启动服务（默认端口 7890）
-node skills/agent-interact/tool.js stop           # 停止服务
-node skills/agent-interact/tool.js status         # 检查服务状态
-node skills/agent-interact/tool.js dialog '<JSON>' # 发送弹框（阻塞等待结果）
+node skills/agent-interact/tool.js start          # 启动服务 + Electron
+node skills/agent-interact/tool.js stop           # 停止服务 + Electron
+node skills/agent-interact/tool.js status         # 检查服务和 Electron 状态
+node skills/agent-interact/tool.js dialog '<JSON>' # 发送弹框（Electron 窗口自动弹出）
 ```
 
 ## 交互类型（7 种）
@@ -118,8 +118,16 @@ LLM 在任务执行中应**自主判断**何时需要用户介入，主动选择
 - 低风险操作不要用 approval（用 confirm 或直接执行）
 - 需要多字段输入时不要用 confirm（用 form）
 
+## 窗口行为
+
+- **弹出方式**：Electron 独立窗口，置顶显示（`alwaysOnTop`）
+- **关闭行为**：用户操作后窗口自动关闭
+- **notification**：走系统原生通知，不弹窗口
+- **Fallback**：Electron 不可用时自动降级为浏览器模式
+
 ## 技术栈
 
+- **窗口**：Electron（独立置顶窗口）
 - **后端**：Node.js + Express + ws
 - **前端**：Vite + Vue 3 + TypeScript + shadcn-vue + Tailwind CSS v4
 - **图表**：Chart.js + vue-chartjs

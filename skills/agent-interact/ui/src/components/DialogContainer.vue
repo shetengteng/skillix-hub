@@ -14,7 +14,7 @@ import FormDialog from './FormDialog.vue'
 import ApprovalDialog from './ApprovalDialog.vue'
 import ProgressDialog from './ProgressDialog.vue'
 
-const { dialogs, connected, connect, respond } = useWsClient()
+const { dialogs, connected, connect, respond, isElectron } = useWsClient()
 
 onMounted(() => connect())
 
@@ -24,8 +24,10 @@ function onRespond(id: string, action: string, data?: unknown) {
 </script>
 
 <template>
-  <div class="min-h-screen bg-background">
-    <div v-if="dialogs.length === 0" class="flex min-h-screen flex-col items-center justify-center gap-4 text-muted-foreground">
+  <div class="min-h-screen bg-background" :class="{ 'electron-window': isElectron }">
+    <div v-if="isElectron" class="electron-drag-region" />
+
+    <div v-if="dialogs.length === 0 && !isElectron" class="flex min-h-screen flex-col items-center justify-center gap-4 text-muted-foreground">
       <div class="relative">
         <div class="flex h-24 w-24 items-center justify-center rounded-2xl border-2 border-dashed border-muted-foreground/20">
           <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">

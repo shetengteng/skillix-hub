@@ -21,6 +21,7 @@ __pycache__/
 node_modules/
 skills/agent-interact/ui/dist/
 skills/agent-interact/.server.pid
+skills/agent-interact/.electron.pid
 
 # OS
 .DS_Store

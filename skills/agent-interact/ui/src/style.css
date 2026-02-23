@@ -45,6 +45,21 @@
   }
 }
 
+.electron-drag-region {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 32px;
+  -webkit-app-region: drag;
+  z-index: 9999;
+}
+
+.electron-window {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
 .dark {
   --color-background: oklch(0.145 0 0);
   --color-foreground: oklch(0.985 0 0);
