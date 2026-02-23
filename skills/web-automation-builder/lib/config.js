@@ -5,19 +5,13 @@ const os = require('os');
 const fs = require('fs');
 
 const SKILL_DIR = path.join(__dirname, '..');
+const SKILLS_PARENT = path.dirname(SKILL_DIR);
+const DATA_DIR = path.join(SKILLS_PARENT, 'web-automation-builder-data');
 
-function getDataDir() {
-  const projectLocal = path.join(process.cwd(), '.cursor', 'skills', 'web-automation-builder-data');
-  const skillLocal = path.join(SKILL_DIR, 'workflows');
-
-  if (fs.existsSync(projectLocal)) return projectLocal;
-  if (fs.existsSync(skillLocal)) return path.dirname(skillLocal);
-
-  fs.mkdirSync(projectLocal, { recursive: true });
-  return projectLocal;
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-const DATA_DIR = getDataDir();
 const WORKFLOWS_DIR = path.join(DATA_DIR, 'workflows');
 const RECORDING_FILE = path.join(DATA_DIR, '.recording.json');
 

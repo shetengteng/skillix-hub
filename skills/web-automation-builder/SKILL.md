@@ -115,15 +115,22 @@ LLM 在任务执行中应自主判断何时使用录制功能：
 
 ## 数据存储
 
-工作流数据存储在**当前项目**下，每个项目独立：
+工作流数据存储在 Skill 安装目录的**同级** `web-automation-builder-data/` 目录下：
 
 ```
-<项目>/.cursor/skills/web-automation-builder-data/
-├── workflows/          # 已录制的工作流 JSON
-└── .recording.json     # 录制中的临时状态
+~/.cursor/skills/                          # 全局安装时
+├── web-automation-builder/                # Skill 代码
+└── web-automation-builder-data/           # 数据目录
+    ├── workflows/                         # 已录制的工作流 JSON
+    └── .recording.json                    # 录制中的临时状态
+
+<项目>/.cursor/skills/                     # 项目级安装时
+├── web-automation-builder/
+└── web-automation-builder-data/
+    └── workflows/
 ```
 
-全局安装时，Skill 代码在 `~/.cursor/skills/web-automation-builder/`，但数据始终在项目本地。
+Skill 在哪里安装，数据就在哪个 skills 目录下。
 
 ## 参数化语法
 
