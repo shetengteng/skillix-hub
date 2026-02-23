@@ -18,8 +18,7 @@ const RECORDING_FILE = path.join(DATA_DIR, '.recording.json');
 const STOP_SIGNAL_FILE = path.join(DATA_DIR, '.stop-signal');
 const RECORDING_RESULT_FILE = path.join(DATA_DIR, '.recording-result.json');
 
-const PLAYWRIGHT_STATE_DIR = path.join(os.tmpdir(), 'playwright-skill');
-const BROWSER_STATE_FILE = path.join(PLAYWRIGHT_STATE_DIR, 'browser-state.json');
+const BROWSER_STATE_FILE = path.join(DATA_DIR, '.browser-state.json');
 
 const PLAYWRIGHT_TOOL = path.resolve(SKILL_DIR, '..', 'playwright', 'tool.js');
 const GLOBAL_PLAYWRIGHT_TOOL = path.join(os.homedir(), '.cursor', 'skills', 'playwright', 'tool.js');
@@ -53,6 +52,33 @@ const NETWORK_SKIP_HOSTS = new Set([
   'fonts.googleapis.com', 'fonts.gstatic.com',
 ]);
 
+const NAV_SKIP_PATTERNS = [
+  /^file:\/\//,
+  /\.okta\.com\//,
+  /\/oauth2?\//,
+  /\/authorize\?/,
+  /\/callback\?/,
+  /\/idp\/idx\//,
+  /login\.microsoftonline\.com/,
+  /accounts\.google\.com/,
+  /auth0\.com/,
+];
+
+function filterNavigations(navEvents) {
+  const meaningful = navEvents.filter((e) => {
+    try {
+      return !NAV_SKIP_PATTERNS.some((p) => p.test(e.url));
+    } catch { return true; }
+  });
+  const deduped = [];
+  for (const nav of meaningful) {
+    if (deduped.length === 0 || deduped[deduped.length - 1].url !== nav.url) {
+      deduped.push(nav);
+    }
+  }
+  return deduped;
+}
+
 const EVENT_POLL_INTERVAL_MS = 500;
 
 module.exports = {
@@ -68,6 +94,8 @@ module.exports = {
   MAX_BODY_SIZE,
   NETWORK_SKIP_EXTENSIONS,
   NETWORK_SKIP_HOSTS,
+  NAV_SKIP_PATTERNS,
+  filterNavigations,
   EVENT_POLL_INTERVAL_MS,
   getPlaywrightTool,
   getBrowserWsEndpoint,

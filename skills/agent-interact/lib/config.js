@@ -5,7 +5,7 @@ const path = require('path');
 const DEFAULT_PORT = 7890;
 const PORT_RANGE = 10;
 const DEFAULT_TIMEOUT = 60;
-const MAX_TIMEOUT = 600;
+const MAX_TIMEOUT = 3600;
 const PID_FILE = path.join(__dirname, '..', '.server.pid');
 const UI_DIST = path.join(__dirname, '..', 'ui', 'dist');
 

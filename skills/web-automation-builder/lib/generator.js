@@ -39,8 +39,8 @@ function generateSkillMd(workflow, skillName) {
       ).join('\n')
     : '无参数。';
 
-  const stepsDesc = workflow.steps.map(s =>
-    `${s.seq}. \`${s.command}\`${s.args.url ? ` → ${s.args.url}` : ''}${s.args.text ? ` → "${s.args.text}"` : ''}${s.locators?.text ? ` → [${s.locators.text}]` : ''}`
+  const stepsDesc = workflow.steps.map((s, i) =>
+    `${i + 1}. \`${s.command}\`${s.description ? ` — ${s.description}` : ''}${s.args?.url ? ` → ${s.args.url}` : ''}${s.args?.text ? ` → "${s.args.text}"` : ''}${s.locators?.text ? ` → [${s.locators.text}]` : ''}`
   ).join('\n');
 
   const paramsExample = workflow.params && workflow.params.length > 0

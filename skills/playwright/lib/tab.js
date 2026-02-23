@@ -112,6 +112,41 @@ class Tab {
     }
   }
 
+  async resolveLocator(params) {
+    if (params.ref) return this.refLocator(params);
+
+    let locator;
+    let resolved;
+
+    if (params.selector) {
+      locator = this.page.locator(params.selector);
+      resolved = `locator('${params.selector.replace(/'/g, "\\'")}')`;
+    } else if (params.text) {
+      locator = this.page.getByText(params.text, { exact: false });
+      resolved = `getByText('${params.text.replace(/'/g, "\\'")}')`;
+    } else if (params.role) {
+      const opts = params.name ? { name: params.name } : {};
+      locator = this.page.getByRole(params.role, opts);
+      resolved = params.name
+        ? `getByRole('${params.role}', { name: '${params.name.replace(/'/g, "\\'")}' })`
+        : `getByRole('${params.role}')`;
+    } else if (params.placeholder) {
+      locator = this.page.getByPlaceholder(params.placeholder);
+      resolved = `getByPlaceholder('${params.placeholder.replace(/'/g, "\\'")}')`;
+    } else if (params.label) {
+      locator = this.page.getByLabel(params.label);
+      resolved = `getByLabel('${params.label.replace(/'/g, "\\'")}')`;
+    } else if (params.testId) {
+      locator = this.page.getByTestId(params.testId);
+      resolved = `getByTestId('${params.testId.replace(/'/g, "\\'")}')`;
+    } else {
+      throw new Error('No locator provided: need ref, selector, text, role, placeholder, label, or testId');
+    }
+
+    await locator.waitFor({ state: 'visible', timeout: params.timeout || 10000 });
+    return { locator, resolved };
+  }
+
   async refLocators(paramsList) {
     return Promise.all(paramsList.map(p => this.refLocator(p)));
   }

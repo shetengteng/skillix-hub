@@ -10,7 +10,7 @@ async function snapshot(context, params, response) {
 async function click(context, params, response) {
   const tab = context.currentTabOrDie();
   response.setIncludeSnapshot();
-  const { locator, resolved } = await tab.refLocator(params);
+  const { locator, resolved } = await tab.resolveLocator(params);
 
   if (params.forceJsClick) {
     response.addCode(`await page.${resolved}.evaluate(el => el.click());`);
@@ -53,7 +53,7 @@ async function drag(context, params, response) {
 async function hover(context, params, response) {
   const tab = context.currentTabOrDie();
   response.setIncludeSnapshot();
-  const { locator, resolved } = await tab.refLocator(params);
+  const { locator, resolved } = await tab.resolveLocator(params);
   response.addCode(`await page.${resolved}.hover();`);
   await tab.waitForCompletion(async () => {
     await locator.hover();
@@ -63,7 +63,7 @@ async function hover(context, params, response) {
 async function selectOption(context, params, response) {
   const tab = context.currentTabOrDie();
   response.setIncludeSnapshot();
-  const { locator, resolved } = await tab.refLocator(params);
+  const { locator, resolved } = await tab.resolveLocator(params);
   response.addCode(`await page.${resolved}.selectOption(${formatObject(params.values)});`);
   await tab.waitForCompletion(async () => {
     await locator.selectOption(params.values);
@@ -72,14 +72,14 @@ async function selectOption(context, params, response) {
 
 async function check(context, params, response) {
   const tab = context.currentTabOrDie();
-  const { locator, resolved } = await tab.refLocator(params);
+  const { locator, resolved } = await tab.resolveLocator(params);
   response.addCode(`await page.${resolved}.check();`);
   await locator.check();
 }
 
 async function uncheck(context, params, response) {
   const tab = context.currentTabOrDie();
-  const { locator, resolved } = await tab.refLocator(params);
+  const { locator, resolved } = await tab.resolveLocator(params);
   response.addCode(`await page.${resolved}.uncheck();`);
   await locator.uncheck();
 }

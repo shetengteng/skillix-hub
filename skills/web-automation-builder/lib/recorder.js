@@ -2,25 +2,29 @@
 
 const fs = require('fs');
 const path = require('path');
+const net = require('net');
+const { spawn } = require('child_process');
 const playwright = require('playwright-core');
 const {
-  RECORDING_FILE, RECORDINGS_DIR, STOP_SIGNAL_FILE, RECORDING_RESULT_FILE,
-  EVENT_POLL_INTERVAL_MS, getBrowserWsEndpoint, getPlaywrightTool,
+  SKILL_DIR, DATA_DIR, RECORDING_FILE, RECORDINGS_DIR, STOP_SIGNAL_FILE, RECORDING_RESULT_FILE,
+  EVENT_POLL_INTERVAL_MS, BROWSER_STATE_FILE, filterNavigations,
 } = require('./config');
 const { buildInjectionScript, COLLECT_SCRIPT } = require('./injector');
 const { NetworkMonitor } = require('./network-monitor');
-const { execSync } = require('child_process');
+
+const WELCOME_PAGE = path.join(SKILL_DIR, 'templates', 'welcome.html');
 
 class Recorder {
   constructor() {
     this._browser = null;
-    this._page = null;
+    this._pages = [];
     this._networkMonitor = new NetworkMonitor();
     this._pollTimer = null;
     this._rawEvents = [];
     this._id = null;
     this._name = null;
     this._startedAt = null;
+    this._chromePid = null;
   }
 
   async start(name) {
@@ -32,31 +36,9 @@ class Recorder {
       cleanupFiles();
     }
 
-    let wsEndpoint = await getBrowserWsEndpoint();
-    if (!wsEndpoint) {
-      const pw = getPlaywrightTool();
-      if (!pw) {
-        return { started: false, reason: 'Playwright Skill not found. Install it first.' };
-      }
-      try {
-        execSync(`node "${pw}" navigate '{"url":"about:blank"}'`, {
-          encoding: 'utf-8',
-          timeout: 30000,
-        });
-      } catch (e) {
-        return { started: false, reason: `Failed to launch browser: ${e.message}` };
-      }
-      await new Promise((r) => setTimeout(r, 2000));
-      wsEndpoint = await getBrowserWsEndpoint();
-      if (!wsEndpoint) {
-        return { started: false, reason: 'Browser launched but wsEndpoint not found' };
-      }
-    }
-
-    try {
-      this._browser = await playwright.chromium.connectOverCDP(wsEndpoint, { timeout: 5000 });
-    } catch (e) {
-      return { started: false, reason: `CDP connection failed: ${e.message}` };
+    const launchResult = await this._launchBrowser();
+    if (launchResult.error) {
+      return { started: false, reason: launchResult.error };
     }
 
     this._id = `wf-${Date.now()}`;
@@ -65,19 +47,30 @@ class Recorder {
     this._rawEvents = [];
 
     const contexts = this._browser.contexts();
-    if (contexts.length > 0) {
-      const pages = contexts[0].pages();
-      if (pages.length > 0) {
-        this._page = pages[0];
+    let initialPage = null;
+    for (const ctx of contexts) {
+      const pages = ctx.pages();
+      for (const p of pages) {
+        this._pages.push(p);
+        await this._setupPage(p);
+        if (!initialPage) initialPage = p;
       }
     }
 
-    if (this._page) {
-      await this._setupPage(this._page);
+    if (!initialPage && contexts.length > 0) {
+      initialPage = await contexts[0].newPage();
+      this._pages.push(initialPage);
+      await this._setupPage(initialPage);
+    }
+
+    if (initialPage) {
+      const welcomeUrl = `file://${WELCOME_PAGE}`;
+      try { await initialPage.goto(welcomeUrl); } catch { /* ok */ }
     }
 
     for (const context of contexts) {
       context.on('page', async (page) => {
+        this._pages.push(page);
         await this._setupPage(page);
       });
     }
@@ -89,11 +82,99 @@ class Recorder {
     return { started: true, id: this._id, name: this._name };
   }
 
+  async _launchBrowser() {
+    let execPath;
+    try {
+      const registry = require('playwright-core/lib/server').registry;
+      const descriptor = registry.findExecutable('chrome') || registry.findExecutable('chromium');
+      execPath = descriptor?.executablePath();
+    } catch { /* ok */ }
+
+    if (!execPath) {
+      try {
+        const bt = playwright.chromium;
+        execPath = bt.executablePath('chrome');
+      } catch { /* ok */ }
+    }
+
+    if (!execPath) {
+      return { error: 'Cannot find Chrome/Chromium executable. Install Chrome or run: npx playwright install chromium' };
+    }
+
+    try {
+      const oldState = JSON.parse(fs.readFileSync(BROWSER_STATE_FILE, 'utf-8'));
+      if (oldState?.pid) {
+        try { process.kill(oldState.pid, 'SIGTERM'); } catch { /* ok */ }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    } catch { /* no old state */ }
+
+    const cdpPort = await findFreePort();
+    const userDataDir = path.join(DATA_DIR, 'chrome-profile');
+    fs.mkdirSync(userDataDir, { recursive: true });
+
+    try { fs.unlinkSync(path.join(userDataDir, 'SingletonLock')); } catch { /* ok */ }
+
+    const args = [
+      `--remote-debugging-port=${cdpPort}`,
+      `--user-data-dir=${userDataDir}`,
+      '--no-first-run',
+      '--no-default-browser-check',
+      '--disable-background-networking',
+      '--disable-default-apps',
+      '--disable-sync',
+    ];
+
+    const child = spawn(execPath, args, { detached: true, stdio: 'ignore' });
+    child.unref();
+    this._chromePid = child.pid;
+
+    const ready = await waitForCDP(cdpPort, 15000);
+    if (!ready) {
+      try { process.kill(child.pid, 'SIGTERM'); } catch { /* ok */ }
+      return { error: `Chrome started but CDP port ${cdpPort} not ready` };
+    }
+
+    const cdpEndpoint = `http://127.0.0.1:${cdpPort}`;
+
+    fs.writeFileSync(BROWSER_STATE_FILE, JSON.stringify({
+      wsEndpoint: cdpEndpoint,
+      pid: child.pid,
+      startedAt: new Date().toISOString(),
+      source: 'web-automation-builder',
+    }, null, 2));
+
+    try {
+      this._browser = await playwright.chromium.connectOverCDP(cdpEndpoint, { timeout: 10000 });
+    } catch (e) {
+      try { process.kill(child.pid, 'SIGTERM'); } catch { /* ok */ }
+      return { error: `CDP connection failed: ${e.message}` };
+    }
+
+    return { error: null };
+  }
+
+  async _injectDOMListeners(pageOrFrame) {
+    const script = buildInjectionScript();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await pageOrFrame.evaluate(script);
+        return true;
+      } catch {
+        await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+      }
+    }
+    return false;
+  }
+
   async _setupPage(page) {
     await this._networkMonitor.attachToPage(page);
+
     try {
-      await page.evaluate(buildInjectionScript());
-    } catch { /* page might not be ready */ }
+      await page.context().addInitScript(buildInjectionScript());
+    } catch { /* addInitScript may not work in CDP mode */ }
+
+    await this._injectDOMListeners(page);
 
     page.on('framenavigated', async (frame) => {
       if (frame === page.mainFrame()) {
@@ -102,11 +183,33 @@ class Recorder {
           timestamp: new Date().toISOString(),
           url: frame.url(),
         });
-        try {
-          await frame.evaluate(buildInjectionScript());
-        } catch { /* ok */ }
       }
     });
+
+    page.on('load', async () => {
+      await this._injectDOMListeners(page);
+    });
+
+    page.on('domcontentloaded', async () => {
+      await this._injectDOMListeners(page);
+    });
+  }
+
+  async _collectDOMFromAllPages() {
+    let collected = false;
+    for (const page of this._pages) {
+      try {
+        const raw = await page.evaluate(COLLECT_SCRIPT);
+        const events = JSON.parse(raw);
+        if (events.length > 0) {
+          this._rawEvents.push(...events);
+          collected = true;
+        }
+      } catch {
+        try { await this._injectDOMListeners(page); } catch { /* ok */ }
+      }
+    }
+    return collected;
   }
 
   async runDaemon() {
@@ -115,20 +218,14 @@ class Recorder {
         break;
       }
 
-      if (this._page) {
-        try {
-          const raw = await this._page.evaluate(COLLECT_SCRIPT);
-          const events = JSON.parse(raw);
-          if (events.length > 0) {
-            this._rawEvents.push(...events);
-            this._writeState();
-          }
-        } catch { /* page closed or navigated */ }
-      }
+      const domCollected = await this._collectDOMFromAllPages();
 
       const netEvents = this._networkMonitor.collectRequests();
       if (netEvents.length > 0) {
         this._rawEvents.push(...netEvents);
+      }
+
+      if (domCollected || netEvents.length > 0) {
         this._writeState();
       }
 
@@ -139,13 +236,7 @@ class Recorder {
   }
 
   async _finalize() {
-    if (this._page) {
-      try {
-        const raw = await this._page.evaluate(COLLECT_SCRIPT);
-        const events = JSON.parse(raw);
-        this._rawEvents.push(...events);
-      } catch { /* ok */ }
-    }
+    await this._collectDOMFromAllPages();
 
     const netEvents = this._networkMonitor.collectRequests();
     this._rawEvents.push(...netEvents);
@@ -154,8 +245,13 @@ class Recorder {
     await this._networkMonitor.detachAll();
 
     if (this._browser) {
-      try { this._browser.close(); } catch { /* ok */ }
+      try { await this._browser.close(); } catch { /* ok */ }
       this._browser = null;
+    }
+
+    if (this._chromePid) {
+      try { process.kill(this._chromePid, 'SIGTERM'); } catch { /* ok */ }
+      this._chromePid = null;
     }
 
     const stoppedAt = new Date().toISOString();
@@ -170,7 +266,25 @@ class Recorder {
       domCount: this._rawEvents.filter((e) => e.type !== 'network' && e.type !== 'navigation').length,
     };
 
-    this._saveRecording(result);
+    const domEvents = this._rawEvents.filter((e) => e.type !== 'network' && e.type !== 'navigation');
+    const rawNavigations = this._rawEvents.filter((e) => e.type === 'navigation');
+    const navigations = filterNavigations(rawNavigations);
+    const apiRequests = this._rawEvents
+      .filter((e) => e.type === 'network' && e.resourceType === 'Fetch')
+      .map(({ type: _t, resourceType: _r, ...rest }) => rest);
+
+    const summaryResult = {
+      id: this._id,
+      name: this._name,
+      startedAt: this._startedAt,
+      stoppedAt,
+      eventCount: this._rawEvents.length,
+      domCount: domEvents.length,
+      networkCount: result.networkCount,
+      summary: { domEvents, navigations, apiRequests },
+    };
+
+    this._saveRecording(summaryResult);
 
     try {
       fs.writeFileSync(RECORDING_RESULT_FILE, JSON.stringify(result, null, 2));
@@ -279,6 +393,29 @@ function cleanupFiles() {
 
 function getState() {
   return readState();
+}
+
+function findFreePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.listen(0, () => {
+      const { port } = server.address();
+      server.close(() => resolve(port));
+    });
+    server.on('error', reject);
+  });
+}
+
+async function waitForCDP(port, timeoutMs) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/json/version`);
+      if (res.ok) return true;
+    } catch { /* not ready yet */ }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  return false;
 }
 
 module.exports = {

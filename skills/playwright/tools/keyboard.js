@@ -15,7 +15,7 @@ async function pressKey(context, params, response) {
 
 async function type(context, params, response) {
   const tab = context.currentTabOrDie();
-  const { locator, resolved } = await tab.refLocator(params);
+  const { locator, resolved } = await tab.resolveLocator(params);
 
   await tab.waitForCompletion(async () => {
     if (params.slowly) {

@@ -7,6 +7,7 @@ const fs = require('fs');
 const os = require('os');
 
 const WORKFLOW_FILE = path.join(__dirname, 'workflow.json');
+const CMD_MAP = { fill: 'type', input: 'type' };
 
 function success(data) { return { result: data, error: null }; }
 function error(msg) { return { result: null, error: msg }; }
@@ -22,18 +23,48 @@ function findPlaywright() {
   return null;
 }
 
-function renderArgs(args, params) {
-  const rendered = {};
-  for (const [key, value] of Object.entries(args)) {
-    if (typeof value === 'string') {
-      rendered[key] = value.replace(/\{\{(\w+)\}\}/g, (m, k) => params.hasOwnProperty(k) ? params[k] : m);
-    } else if (typeof value === 'object' && value !== null) {
-      rendered[key] = renderArgs(value, params);
-    } else {
-      rendered[key] = value;
-    }
+function renderValue(value, params) {
+  if (typeof value === 'string') {
+    return value.replace(/\{\{(\w+)\}\}/g, (m, k) => params.hasOwnProperty(k) ? params[k] : m);
   }
-  return rendered;
+  if (Array.isArray(value)) return value.map(v => renderValue(v, params));
+  if (typeof value === 'object' && value !== null) {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) { out[k] = renderValue(v, params); }
+    return out;
+  }
+  return value;
+}
+
+function buildPlaywrightArgs(step, params) {
+  const cmd = CMD_MAP[step.command] || step.command;
+  const args = {};
+
+  if (step.locators) {
+    const loc = renderValue(step.locators, params);
+    if (loc.text)             args.text = loc.text;
+    else if (loc.css)         args.selector = loc.css;
+    else if (loc.role)        { args.role = loc.role; if (loc.name) args.name = loc.name; }
+    else if (loc.placeholder) args.placeholder = loc.placeholder;
+    else if (loc.label || loc.ariaLabel) args.label = loc.label || loc.ariaLabel;
+    else if (loc.testId)      args.testId = loc.testId;
+    else if (loc.id)          args.selector = `#${loc.id}`;
+  }
+
+  if (step.args) {
+    const rendered = renderValue(step.args, params);
+    Object.assign(args, rendered);
+  }
+
+  if (step.wait?.timeout) args.timeout = step.wait.timeout;
+
+  return { cmd, args };
+}
+
+function execPW(pw, cmd, args, timeout) {
+  const escaped = JSON.stringify(args).replace(/'/g, "'\\''");
+  const out = execSync(`node "${pw}" ${cmd} '${escaped}'`, { encoding: 'utf-8', timeout: timeout || 60000 });
+  try { return JSON.parse(out); } catch { return out; }
 }
 
 const COMMANDS = {
@@ -46,18 +77,26 @@ const COMMANDS = {
     {{PARAMS_VALIDATION}}
 
     const results = [];
-    for (const step of wf.steps) {
-      const args = renderArgs(step.args, params);
-      const argsJson = JSON.stringify(args);
-      const cmd = `node "${pw}" ${step.command} '${argsJson.replace(/'/g, "'\\''")}'`;
-      try {
-        const out = execSync(cmd, { encoding: 'utf-8', timeout: 60000 });
-        let r; try { r = JSON.parse(out); } catch { r = out; }
-        results.push({ step: step.seq, command: step.command, success: true });
-      } catch (e) {
-        results.push({ step: step.seq, command: step.command, success: false, error: e.message });
-        return success({ completed: false, failedAt: step.seq, results });
+    let prevCmd = null;
+
+    for (let i = 0; i < wf.steps.length; i++) {
+      const step = wf.steps[i];
+      const { cmd, args } = buildPlaywrightArgs(step, params);
+
+      if (prevCmd === 'navigate' && cmd !== 'navigate' && cmd !== 'waitFor') {
+        try { execPW(pw, 'waitFor', { time: 2 }); } catch { /* best-effort */ }
       }
+
+      const stepTimeout = step.wait?.timeout || (cmd === 'navigate' ? 60000 : 30000);
+
+      try {
+        execPW(pw, cmd, args, stepTimeout);
+        results.push({ step: i + 1, command: cmd, description: step.description, success: true });
+      } catch (e) {
+        results.push({ step: i + 1, command: cmd, description: step.description, success: false, error: e.message });
+        return success({ completed: false, failedAt: i + 1, results });
+      }
+      prevCmd = cmd;
     }
     return success({ completed: true, stepsExecuted: results.length, results });
   },

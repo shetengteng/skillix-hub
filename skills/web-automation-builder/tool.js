@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const { success, error } = require('./lib/response');
-const { getPlaywrightTool } = require('./lib/config');
+const { getPlaywrightTool, filterNavigations } = require('./lib/config');
 const { readState, requestStop, waitForResult, cleanupFiles, isProcessAlive } = require('./lib/recorder');
 const store = require('./lib/store');
 const { replay } = require('./lib/replayer');
@@ -76,6 +76,13 @@ const COMMANDS = {
       return error('Stop timed out — daemon may have crashed');
     }
 
+    const domEvents = result.rawEvents.filter((e) => e.type !== 'network' && e.type !== 'navigation');
+    const rawNavEvents = result.rawEvents.filter((e) => e.type === 'navigation');
+    const navEvents = filterNavigations(rawNavEvents);
+    const apiEvents = result.rawEvents.filter((e) =>
+      e.type === 'network' && e.request && e.request.resourceType === 'Fetch',
+    );
+
     return success({
       message: `Recording stopped. Captured ${result.eventCount} events (${result.domCount} DOM, ${result.networkCount} network).`,
       id: result.id,
@@ -85,7 +92,18 @@ const COMMANDS = {
       eventCount: result.eventCount,
       domCount: result.domCount,
       networkCount: result.networkCount,
-      rawEvents: result.rawEvents,
+      summary: {
+        domEvents,
+        navigations: navEvents,
+        apiRequests: apiEvents.map((e) => ({
+          method: e.request.method,
+          url: e.request.url,
+          status: e.response?.status,
+          body: e.request.body,
+          responseBody: e.response?.body,
+        })),
+      },
+      rawEventsFile: `recordings/${new Date().toISOString().slice(0, 10)}-${result.id}.json`,
     });
   },
 

@@ -82,28 +82,69 @@ node tool.js export '{"id":"wf-xxx","output":"./my-automation.js"}'
 
 LLM 在录制流程中的行为协议：
 
-### 录制流程
+### 录制流程（LLM 必须严格按此顺序执行）
 
 ```
-1. 用户请求录制 → 调用 record
-2. record 返回成功 → 使用 agent-interact 的 wait 弹框通知用户
-   （降级：在对话中告知用户"浏览器已打开，操作完成后告诉我"）
-3. 等待用户通知操作完成
-4. 调用 stop → 获取 rawEvents
-5. LLM 分析 rawEvents → 生成结构化工作流 JSON
-6. 调用 save 保存工作流
-7. 向用户报告录制结果
+1. 用户请求录制 → 调用 record 命令
+2. record 返回成功（包含 id、pid）→ 立即执行步骤 3
+3. 弹出 agent-interact wait 对话框（见下方代码）
+   - 浏览器窗口会自动打开，用户可直接操作
+   - 用户点击对话框"确认"按钮表示操作完成
+4. 用户确认后 → 调用 stop 命令 → 获取 rawEvents
+5. LLM 分析 rawEvents → 生成分析报告
+6. 弹出 agent-interact custom 对话框展示分析报告（见下方代码）
+   - 展示操作流程摘要、事件统计、可参数化的值
+   - 提供文本输入区域让用户补充说明
+   - 用户选择"生成并保存"或"不需要"
+7. 用户确认后 → 生成结构化工作流 JSON → 调用 save 保存
+8. 向用户报告保存结果，询问是否生成独立 Skill
 ```
 
-### agent-interact 交互（优先使用）
+### agent-interact 交互（必须执行，不可跳过）
 
-录制开始后，优先使用 agent-interact skill 的 wait 弹框：
+record 命令返回成功后，**必须立即**调用 agent-interact skill 弹出等待对话框。
+这是用户唯一的交互入口——告知系统"操作完成"。
+
+**调用方式**（选择一种可用的路径）：
 
 ```bash
-node agent-interact/tool.js dialog '{"type":"wait","title":"正在录制","message":"浏览器已打开，请完成操作后点击确认。","confirmText":"操作完成，停止录制"}'
+# 方式 1：项目内 skill
+node skills/agent-interact/tool.js dialog '{"type":"wait","title":"🔴 正在录制浏览器操作","message":"浏览器已打开，请在浏览器中完成所有操作。\n操作完成后点击下方按钮停止录制。","confirmText":"✅ 操作完成，停止录制","timeout":3600}'
+
+# 方式 2：全局安装的 skill
+node ~/.cursor/skills/agent-interact/tool.js dialog '{"type":"wait","title":"🔴 正在录制浏览器操作","message":"浏览器已打开，请在浏览器中完成所有操作。\n操作完成后点击下方按钮停止录制。","confirmText":"✅ 操作完成，停止录制","timeout":3600}'
 ```
 
-如果 agent-interact 不可用，降级为对话模式等待用户输入。
+**降级策略**：仅当 agent-interact skill 完全不存在时，才降级为对话模式：
+在对话中告知用户"浏览器已打开，请操作完成后告诉我"，然后等待用户回复。
+
+**注意**：
+- LLM 不应在 record 和 agent-interact 之间插入任何其他操作或对话。
+- agent-interact dialog 命令是阻塞的（等用户点击才返回），应设置足够长的超时等待（如 `block_until_ms: 3600000`），**不要**用 `sleep + 轮询` 方式。
+
+### 分析报告对话框（步骤 6）
+
+stop 命令返回后，LLM 分析 rawEvents 并通过 agent-interact custom 对话框展示报告：
+
+```bash
+node skills/agent-interact/tool.js dialog '{"type":"custom","schemaVersion":"1.0","title":"📊 录制分析报告","timeout":1200,"content":[{"kind":"kv","items":[{"key":"录制名称","value":"<name>"},{"key":"时长","value":"<duration>"},{"key":"DOM 事件","value":"<domCount>"},{"key":"网络请求","value":"<networkCount>"}]},{"kind":"divider"},{"kind":"heading","value":"操作流程","level":3},{"kind":"text","value":"<步骤列表>"},{"kind":"divider"},{"kind":"heading","value":"可参数化的值","level":3},{"kind":"text","value":"<参数列表>"},{"kind":"divider"},{"kind":"textarea","id":"notes","label":"补充说明（可选）","placeholder":"如有需要补充的信息请在此输入..."}],"actions":[{"id":"save","label":"✅ 生成并保存","submit":true},{"id":"cancel","label":"❌ 不需要"}]}'
+```
+
+用户点击"生成并保存"后，LLM 根据 rawEvents + 用户补充信息生成工作流 JSON 并保存。
+
+### custom dialog schema 强制约束
+
+调用 agent-interact custom 对话框时，**必须严格遵守以下规则**：
+
+1. **必须包含** `"schemaVersion":"1.0"`
+2. **content 数组中每个节点使用 `kind` 字段**（不是 `type`），值的字段用 `value`（不是 `text`）
+3. **按钮使用 `actions` 数组**（不是 `buttons`），每个 action 包含 `id`、`label`，可选 `submit`、`variant`
+4. **可用的 kind 值**：`text`、`heading`、`divider`、`alert`、`badge`、`kv`、`progress`、`chart`、`code`、`image`、`table`、`input`、`select`、`checkbox`、`textarea`、`row`、`column`、`grid`、`section`、`group`
+
+**错误处理**：调用 agent-interact dialog 后，**必须检查返回结果**。如果返回 `"error": "Invalid custom schema"` 或 exit code 非 0，LLM 应：
+1. 读取 `details` 中的错误信息
+2. 根据错误修正 JSON schema（常见错误：`type` → `kind`，`text` → `value`，`buttons` → `actions`，缺少 `schemaVersion`）
+3. 重新调用 dialog 命令
 
 ### 何时建议录制
 
@@ -192,9 +233,10 @@ USERNAME=admin PASSWORD=secret node deploy-staging.js
 ├── web-automation-builder/           # Skill 代码
 └── web-automation-builder-data/      # 数据目录
     ├── workflows/                    # 已保存的结构化工作流 JSON
-    ├── recordings/                   # 原始录制数据（按日期归档）
-    │   ├── 2026-02-23-wf-xxx.json   # 包含完整 rawEvents
+    ├── recordings/                   # 录制数据（按日期归档）
+    │   ├── 2026-02-23-wf-xxx.json   # 精简 summary（DOM事件+导航+API请求）
     │   └── ...
+    ├── chrome-profile/                # Chrome 用户数据（认证缓存持久化）
     └── .recording.json               # 录制中的临时状态（stop 后删除）
 ```
 
