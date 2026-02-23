@@ -1,0 +1,6 @@
+{
+  "name": "web-automation-builder",
+  "version": "1.0.0",
+  "description": "学习用户浏览器操作行为，录制为可重放的工作流，支持参数化重放和自动生成独立 Skill",
+  "main": "tool.js"
+}

@@ -189,6 +189,54 @@ node skills/<name>/tool.js <command> '<json_params>'
 - 不添加无意义注释
 - 错误处理：所有命令 catch 异常返回 JSON error
 
+**install / update 命令（强制）**：
+
+每个 Skill 的 tool.js **必须实现** `install` 和 `update` 命令，支持用户通过自然语言安装和更新：
+
+```bash
+# 安装到全局（复制源码到目标目录 + 安装依赖）
+node skills/<name>/tool.js install '{"target":"~/.cursor/skills/<name>"}'
+
+# 更新（删除旧版源码 → 重新复制 + 安装依赖，保留用户数据）
+node skills/<name>/tool.js update '{"target":"~/.cursor/skills/<name>"}'
+```
+
+**install 命令要求**：
+1. 接受 `target` 参数，指定安装目标目录
+2. 复制源码文件到目标目录（排除 `node_modules`、`dist`、运行时数据）
+3. 在目标目录执行依赖安装（如 `npm install`、`pip install` 等）
+4. 如有前端构建（如 UI 目录），执行构建
+5. 检查前置依赖是否存在，给出提示
+6. 返回安装路径和依赖状态
+
+**update 命令要求**：
+1. 接受 `target` 参数
+2. 备份用户数据（如工作流、配置、记忆数据等）
+3. 删除旧版源码
+4. 执行 install 逻辑
+5. 恢复用户数据
+6. 返回更新结果
+
+**SKILL.md 中必须包含安装/更新说明**：
+
+```markdown
+## 安装 / 更新
+
+\`\`\`bash
+node skills/<name>/tool.js install '{"target":"~/.cursor/skills/<name>"}'
+node skills/<name>/tool.js update '{"target":"~/.cursor/skills/<name>"}'
+\`\`\`
+```
+
+**自然语言安装示例**（用户只需说）：
+
+```
+帮我从 https://github.com/shetengteng/skillix-hub 安装 <name> skill
+帮我更新 <name> skill
+```
+
+Agent 会自动克隆仓库并执行 install/update 命令。
+
 ---
 
 ### Phase 6：单元测试

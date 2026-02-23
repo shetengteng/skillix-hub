@@ -24,6 +24,7 @@ AI Skill is a reusable AI instruction set that helps AI programming assistants b
 | [api-tracer](./skills/api-tracer/) | Record and analyze browser network requests via CDP, capture full API info (URL, headers, cookies, request/response body), generate reports for automation |
 | [web-content-reader](./skills/web-content-reader/) | Read web page content with automatic SPA detection and browser rendering fallback for Vue/React pages |
 | [agent-interact](./skills/agent-interact/) | Visual interaction bridge between AI Agent and user via Electron standalone windows, supporting 8 interaction types (confirm, wait, chart, notification, form, approval, progress, custom rendering) — all initiated autonomously by LLM |
+| [web-automation-builder](./skills/web-automation-builder/) | Record browser action sequences as replayable parameterized workflows, generate standalone Skills or export Playwright scripts |
 | [skill-builder](./skills/skill-builder/) | Standardized Skill development workflow guide and scaffold tool for skillix-hub, with 8-phase lifecycle and template auto-generation |
 
 ## Installation
@@ -347,24 +348,6 @@ node skills/playwright/tool.js stop     # Close browser
 node skills/playwright/tool.js status   # Check status
 ```
 
-### MCP Tools Mapping (22 tools)
-
-When `@playwright/mcp` is enabled, the following MCP tools map to Skill CLI commands. **Prefer Skill CLI commands**:
-
-| MCP Tool -> Function | CLI Command |
-|---------------------|-------------|
-| `browser_navigate` -> Navigate | `navigate` |
-| `browser_snapshot` -> Snapshot | `snapshot` |
-| `browser_click` -> Click | `click` |
-| `browser_type` -> Type | `type` |
-| `browser_fill_form` -> Fill Form | `fillForm` |
-| `browser_take_screenshot` -> Screenshot | `screenshot` |
-| `browser_evaluate` -> Execute JS | `evaluate` |
-| `browser_wait_for` -> Wait | `waitFor` |
-| `browser_tabs` -> Tabs | `tabs` |
-| `browser_network_requests` -> Network | `networkRequests` |
-| `browser_close` -> Close | `close` |
-
 ### CLI Tools (48 total)
 
 All commands: `node skills/playwright/tool.js <command> '<json_params>'`
@@ -564,6 +547,70 @@ The `custom` type supports 21 component types freely composable via JSON:
 | Data | table, chart |
 | Input | input, textarea, select, checkbox |
 | Layout | row, column, grid, group, section |
+
+## Web Automation Builder
+
+Web Automation Builder records browser action sequences as replayable parameterized workflows. Supports generating standalone Skills (installed to ~/.cursor/skills/) and exporting standard Playwright scripts.
+
+**Dependency**: Requires [Playwright Skill](./skills/playwright/) installed.
+
+### Install / Update
+
+```bash
+# Install globally
+node skills/web-automation-builder/tool.js install '{"target":"~/.cursor/skills/web-automation-builder"}'
+
+# Update (preserves recorded workflows)
+node skills/web-automation-builder/tool.js update '{"target":"~/.cursor/skills/web-automation-builder"}'
+```
+
+### Core Workflow
+
+```bash
+# 1. Start recording
+node skills/web-automation-builder/tool.js record '{"name":"Login Admin"}'
+
+# 2. Execute browser actions via exec proxy (auto-recorded)
+node skills/web-automation-builder/tool.js exec '{"command":"navigate","args":{"url":"https://admin.example.com"}}'
+node skills/web-automation-builder/tool.js exec '{"command":"type","args":{"ref":"e10","text":"admin"}}'
+node skills/web-automation-builder/tool.js exec '{"command":"click","args":{"ref":"e15","element":"Login"}}'
+
+# 3. Stop recording
+node skills/web-automation-builder/tool.js stop '{}'
+
+# 4. Replay with parameters
+node skills/web-automation-builder/tool.js replay '{"id":"wf-xxx","params":{"username":"admin","password":"123"}}'
+
+# 5. Generate standalone Skill
+node skills/web-automation-builder/tool.js generate '{"id":"wf-xxx","skillName":"login-admin","target":"~/.cursor/skills/login-admin"}'
+
+# 6. Export Playwright script
+node skills/web-automation-builder/tool.js export '{"id":"wf-xxx","output":"./login.js"}'
+```
+
+### Natural Language Usage
+
+```
+User: Record the login process for the admin panel
+Agent: Starts recording → proxies all Playwright operations → saves workflow
+
+User: Parameterize username and password
+Agent: Analyzes workflow → replaces inputs with {{username}} {{password}}
+
+User: Login with a different account
+Agent: Replays workflow with new parameters
+
+User: Make this a Skill for future use
+Agent: Generates standalone Skill → installs to ~/.cursor/skills/
+```
+
+### Trigger Words
+
+- **Record**: record browser actions, start recording
+- **Replay**: replay workflow, run again with new params
+- **Generate**: generate Skill, make it reusable
+- **Export**: export script, export as JS
+- **Manage**: list workflows, show recordings
 
 ## Skill Builder
 
