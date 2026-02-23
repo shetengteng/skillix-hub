@@ -43,6 +43,13 @@ function ensureUiBuild() {
   execSync('npm run build', { cwd: UI_DIR, stdio: 'ignore' });
 }
 
+function openBrowser(url) {
+  const cmd = process.platform === 'darwin' ? 'open'
+    : process.platform === 'win32' ? 'start'
+    : 'xdg-open';
+  try { execSync(`${cmd} ${url}`, { stdio: 'ignore' }); } catch { /* ok */ }
+}
+
 function httpRequest(method, urlPath, port, body) {
   return new Promise((resolve, reject) => {
     const opts = { hostname: '127.0.0.1', port, path: urlPath, method, headers: { 'Content-Type': 'application/json' } };
@@ -94,6 +101,7 @@ const COMMANDS = {
         const msg = port !== requestedPort
           ? `Port ${requestedPort} occupied, started on ${url}`
           : `Server started on ${url}`;
+        if (!params.noBrowser) openBrowser(url);
         return success({ message: msg, url, pid: child.pid });
       }
     }
