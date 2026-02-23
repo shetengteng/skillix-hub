@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ChartDialog as ChartDialogType } from '@/lib/types'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import {
   Chart as ChartJS,
@@ -62,27 +59,25 @@ const actions = computed(() =>
 </script>
 
 <template>
-  <Dialog :open="true">
-    <DialogContent class="sm:max-w-2xl" @interact-outside.prevent>
-      <DialogHeader>
-        <DialogTitle>{{ dialog.title || '图表' }}</DialogTitle>
-        <DialogDescription v-if="dialog.message">{{ dialog.message }}</DialogDescription>
-      </DialogHeader>
+  <div class="flex h-screen flex-col p-6 pt-10">
+    <div class="mb-1">
+      <h2 class="text-lg font-semibold">{{ dialog.title || '图表' }}</h2>
+      <p v-if="dialog.message" class="mt-1 text-sm text-muted-foreground">{{ dialog.message }}</p>
+    </div>
 
-      <div class="h-80 py-4">
-        <component :is="chartComponent" :data="chartData" :options="chartOptions" />
-      </div>
+    <div class="flex-1 py-4 min-h-0">
+      <component :is="chartComponent" :data="chartData" :options="chartOptions" class="h-full" />
+    </div>
 
-      <DialogFooter class="gap-2">
-        <Button
-          v-for="act in actions"
-          :key="act.id"
-          :variant="(act as any).variant || 'default'"
-          @click="emit('respond', act.id)"
-        >
-          {{ act.label }}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+    <div class="flex items-center justify-end gap-2 pt-4 border-t">
+      <Button
+        v-for="act in actions"
+        :key="act.id"
+        :variant="(act as any).variant || 'default'"
+        @click="emit('respond', act.id)"
+      >
+        {{ act.label }}
+      </Button>
+    </div>
+  </div>
 </template>

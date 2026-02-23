@@ -140,11 +140,86 @@ const demos = [
       timeout: 120,
     },
   },
+  {
+    name: 'custom — API 分析报告',
+    data: {
+      type: 'custom',
+      title: 'API 性能分析',
+      content: [
+        { kind: 'alert', value: '检测到 2 个端点响应时间异常', level: 'warning' },
+        { kind: 'table', columns: ['端点', 'P50 (ms)', 'P99 (ms)', '错误率'], rows: [
+          ['/api/users', '45', '320', '0.1%'],
+          ['/api/orders', '120', '890', '2.3%'],
+          ['/api/products', '30', '95', '0%'],
+        ]},
+        { kind: 'chart', chartType: 'bar', data: {
+          labels: ['/api/users', '/api/orders', '/api/products'],
+          datasets: [{ label: 'P99 (ms)', data: [320, 890, 95] }],
+        }},
+        { kind: 'divider' },
+        { kind: 'text', value: '建议：/api/orders 的 P99 接近 1 秒，建议检查数据库查询和 N+1 问题。' },
+      ],
+      actions: [
+        { id: 'optimize', label: '开始优化' },
+        { id: 'later', label: '稍后处理', variant: 'outline' },
+      ],
+      timeout: 120,
+    },
+  },
+  {
+    name: 'custom — 部署确认（kv + input）',
+    data: {
+      type: 'custom',
+      title: '确认部署到生产环境',
+      content: [
+        { kind: 'alert', value: '即将部署到生产环境，请仔细确认以下信息', level: 'error' },
+        { kind: 'kv', items: [
+          { key: '版本', value: 'v2.3.1' },
+          { key: '分支', value: 'release/2.3.1' },
+          { key: '变更文件', value: '23 个' },
+          { key: '最后提交', value: 'fix: resolve memory leak in worker pool' },
+        ]},
+        { kind: 'divider' },
+        { kind: 'input', id: 'reason', label: '部署原因', placeholder: '请输入部署原因（必填）', required: true },
+      ],
+      actions: [
+        { id: 'deploy', label: '确认部署', variant: 'destructive', submit: true, requireValid: true },
+        { id: 'cancel', label: '取消', variant: 'outline', submit: false },
+      ],
+      timeout: 120,
+    },
+  },
+  {
+    name: 'custom — 优化前后对比（badge + group）',
+    data: {
+      type: 'custom',
+      title: '优化前后对比',
+      content: [
+        { kind: 'heading', value: '优化前', level: 3 },
+        { kind: 'group', children: [
+          { kind: 'badge', value: 'P50: 120ms', variant: 'warning' },
+          { kind: 'badge', value: 'P99: 890ms', variant: 'error' },
+          { kind: 'badge', value: '错误率: 2.3%', variant: 'error' },
+        ]},
+        { kind: 'heading', value: '优化后', level: 3 },
+        { kind: 'group', children: [
+          { kind: 'badge', value: 'P50: 45ms', variant: 'success' },
+          { kind: 'badge', value: 'P99: 150ms', variant: 'success' },
+          { kind: 'badge', value: '错误率: 0.1%', variant: 'success' },
+        ]},
+        { kind: 'divider' },
+        { kind: 'progress', value: 87, label: '优化完成度' },
+        { kind: 'code', value: 'CREATE INDEX idx_orders_user ON orders(user_id);', language: 'sql' },
+      ],
+      actions: [{ id: 'ok', label: '了解' }],
+      timeout: 120,
+    },
+  },
 ];
 
 async function main() {
   console.log(`\n  Agent Interact Demo — 打开浏览器访问 ${BASE}\n`);
-  console.log('  将依次展示 7 种交互类型，每种等待你在浏览器中操作后继续。\n');
+  console.log('  将依次展示所有交互类型（含 custom），每种等待你在浏览器中操作后继续。\n');
 
   for (let i = 0; i < demos.length; i++) {
     const d = demos[i];

@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { reactive, computed } from 'vue'
 import type { FormDialog } from '@/lib/types'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -35,14 +32,14 @@ function submit() {
 </script>
 
 <template>
-  <Dialog :open="true">
-    <DialogContent class="sm:max-w-lg" @interact-outside.prevent>
-      <DialogHeader>
-        <DialogTitle>{{ dialog.title || '请填写' }}</DialogTitle>
-        <DialogDescription v-if="dialog.message">{{ dialog.message }}</DialogDescription>
-      </DialogHeader>
+  <div class="flex h-screen flex-col p-6 pt-10">
+    <div class="mb-1">
+      <h2 class="text-lg font-semibold">{{ dialog.title || '请填写' }}</h2>
+      <p v-if="dialog.message" class="mt-1 text-sm text-muted-foreground">{{ dialog.message }}</p>
+    </div>
 
-      <div class="grid gap-4 py-4">
+    <div class="flex-1 overflow-y-auto py-4">
+      <div class="grid gap-4">
         <div v-for="field in dialog.fields" :key="field.id" class="grid gap-2">
           <Label :for="field.id">
             {{ field.label }}
@@ -96,15 +93,15 @@ function submit() {
           </div>
         </div>
       </div>
+    </div>
 
-      <DialogFooter class="gap-2">
-        <Button variant="outline" @click="emit('respond', '__cancelled')">
-          {{ dialog.cancelText || '取消' }}
-        </Button>
-        <Button :disabled="!allRequiredFilled" @click="submit">
-          {{ dialog.submitText || '提交' }}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+    <div class="flex items-center justify-end gap-2 pt-4 border-t">
+      <Button variant="outline" @click="emit('respond', '__cancelled')">
+        {{ dialog.cancelText || '取消' }}
+      </Button>
+      <Button :disabled="!allRequiredFilled" @click="submit">
+        {{ dialog.submitText || '提交' }}
+      </Button>
+    </div>
+  </div>
 </template>

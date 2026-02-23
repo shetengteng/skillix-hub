@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { ConfirmDialog } from '@/lib/types'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
@@ -30,41 +27,39 @@ function submit() {
 </script>
 
 <template>
-  <Dialog :open="true">
-    <DialogContent class="sm:max-w-lg" @interact-outside.prevent>
-      <DialogHeader>
-        <DialogTitle>{{ dialog.title || '请选择' }}</DialogTitle>
-        <DialogDescription v-if="dialog.message">{{ dialog.message }}</DialogDescription>
-      </DialogHeader>
+  <div class="flex h-screen flex-col p-6 pt-10">
+    <div class="mb-1">
+      <h2 class="text-lg font-semibold">{{ dialog.title || '请选择' }}</h2>
+      <p v-if="dialog.message" class="mt-1 text-sm text-muted-foreground">{{ dialog.message }}</p>
+    </div>
 
-      <div class="grid gap-2 py-4">
-        <button
-          v-for="opt in dialog.options"
-          :key="opt.id"
-          class="flex items-center gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-accent"
-          :class="{ 'border-primary bg-primary/5': selected.has(opt.id) }"
-          @click="toggle(opt.id)"
-        >
-          <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border"
-               :class="selected.has(opt.id) ? 'border-primary bg-primary' : 'border-muted-foreground/30'">
-            <svg v-if="selected.has(opt.id)" class="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <div class="flex-1">
-            <div class="font-medium">{{ opt.label }}</div>
-            <div v-if="opt.description" class="text-sm text-muted-foreground">{{ opt.description }}</div>
-          </div>
-        </button>
-      </div>
+    <div class="flex-1 grid gap-2 py-4 content-start overflow-y-auto">
+      <button
+        v-for="opt in dialog.options"
+        :key="opt.id"
+        class="flex items-center gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-accent"
+        :class="{ 'border-primary bg-primary/5': selected.has(opt.id) }"
+        @click="toggle(opt.id)"
+      >
+        <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border"
+             :class="selected.has(opt.id) ? 'border-primary bg-primary' : 'border-muted-foreground/30'">
+          <svg v-if="selected.has(opt.id)" class="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <div class="flex-1">
+          <div class="font-medium">{{ opt.label }}</div>
+          <div v-if="opt.description" class="text-sm text-muted-foreground">{{ opt.description }}</div>
+        </div>
+      </button>
+    </div>
 
-      <DialogFooter class="gap-2">
-        <Badge v-if="dialog.allowMultiple" variant="secondary" class="mr-auto">
-          已选 {{ selected.size }} 项
-        </Badge>
-        <Button variant="outline" @click="emit('respond', '__cancelled')">取消</Button>
-        <Button :disabled="!canSubmit" @click="submit">确认</Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+    <div class="flex items-center justify-end gap-2 pt-4 border-t">
+      <Badge v-if="dialog.allowMultiple" variant="secondary" class="mr-auto">
+        已选 {{ selected.size }} 项
+      </Badge>
+      <Button variant="outline" @click="emit('respond', '__cancelled')">取消</Button>
+      <Button :disabled="!canSubmit" @click="submit">确认</Button>
+    </div>
+  </div>
 </template>

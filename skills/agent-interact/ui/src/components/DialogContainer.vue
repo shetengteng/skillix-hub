@@ -5,6 +5,7 @@ import type {
   ConfirmDialog as ConfirmType, WaitDialog as WaitType, ChartDialog as ChartType,
   NotificationDialog as NotificationType, FormDialog as FormType,
   ApprovalDialog as ApprovalType, ProgressDialog as ProgressType,
+  CustomDialog as CustomType, DialogRespondMeta,
 } from '@/lib/types'
 import ConfirmDialog from './ConfirmDialog.vue'
 import WaitDialog from './WaitDialog.vue'
@@ -13,18 +14,19 @@ import NotificationDialog from './NotificationDialog.vue'
 import FormDialog from './FormDialog.vue'
 import ApprovalDialog from './ApprovalDialog.vue'
 import ProgressDialog from './ProgressDialog.vue'
+import CustomDialog from './CustomDialog.vue'
 
 const { dialogs, connected, connect, respond, isElectron } = useWsClient()
 
 onMounted(() => connect())
 
-function onRespond(id: string, action: string, data?: unknown) {
-  respond(id, action, data)
+function onRespond(id: string, action: string, data?: unknown, meta?: DialogRespondMeta) {
+  respond(id, action, data, meta)
 }
 </script>
 
 <template>
-  <div class="min-h-screen bg-background" :class="{ 'electron-window': isElectron }">
+  <div class="min-h-screen bg-background">
     <div v-if="isElectron" class="electron-drag-region" />
 
     <div v-if="dialogs.length === 0 && !isElectron" class="flex min-h-screen flex-col items-center justify-center gap-4 text-muted-foreground">
@@ -78,6 +80,11 @@ function onRespond(id: string, action: string, data?: unknown) {
         v-else-if="d.type === 'progress'"
         :dialog="(d as ProgressType)"
         @respond="(action, data) => onRespond(d.id, action, data)"
+      />
+      <CustomDialog
+        v-else-if="d.type === 'custom'"
+        :dialog="(d as CustomType)"
+        @respond="(action, data, meta) => onRespond(d.id, action, data, meta)"
       />
     </template>
   </div>

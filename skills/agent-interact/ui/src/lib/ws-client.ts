@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import type { DialogData, WsMessage } from './types'
+import type { DialogData, DialogRespondMeta, WsMessage } from './types'
 
 const allDialogs = ref<DialogData[]>([])
 const connected = ref(false)
@@ -73,10 +73,21 @@ function scheduleReconnect() {
   }, 2000)
 }
 
-function respond(id: string, action: string, data?: unknown) {
+function respond(id: string, action: string, data?: unknown, meta?: DialogRespondMeta) {
   if (!ws || ws.readyState !== WebSocket.OPEN) return
-  ws.send(JSON.stringify({ event: 'dialog:response', data: { id, action, data } }))
-  allDialogs.value = allDialogs.value.filter((x) => x.id !== id)
+  ws.send(JSON.stringify({
+    event: 'dialog:response',
+    data: {
+      id,
+      action,
+      data,
+      valid: meta?.valid,
+      errors: meta?.errors,
+    },
+  }))
+  if (meta?.close !== false) {
+    allDialogs.value = allDialogs.value.filter((x) => x.id !== id)
+  }
 }
 
 export function useWsClient() {

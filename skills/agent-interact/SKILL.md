@@ -2,7 +2,7 @@
 name: agent-interact
 description: |
   AI Agent 与用户之间的可视化交互桥梁。通过 Electron 独立窗口 + shadcn-vue 前端，
-  支持 7 种交互场景。Agent 发起交互时自动弹出置顶窗口，用户无需切换应用。
+  支持 7 种预定义交互 + custom 通用渲染。Agent 发起交互时自动弹出置顶窗口，用户无需切换应用。
 ---
 
 # Agent Interact
@@ -32,7 +32,7 @@ node skills/agent-interact/tool.js status         # 检查服务和 Electron 状
 node skills/agent-interact/tool.js dialog '<JSON>' # 发送弹框（Electron 窗口自动弹出）
 ```
 
-## 交互类型（7 种）
+## 交互类型（7 种预定义 + custom 通用渲染）
 
 ### confirm — 确认选择
 
@@ -86,6 +86,35 @@ node skills/agent-interact/tool.js dialog '{"type":"approval","title":"确认删
 node skills/agent-interact/tool.js dialog '{"type":"progress","title":"部署进度","steps":[{"id":"build","label":"构建","status":"completed"},{"id":"test","label":"测试","status":"running"},{"id":"deploy","label":"部署","status":"pending"}],"percent":45}'
 ```
 
+### custom — 通用渲染（自由编排）
+
+当预定义类型无法满足需求时，使用 `custom` 类型自由编排弹框内容。通过 JSON 描述 `content` 数组，前端动态递归渲染。
+
+**可用组件**：
+
+| 分类 | kind | 说明 |
+|------|------|------|
+| 展示 | `text`, `heading`, `divider`, `alert`, `badge`, `code`, `image`, `kv`, `progress` | 纯展示，无交互 |
+| 数据 | `table`, `chart` | 表格和图表 |
+| 输入 | `input`, `textarea`, `select`, `checkbox` | 表单字段，数据随 action 提交 |
+| 布局 | `row`, `column`, `grid`, `section`, `group` | 嵌套布局容器 |
+
+```bash
+node skills/agent-interact/tool.js dialog '{"type":"custom","title":"部署确认","content":[{"kind":"alert","value":"即将部署到生产环境","level":"error"},{"kind":"kv","items":[{"key":"版本","value":"v2.3.1"},{"key":"分支","value":"release/2.3.1"}]},{"kind":"input","id":"reason","label":"部署原因","required":true}],"actions":[{"id":"deploy","label":"确认部署","variant":"destructive","submit":true,"requireValid":true},{"id":"cancel","label":"取消","variant":"outline","submit":false}]}'
+```
+
+**actions 字段**：
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `submit` | `true` | 是否提交表单数据 |
+| `requireValid` | `false` | 是否要求校验通过才能提交 |
+| `closeOnSubmit` | `true` | 提交后是否关闭弹框 |
+
+**Schema 校验**：服务端使用 Ajv 严格校验，未知 `kind` 或格式错误直接返回 400 + 错误路径。收到 400 时仅修正报错路径字段，不重写整份 JSON。
+
+**性能限制**：`content` 最多 40 项，嵌套深度 ≤ 4，表格 ≤ 200 行，图表 ≤ 1000 点。
+
 ## HTTP API
 
 Agent 也可以直接调用 REST API：
@@ -110,6 +139,7 @@ LLM 在任务执行中应**自主判断**何时需要用户介入，主动选择
 | 需要可视化展示数据分析结果 | chart | 性能分析完成，展示趋势图 |
 | 任务状态变更需通知用户（不阻塞） | notification | 部署完成、构建失败 |
 | 长时间多步骤任务展示进度 | progress | 多步部署流程进行中 |
+| 需要混合展示（表格+图表+输入） | custom | 分析报告、部署确认、数据对比 |
 
 ### 不应弹框的情况
 

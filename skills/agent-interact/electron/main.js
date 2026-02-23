@@ -12,17 +12,70 @@ const windows = new Map();
 let ws = null;
 let reconnectTimer = null;
 
-const WINDOW_SIZES = {
-  confirm:  { width: 560, height: 520 },
-  wait:     { width: 500, height: 380 },
-  chart:    { width: 780, height: 620 },
-  form:     { width: 580, height: 700 },
-  approval: { width: 580, height: 560 },
-  progress: { width: 560, height: 520 },
+const BASE_SIZES = {
+  confirm:  { width: 500, height: 440 },
+  wait:     { width: 440, height: 400 },
+  chart:    { width: 720, height: 560 },
+  form:     { width: 520, height: 560 },
+  approval: { width: 520, height: 500 },
+  progress: { width: 500, height: 520 },
+  custom:   { width: 620, height: 560 },
 };
 
+function estimateWindowSize(dialog) {
+  const base = BASE_SIZES[dialog.type] || { width: 480, height: 400 };
+  let { width, height } = base;
+
+  if (dialog.type === 'confirm' && dialog.options) {
+    height = Math.max(height, 240 + dialog.options.length * 76);
+  }
+
+  if (dialog.type === 'form' && dialog.fields) {
+    height = Math.max(height, 240 + dialog.fields.length * 84);
+  }
+
+  if (dialog.type === 'progress' && dialog.steps) {
+    height = Math.max(height, 280 + dialog.steps.length * 52);
+  }
+
+  if (dialog.type === 'custom' && dialog.content) {
+    let contentHeight = 0;
+    for (const node of dialog.content) {
+      switch (node.kind) {
+        case 'heading': contentHeight += 40; break;
+        case 'text': contentHeight += 30; break;
+        case 'divider': contentHeight += 20; break;
+        case 'alert': contentHeight += 50; break;
+        case 'badge': contentHeight += 32; break;
+        case 'kv': contentHeight += (node.items ? node.items.length * 28 : 60) + 16; break;
+        case 'progress': contentHeight += 50; break;
+        case 'table': contentHeight += 40 + (node.rows ? node.rows.length * 36 : 0); break;
+        case 'chart': contentHeight += 280; width = Math.max(width, 640); break;
+        case 'code': contentHeight += 80; break;
+        case 'image': contentHeight += 200; break;
+        case 'input': case 'select': contentHeight += 70; break;
+        case 'textarea': contentHeight += 100; break;
+        case 'checkbox': contentHeight += 40; break;
+        case 'row': case 'column': case 'grid': case 'section': case 'group':
+          contentHeight += 60 + (node.children ? node.children.length * 50 : 0);
+          break;
+        default: contentHeight += 40;
+      }
+    }
+    height = Math.max(height, 200 + contentHeight);
+
+    if (dialog.meta?.maxWidth === '2xl') width = Math.max(width, 800);
+    else if (dialog.meta?.maxWidth === 'xl') width = Math.max(width, 700);
+  }
+
+  return {
+    width: Math.min(width, 1200),
+    height: Math.min(height, 900),
+  };
+}
+
 function createDialogWindow(dialog) {
-  const size = WINDOW_SIZES[dialog.type] || { width: 520, height: 440 };
+  const size = estimateWindowSize(dialog);
 
   const win = new BrowserWindow({
     width: size.width,
@@ -37,7 +90,7 @@ function createDialogWindow(dialog) {
     skipTaskbar: false,
     titleBarStyle: 'hidden',
     trafficLightPosition: { x: 12, y: 12 },
-    backgroundColor: '#09090b',
+    backgroundColor: '#ffffff',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

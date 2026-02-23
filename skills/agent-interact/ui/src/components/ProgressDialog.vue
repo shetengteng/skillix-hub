@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ProgressDialog } from '@/lib/types'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 
@@ -24,52 +21,50 @@ const statusIcon = {
 </script>
 
 <template>
-  <Dialog :open="true">
-    <DialogContent class="sm:max-w-md" @interact-outside.prevent>
-      <DialogHeader>
-        <DialogTitle>{{ dialog.title || '进度' }}</DialogTitle>
-        <DialogDescription v-if="dialog.message">{{ dialog.message }}</DialogDescription>
-      </DialogHeader>
+  <div class="flex h-screen flex-col p-6 pt-10">
+    <div class="mb-1">
+      <h2 class="text-lg font-semibold">{{ dialog.title || '进度' }}</h2>
+      <p v-if="dialog.message" class="mt-1 text-sm text-muted-foreground">{{ dialog.message }}</p>
+    </div>
 
-      <div class="space-y-4 py-4">
-        <div class="space-y-1">
-          <div class="flex items-center justify-between text-sm">
-            <span class="text-muted-foreground">总进度</span>
-            <span class="font-medium">{{ percent }}%</span>
-          </div>
-          <Progress :model-value="percent" class="h-2" />
+    <div class="flex-1 overflow-y-auto py-4 space-y-4">
+      <div class="space-y-1">
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-muted-foreground">总进度</span>
+          <span class="font-medium">{{ percent }}%</span>
         </div>
-
-        <div class="space-y-2">
-          <div
-            v-for="(step, idx) in dialog.steps"
-            :key="step.id"
-            class="flex items-center gap-3 rounded-lg p-2 text-sm"
-            :class="{ 'bg-muted/50': step.status === 'running' }"
-          >
-            <div class="flex h-6 w-6 shrink-0 items-center justify-center">
-              <svg class="h-5 w-5" :class="statusIcon[step.status].class" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" :d="statusIcon[step.status].path" />
-              </svg>
-            </div>
-            <span class="flex-1" :class="{ 'font-medium': step.status === 'running', 'text-muted-foreground': step.status === 'pending' }">
-              {{ step.label }}
-            </span>
-            <span class="text-xs text-muted-foreground">{{ idx + 1 }}/{{ dialog.steps.length }}</span>
-          </div>
-        </div>
+        <Progress :model-value="percent" class="h-2" />
       </div>
 
-      <DialogFooter class="gap-2">
-        <Button
-          v-for="act in actions"
-          :key="act.id"
-          :variant="(act as any).variant || 'default'"
-          @click="emit('respond', act.id)"
+      <div class="space-y-2">
+        <div
+          v-for="(step, idx) in dialog.steps"
+          :key="step.id"
+          class="flex items-center gap-3 rounded-lg p-2 text-sm"
+          :class="{ 'bg-muted/50': step.status === 'running' }"
         >
-          {{ act.label }}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+          <div class="flex h-6 w-6 shrink-0 items-center justify-center">
+            <svg class="h-5 w-5" :class="statusIcon[step.status].class" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" :d="statusIcon[step.status].path" />
+            </svg>
+          </div>
+          <span class="flex-1" :class="{ 'font-medium': step.status === 'running', 'text-muted-foreground': step.status === 'pending' }">
+            {{ step.label }}
+          </span>
+          <span class="text-xs text-muted-foreground">{{ idx + 1 }}/{{ dialog.steps.length }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-end gap-2 pt-4 border-t">
+      <Button
+        v-for="act in actions"
+        :key="act.id"
+        :variant="(act as any).variant || 'default'"
+        @click="emit('respond', act.id)"
+      >
+        {{ act.label }}
+      </Button>
+    </div>
+  </div>
 </template>
