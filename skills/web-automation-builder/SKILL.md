@@ -1,31 +1,33 @@
 ---
 name: web-automation-builder
 description: |
-  学习用户浏览器操作行为，录制为可重放的参数化工作流。
-  支持生成独立 Skill、导出 Playwright 脚本。依赖 Playwright Skill。
+  被动录制用户浏览器操作行为。打开浏览器后用户自由操作，系统通过 CDP + DOM 事件注入
+  自动记录点击、输入、导航等操作和 API 调用。录制完成后 LLM 分析生成结构化工作流。
+  支持参数化重放、生成独立 Skill、导出 Playwright 脚本。依赖 Playwright Skill。
 ---
 
 # Web Automation Builder
 
-录制浏览器操作序列，保存为可重放的工作流。支持参数化（相同流程不同输入值）、生成独立 Skill、导出 Playwright 脚本。
+被动录制用户在浏览器中的操作，生成可重放的自动化工作流。
+
+**核心模式**：用户自由操作 + 系统被动录制（非 LLM 驱动）。
 
 ## 安装 / 更新
 
 ```bash
-# 从 skillix-hub 仓库安装到全局（自动安装依赖 Playwright Skill）
-node skills/web-automation-builder/tool.js install '{"target":"~/.cursor/skills/web-automation-builder"}'
+# 安装依赖
+cd skills/web-automation-builder && npm install
 
-# 更新（删除旧版 → 重新安装）
-node skills/web-automation-builder/tool.js update '{"target":"~/.cursor/skills/web-automation-builder"}'
+# 安装到全局
+node skills/web-automation-builder/tool.js install '{"target":"~/.cursor/skills/web-automation-builder"}'
 ```
 
 ## 前置依赖
 
 | 依赖 | 说明 | 安装方式 |
 |------|------|----------|
-| **Playwright Skill** | 浏览器自动化引擎，提供 48 个操作命令 | `skills/playwright/` 或 `~/.cursor/skills/playwright/` |
-
-`install` 命令会自动检查 Playwright Skill 是否存在，未安装时给出提示。
+| **Playwright Skill** | 浏览器启动和操作命令 | `~/.cursor/skills/playwright/` |
+| **playwright-core** | CDP 连接库 | `npm install`（package.json 已声明） |
 
 ## CLI 命令
 
@@ -36,101 +38,120 @@ node skills/web-automation-builder/tool.js <command> '<JSON参数>'
 ### 录制控制
 
 ```bash
-# 开始录制
-node skills/web-automation-builder/tool.js record '{"name":"登录后台"}'
+# 开始被动录制（启动浏览器 + 注入 DOM 监听 + 启动网络监听）
+node tool.js record '{"name":"部署后端代码"}'
 
-# 录制模式下执行浏览器操作（代理转发到 Playwright）
-node skills/web-automation-builder/tool.js exec '{"command":"navigate","args":{"url":"https://example.com"}}'
-node skills/web-automation-builder/tool.js exec '{"command":"click","args":{"ref":"e5","element":"登录"}}'
-node skills/web-automation-builder/tool.js exec '{"command":"type","args":{"ref":"e10","text":"admin"}}'
+# 查看录制状态（已收集的事件数量）
+node tool.js status '{}'
 
-# 停止录制（自动保存工作流）
-node skills/web-automation-builder/tool.js stop '{}'
+# 停止录制（返回原始录制数据：DOM 事件 + API 请求）
+node tool.js stop '{}'
 
-# 查看录制状态
-node skills/web-automation-builder/tool.js status '{}'
+# 保存 LLM 分析后的结构化工作流
+node tool.js save '{"id":"wf-xxx","workflow":{...}}'
 ```
 
 ### 工作流管理
 
 ```bash
-node skills/web-automation-builder/tool.js list '{}'
-node skills/web-automation-builder/tool.js show '{"id":"wf-xxx"}'
-node skills/web-automation-builder/tool.js delete '{"id":"wf-xxx"}'
+node tool.js list '{}'
+node tool.js show '{"id":"wf-xxx"}'
+node tool.js delete '{"id":"wf-xxx"}'
 ```
 
 ### 重放
 
 ```bash
-# 基础重放
-node skills/web-automation-builder/tool.js replay '{"id":"wf-xxx"}'
-
-# 带参数重放
-node skills/web-automation-builder/tool.js replay '{"id":"wf-xxx","params":{"username":"admin","password":"123"}}'
+node tool.js replay '{"id":"wf-xxx"}'
+node tool.js replay '{"id":"wf-xxx","params":{"username":"admin","password":"123"}}'
 ```
-
-### 参数化分析
-
-```bash
-# 分析工作流，输出参数化建议
-node skills/web-automation-builder/tool.js analyze '{"id":"wf-xxx"}'
-```
-
-LLM 根据 analyze 输出，将工作流中的输入值替换为 `{{paramName}}` 模板变量。
 
 ### 生成独立 Skill
 
 ```bash
-# 生成到全局 Skill 目录
-node skills/web-automation-builder/tool.js generate '{"id":"wf-xxx","skillName":"deploy-staging","target":"~/.cursor/skills/deploy-staging"}'
+node tool.js generate '{"id":"wf-xxx","skillName":"deploy-staging","target":"~/.cursor/skills/deploy-staging"}'
 ```
-
-生成的 Skill 包含 `SKILL.md`、`tool.js`、`workflow.json`、`package.json`，可被 Cursor 自动识别。
 
 ### 导出 Playwright 脚本
 
 ```bash
-node skills/web-automation-builder/tool.js export '{"id":"wf-xxx","output":"./my-automation.js"}'
+node tool.js export '{"id":"wf-xxx","output":"./my-automation.js"}'
 ```
 
 ## 自主决策指南
 
-LLM 在任务执行中应自主判断何时使用录制功能：
+LLM 在录制流程中的行为协议：
+
+### 录制流程
+
+```
+1. 用户请求录制 → 调用 record
+2. record 返回成功 → 使用 agent-interact 的 wait 弹框通知用户
+   （降级：在对话中告知用户"浏览器已打开，操作完成后告诉我"）
+3. 等待用户通知操作完成
+4. 调用 stop → 获取 rawEvents
+5. LLM 分析 rawEvents → 生成结构化工作流 JSON
+6. 调用 save 保存工作流
+7. 向用户报告录制结果
+```
+
+### agent-interact 交互（优先使用）
+
+录制开始后，优先使用 agent-interact skill 的 wait 弹框：
+
+```bash
+node agent-interact/tool.js dialog '{"type":"wait","title":"正在录制","message":"浏览器已打开，请完成操作后点击确认。","confirmText":"操作完成，停止录制"}'
+```
+
+如果 agent-interact 不可用，降级为对话模式等待用户输入。
+
+### 何时建议录制
 
 | 场景 | 操作 |
 |------|------|
 | 用户要求执行重复性浏览器操作 | 主动建议录制 |
-| 用户说"录制"、"记录操作" | 执行 `record` + `exec` 代理模式 |
-| 录制完成后 | 执行 `analyze` 分析参数，询问是否生成 Skill |
-| 用户说"部署到 staging"且已有对应 Skill | 直接调用生成的 Skill |
-| 用户说"重放"、"再执行一次" | 执行 `replay` |
+| 用户说"录制"、"记录操作"、"学习操作" | 执行录制流程 |
+| 录制完成后 | 询问是否生成 Skill |
+| 用户说"重放"、"再执行一次" | 执行 replay |
 
-## 产物形态
+### LLM 分析 rawEvents 的要求
 
-| 形态 | 命令 | 适合场景 |
+stop 返回的 rawEvents 包含 DOM 事件和网络请求的原始数据。LLM 需要：
+
+1. **过滤噪音**：去除无关点击（空白区域）、无意义滚动
+2. **合并输入**：连续的 input 事件合并为单次填写操作
+3. **识别意图**：为每步操作添加语义描述（"登录"、"选择分支"）
+4. **识别参数**：将可变输入值替换为 `{{paramName}}`
+5. **关联 API**：将 DOM 操作与触发的 API 请求关联
+6. **推断等待**：根据导航和 API 响应推断步骤间的等待条件
+
+分析后生成的工作流 JSON 通过 save 命令保存。
+
+## 录制数据说明
+
+### DOM 事件类型
+
+| type | 说明 | 关键字段 |
 |------|------|----------|
-| JSON 工作流 | `stop`（自动保存） | 临时或低频操作 |
-| 独立 Skill | `generate` | 高频复用、跨项目 |
-| Playwright 脚本 | `export` | 脱离 Cursor 使用 |
+| click | 用户点击 | locators |
+| input | 文本输入 | locators, value |
+| select | 下拉选择 | locators, value, selectedText |
+| check | 勾选复选框 | locators, checked |
+| submit | 表单提交 | locators |
+| keydown | 特殊按键（Enter/Tab/Escape） | key, modifiers |
+| navigation | 页面导航 | url / fromUrl, toUrl |
 
-## 数据存储
+### 网络请求
 
-工作流数据存储在 Skill 安装目录的**同级** `web-automation-builder-data/` 目录下：
+| 字段 | 说明 |
+|------|------|
+| request.url | 请求 URL |
+| request.method | HTTP 方法 |
+| request.body | 请求体（已解析 JSON） |
+| response.status | 响应状态码 |
+| response.body | 响应体（文本类 MIME，≤512KB） |
 
-```
-~/.cursor/skills/                          # 全局安装时
-├── web-automation-builder/                # Skill 代码
-└── web-automation-builder-data/           # 数据目录
-    ├── workflows/                         # 已录制的工作流 JSON
-    └── .recording.json                    # 录制中的临时状态
-
-<项目>/.cursor/skills/                     # 项目级安装时
-├── web-automation-builder/
-└── web-automation-builder-data/
-    └── workflows/
-```
-
-Skill 在哪里安装，数据就在哪个 skills 目录下。
+自动过滤静态资源（.js/.css/.png 等）和 tracking 请求。
 
 ## 参数化语法
 
@@ -138,119 +159,43 @@ Skill 在哪里安装，数据就在哪个 skills 目录下。
 
 ```json
 {
-  "command": "type",
-  "args": { "ref": "e10", "text": "{{username}}" }
+  "command": "fill",
+  "args": { "text": "{{username}}" },
+  "locators": { "css": "#username", "placeholder": "Username" }
 }
 ```
 
-重放时通过 `params` 注入：
+重放时通过 params 注入：
 
 ```bash
 node tool.js replay '{"id":"wf-xxx","params":{"username":"admin"}}'
 ```
 
-## 自然语言使用示例
+导出为 Playwright 脚本时，参数通过环境变量注入：
 
-以下展示用户如何通过自然语言与 Agent 交互完成录制、重放和生成 Skill 的完整流程。
-
-### 示例 1：录制登录流程
-
-```
-用户: 帮我录制一下登录公司后台的操作
-
-Agent 内部执行:
-  1. record '{"name":"登录公司后台"}'
-  2. exec '{"command":"navigate","args":{"url":"https://admin.company.com"}}'
-  3. exec '{"command":"snapshot","args":{}}'  → 获取页面元素
-  4. exec '{"command":"type","args":{"ref":"e10","text":"zhangsan"}}'
-  5. exec '{"command":"type","args":{"ref":"e12","text":"password123"}}'
-  6. exec '{"command":"click","args":{"ref":"e15","element":"登录"}}'
-  7. stop '{}'
-
-Agent: 录制完成！已保存工作流「登录公司后台」，共 4 个操作步骤。
-      要不要我分析一下哪些值可以参数化？
+```bash
+USERNAME=admin PASSWORD=secret node deploy-staging.js
 ```
 
-### 示例 2：参数化 + 重放
+## 产物形态
+
+| 形态 | 命令 | 适合场景 |
+|------|------|----------|
+| JSON 工作流 | `save` | 临时或低频操作 |
+| 独立 Skill | `generate` | 高频复用、跨项目 |
+| Playwright 脚本 | `export` | 脱离 Cursor 使用 |
+
+## 数据存储
 
 ```
-用户: 分析一下刚才的录制，把用户名和密码参数化
-
-Agent 内部执行:
-  1. analyze '{"id":"wf-xxx"}'  → 识别出 step 2 和 step 3 的 text 是可变输入
-  2. 修改 workflow.json，将 "zhangsan" → "{{username}}"，"password123" → "{{password}}"
-
-Agent: 已参数化！现在工作流有 2 个参数：username 和 password。
-      下次可以用不同账号重放。
-
-用户: 用 lisi 的账号登录一下
-
-Agent 内部执行:
-  replay '{"id":"wf-xxx","params":{"username":"lisi","password":"lisi@2026"}}'
-
-Agent: 已用 lisi 账号完成登录。
-```
-
-### 示例 3：生成独立 Skill
-
-```
-用户: 把这个登录流程做成一个 Skill，以后直接用
-
-Agent 内部执行:
-  generate '{"id":"wf-xxx","skillName":"login-company-admin","target":"~/.cursor/skills/login-company-admin"}'
-
-Agent: 已生成独立 Skill「login-company-admin」，安装到 ~/.cursor/skills/login-company-admin/。
-      以后你只需要说「登录公司后台」，我就会自动执行。
-
---- 下次新会话 ---
-
-用户: 用 wangwu 的账号登录公司后台
-
-Agent: （识别到已安装的 login-company-admin Skill）
-  执行: node ~/.cursor/skills/login-company-admin/tool.js run '{"username":"wangwu","password":"wangwu@2026"}'
-
-Agent: 已用 wangwu 账号登录公司后台。
-```
-
-### 示例 4：录制部署流程并生成 Skill
-
-```
-用户: 帮我录制一下部署到 staging 环境的操作
-
-Agent: 好的，开始录制。请告诉我 CI/CD 平台的地址。
-
-用户: https://ci.company.com
-
-Agent 内部执行:
-  1. record '{"name":"部署到 staging"}'
-  2. exec navigate → ci.company.com
-  3. exec snapshot → 获取页面
-  4. exec click → 选择项目
-  5. exec click → 选择分支
-  6. exec click → 触发部署
-  7. stop
-
-Agent: 录制完成！共 4 步操作。检测到「分支选择」是可变参数，已自动标记为 {{branch}}。
-      要生成 Skill 吗？
-
-用户: 生成
-
-Agent 内部执行:
-  generate '{"id":"wf-xxx","skillName":"deploy-staging","target":"~/.cursor/skills/deploy-staging"}'
-
-Agent: 已生成 Skill「deploy-staging」。以后说「部署 release/2.3 到 staging」我就自动执行。
-```
-
-### 示例 5：导出为脚本
-
-```
-用户: 把登录流程导出为 JS 脚本，我要在 CI 里用
-
-Agent 内部执行:
-  export '{"id":"wf-xxx","output":"./scripts/login-automation.js"}'
-
-Agent: 已导出到 ./scripts/login-automation.js。
-      运行方式：USERNAME=admin PASSWORD=xxx node scripts/login-automation.js
+~/.cursor/skills/
+├── web-automation-builder/           # Skill 代码
+└── web-automation-builder-data/      # 数据目录
+    ├── workflows/                    # 已保存的结构化工作流 JSON
+    ├── recordings/                   # 原始录制数据（按日期归档）
+    │   ├── 2026-02-23-wf-xxx.json   # 包含完整 rawEvents
+    │   └── ...
+    └── .recording.json               # 录制中的临时状态（stop 后删除）
 ```
 
 ## 触发词
@@ -259,4 +204,4 @@ Agent: 已导出到 ./scripts/login-automation.js。
 - 重放工作流、再执行一次、用新参数执行
 - 生成 Skill、做成 Skill、以后直接用
 - 导出脚本、导出为 JS
-- 查看录制、工作流列表、有哪些录制
+- 查看录制、工作流列表

@@ -3,78 +3,123 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { spawn } = require('child_process');
 const { success, error } = require('./lib/response');
 const { getPlaywrightTool } = require('./lib/config');
-const recorder = require('./lib/recorder');
+const { readState, requestStop, waitForResult, cleanupFiles, isProcessAlive } = require('./lib/recorder');
 const store = require('./lib/store');
 const { replay } = require('./lib/replayer');
 const { generate } = require('./lib/generator');
 const { exportScript } = require('./lib/exporter');
 
-function execPlaywright(command, args) {
-  const tool = getPlaywrightTool();
-  if (!tool) throw new Error('Playwright Skill not found');
-
-  const argsJson = JSON.stringify(args);
-  const cmd = `node "${tool}" ${command} '${argsJson.replace(/'/g, "'\\''")}'`;
-  const output = execSync(cmd, { encoding: 'utf-8', timeout: 60000 });
-  try { return JSON.parse(output); } catch { return output; }
-}
-
 const COMMANDS = {
   async record(params) {
     if (!params.name) return error('name is required');
-    const result = recorder.start(params.name);
-    if (!result.started) return error(result.reason);
-    return success({ message: `Recording started: ${result.name}`, id: result.id });
+
+    const state = readState();
+    if (state && state.active && state.pid && isProcessAlive(state.pid)) {
+      return error(`Already recording: ${state.name} (${state.id})`);
+    }
+
+    cleanupFiles();
+
+    const daemon = spawn(process.execPath, [path.join(__dirname, 'lib', 'daemon.js'), params.name], {
+      detached: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let startOutput = '';
+    const startPromise = new Promise((resolve) => {
+      daemon.stdout.on('data', (chunk) => {
+        startOutput += chunk.toString();
+        if (startOutput.includes('\n')) {
+          resolve();
+        }
+      });
+      daemon.stderr.on('data', (chunk) => {
+        startOutput += chunk.toString();
+        if (startOutput.includes('\n')) {
+          resolve();
+        }
+      });
+      setTimeout(resolve, 10000);
+    });
+
+    daemon.unref();
+    await startPromise;
+
+    daemon.stdout.destroy();
+    daemon.stderr.destroy();
+
+    const line = startOutput.trim().split('\n')[0];
+    try {
+      const result = JSON.parse(line);
+      if (result.error) return error(result.error);
+      return success(result);
+    } catch {
+      return error(`Daemon start failed: ${startOutput.trim()}`);
+    }
   },
 
   async stop() {
-    const workflow = recorder.stop();
-    if (!workflow) return error('No active recording');
+    const state = readState();
+    if (!state || !state.active) return error('No active recording');
+    if (state.pid && !isProcessAlive(state.pid)) {
+      cleanupFiles();
+      return error('Recording process is no longer running');
+    }
+
+    requestStop();
+
+    const result = waitForResult(30000);
+    if (!result) {
+      return error('Stop timed out — daemon may have crashed');
+    }
+
+    return success({
+      message: `Recording stopped. Captured ${result.eventCount} events (${result.domCount} DOM, ${result.networkCount} network).`,
+      id: result.id,
+      name: result.name,
+      startedAt: result.startedAt,
+      stoppedAt: result.stoppedAt,
+      eventCount: result.eventCount,
+      domCount: result.domCount,
+      networkCount: result.networkCount,
+      rawEvents: result.rawEvents,
+    });
+  },
+
+  async save(params) {
+    if (!params.id) return error('id is required');
+    if (!params.workflow) return error('workflow object is required');
+
+    const workflow = params.workflow;
+    workflow.id = params.id;
+    workflow.updatedAt = new Date().toISOString();
+    if (!workflow.createdAt) workflow.createdAt = workflow.updatedAt;
+
     store.save(workflow);
     return success({
-      message: `Recording stopped. Saved ${workflow.steps.length} steps.`,
-      id: workflow.id,
-      name: workflow.name,
-      stepCount: workflow.steps.length,
+      message: `Workflow saved: ${workflow.name || params.id}`,
+      id: params.id,
+      stepCount: workflow.steps ? workflow.steps.length : 0,
     });
   },
 
   async status() {
-    const state = recorder.getState();
-    if (!state || !state.active) {
+    const state = readState();
+    if (!state || !state.active) return success({ recording: false });
+    if (state.pid && !isProcessAlive(state.pid)) {
+      cleanupFiles();
       return success({ recording: false });
     }
     return success({
       recording: true,
       id: state.id,
       name: state.name,
-      stepCount: state.steps.length,
       startedAt: state.startedAt,
+      eventCount: state.eventCount || 0,
     });
-  },
-
-  async exec(params) {
-    const { command, args } = params;
-    if (!command) return error('command is required');
-
-    let playwrightResult;
-    try {
-      playwrightResult = execPlaywright(command, args || {});
-    } catch (e) {
-      return error(`Playwright command failed: ${e.message}`);
-    }
-
-    if (recorder.isRecording()) {
-      recorder.addStep(command, args || {}, playwrightResult);
-    }
-
-    if (typeof playwrightResult === 'object' && playwrightResult !== null) {
-      return playwrightResult;
-    }
-    return success(playwrightResult);
   },
 
   async list() {
@@ -103,54 +148,17 @@ const COMMANDS = {
 
     if (wf.params && wf.params.length > 0) {
       const missing = wf.params
-        .filter(p => p.required && (!params.params || !params.params[p.id]))
-        .map(p => p.id);
+        .filter((p) => p.required && (!params.params || !params.params[p.id]))
+        .map((p) => p.id);
       if (missing.length > 0) {
         return error(`Missing required params: ${missing.join(', ')}`);
       }
     }
 
     const result = replay(wf, params.params || {});
-    return result.success ? success(result) : error(result.error || `Replay failed at step ${result.results?.length || '?'}`);
-  },
-
-  async analyze(params) {
-    if (!params.id) return error('id is required');
-    const wf = store.load(params.id);
-    if (!wf) return error(`Workflow not found: ${params.id}`);
-
-    const suggestions = [];
-    for (const step of wf.steps) {
-      if (step.command === 'type' && step.args.text) {
-        suggestions.push({
-          stepSeq: step.seq,
-          field: 'args.text',
-          currentValue: step.args.text,
-          suggestedParam: guessParamName(step),
-          reason: 'Text input — likely a variable value',
-        });
-      }
-      if (step.command === 'navigate' && step.args.url) {
-        const url = step.args.url;
-        if (url.includes('?') || /\/\d+/.test(url)) {
-          suggestions.push({
-            stepSeq: step.seq,
-            field: 'args.url',
-            currentValue: url,
-            suggestedParam: 'targetUrl',
-            reason: 'URL contains query params or numeric IDs',
-          });
-        }
-      }
-    }
-
-    return success({
-      workflowId: wf.id,
-      workflowName: wf.name,
-      totalSteps: wf.steps.length,
-      suggestions,
-      hint: 'Use these suggestions to parameterize the workflow. Replace values with {{paramName}} syntax.',
-    });
+    return result.success
+      ? success(result)
+      : error(result.error || `Replay failed at step ${result.results?.length || '?'}`);
   },
 
   async generate(params) {
@@ -194,7 +202,7 @@ const COMMANDS = {
 
     const srcDir = path.join(__dirname);
     const destDir = path.resolve(target.replace(/^~/, process.env.HOME || ''));
-    const COPY_ITEMS = ['SKILL.md', 'tool.js', 'package.json', 'lib'];
+    const COPY_ITEMS = ['SKILL.md', 'tool.js', 'package.json', 'lib', 'templates'];
 
     try {
       fs.mkdirSync(destDir, { recursive: true });
@@ -203,8 +211,6 @@ const COMMANDS = {
         if (!fs.existsSync(src)) continue;
         fs.cpSync(src, path.join(destDir, item), { recursive: true, force: true });
       }
-
-      fs.mkdirSync(path.join(destDir, 'workflows'), { recursive: true });
 
       const pw = getPlaywrightTool();
       const pwStatus = pw ? 'found' : 'NOT FOUND — install Playwright Skill first';
@@ -218,58 +224,7 @@ const COMMANDS = {
       return error(`Install failed: ${e.message}`);
     }
   },
-
-  async update(params) {
-    const target = params.target;
-    if (!target) return error('target is required');
-
-    const destDir = path.resolve(target.replace(/^~/, process.env.HOME || ''));
-
-    if (fs.existsSync(destDir)) {
-      const wfDir = path.join(destDir, 'workflows');
-      let savedWorkflows = null;
-      if (fs.existsSync(wfDir)) {
-        savedWorkflows = path.join(destDir, '.wf-backup-' + Date.now());
-        fs.cpSync(wfDir, savedWorkflows, { recursive: true });
-      }
-
-      const entries = fs.readdirSync(destDir);
-      for (const entry of entries) {
-        if (entry === 'workflows' || entry.startsWith('.wf-backup-')) continue;
-        fs.rmSync(path.join(destDir, entry), { recursive: true, force: true });
-      }
-
-      const installResult = await COMMANDS.install({ target });
-      if (installResult.error) return installResult;
-
-      if (savedWorkflows) {
-        fs.cpSync(savedWorkflows, path.join(destDir, 'workflows'), { recursive: true, force: true });
-        fs.rmSync(savedWorkflows, { recursive: true, force: true });
-      }
-
-      return success({
-        message: `Updated at ${destDir} (workflows preserved)`,
-        path: destDir,
-        playwright: installResult.result.playwright,
-      });
-    }
-
-    return COMMANDS.install({ target });
-  },
 };
-
-function guessParamName(step) {
-  const locators = step.locators || {};
-  if (locators.ariaLabel) return locators.ariaLabel.replace(/\s+/g, '_').toLowerCase();
-  if (locators.placeholder) return locators.placeholder.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase().replace(/_+/g, '_').replace(/^_|_$/g, '');
-  if (locators.css) {
-    const idMatch = locators.css.match(/#([\w-]+)/);
-    if (idMatch) return idMatch[1];
-    const nameMatch = locators.css.match(/\[name="?([\w-]+)"?\]/);
-    if (nameMatch) return nameMatch[1];
-  }
-  return `input_${step.seq}`;
-}
 
 async function main() {
   const [command, argsJson] = [process.argv[2], process.argv[3]];
@@ -277,7 +232,7 @@ async function main() {
   if (!command) {
     console.log(JSON.stringify(error(
       "Usage: node tool.js <command> '{json_params}'\n" +
-      'Commands: record, stop, status, exec, list, show, delete, replay, analyze, generate, export, install, update'
+      'Commands: record, stop, save, status, list, show, delete, replay, generate, export, install'
     )));
     process.exit(1);
   }

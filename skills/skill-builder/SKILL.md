@@ -188,6 +188,7 @@ node skills/<name>/tool.js <command> '<json_params>'
 - 模块化：每个功能一个文件放在 `lib/` 下
 - 不添加无意义注释
 - 错误处理：所有命令 catch 异常返回 JSON error
+- **长文本模板**：代码中的长文本字符串（如生成的脚本、注入的 JS、Markdown 模板）必须提取到 `templates/` 目录下，以 `.tpl` 为后缀，通过 `fs.readFileSync` 读取后替换占位符。不要在 JS 代码中内联大段模板字符串
 
 **install / update 命令（强制）**：
 
@@ -203,7 +204,7 @@ node skills/<name>/tool.js update '{"target":"~/.cursor/skills/<name>"}'
 
 **install 命令要求**：
 1. 接受 `target` 参数，指定安装目标目录
-2. 复制源码文件到目标目录（排除 `node_modules`、`dist`、运行时数据）
+2. 复制源码文件到目标目录（包括 `SKILL.md`、`tool.js`、`package.json`、`lib/`、`templates/`，排除 `node_modules`、`dist`、运行时数据）
 3. 在目标目录执行依赖安装（如 `npm install`、`pip install` 等）
 4. 如有前端构建（如 UI 目录），执行构建
 5. 检查前置依赖是否存在，给出提示
@@ -335,6 +336,11 @@ function makeSandbox(label) {
 // 在 finally 中清理
 fs.rmSync(sandbox, { recursive: true, force: true });
 ```
+
+**文件组织要求**（强制）：
+- **每个测试文件只测试一个模块**：`test_response.js` 只测 `response.js`，`test_store.js` 只测 `store.js`
+- 不要将多个模块的测试合并到一个文件中（如 `test_example.js` 测试所有模块）
+- 文件命名：`test_<module>.js`，与被测模块名一一对应
 
 **覆盖要求**：
 - 每个 `lib/` 模块至少一个测试文件

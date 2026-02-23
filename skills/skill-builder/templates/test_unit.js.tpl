@@ -12,16 +12,14 @@ function assert(condition, msg) {
   else { failed++; console.error(`  FAIL: ${msg}`); }
 }
 
-// TODO: add test cases
+// Each test file should test ONE module only.
+// Rename this file to test_<module>.js and add test cases for that module.
+// Example: test_response.js tests lib/response.js, test_store.js tests lib/store.js
+
 function test_example() {
   assert(true, 'example test passes');
 }
 
-function main() {
-  console.log('test_example:');
-  test_example();
-  console.log(`\n${passed} passed, ${failed} failed`);
-  if (failed > 0) process.exit(1);
-}
-
-main();
+test_example();
+console.log(`\n${passed} passed, ${failed} failed`);
+if (failed > 0) process.exit(1);

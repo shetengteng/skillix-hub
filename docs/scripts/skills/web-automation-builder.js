@@ -6,36 +6,37 @@ window.SKILL_DATA_WEB_AUTOMATION_BUILDER = {
     name: 'web-automation-builder',
     icon: 'code',
     description: {
-        zh: '录制浏览器操作序列，保存为可重放的参数化工作流，支持生成独立 Skill 和导出 Playwright 脚本',
-        en: 'Record browser action sequences as replayable parameterized workflows, generate standalone Skills or export Playwright scripts'
+        zh: '被动录制用户浏览器操作（CDP + DOM 事件注入 + 网络监听），生成可重放的参数化工作流，支持生成独立 Skill 和导出 Playwright 脚本',
+        en: 'Passively record user browser actions (CDP + DOM event injection + network monitoring), generate replayable parameterized workflows, standalone Skills or Playwright scripts'
     },
     tags: [
-        { zh: '录制', en: 'Recording' },
+        { zh: '被动录制', en: 'Passive Recording' },
         { zh: '自动化', en: 'Automation' },
         { zh: '工作流', en: 'Workflow' },
-        { zh: '参数化', en: 'Parameterized' },
+        { zh: 'CDP', en: 'CDP' },
         { zh: 'Playwright', en: 'Playwright' }
     ],
     dependencies: [
-        { zh: 'Playwright Skill — 浏览器自动化引擎（必需）', en: 'Playwright Skill — browser automation engine (required)' }
+        { zh: 'Playwright Skill — 浏览器启动和操作命令（必需）', en: 'Playwright Skill — browser launch and operation commands (required)' },
+        { zh: 'playwright-core — CDP 连接库（npm install）', en: 'playwright-core — CDP connection library (npm install)' }
     ],
     features: [
-        { zh: '操作录制 — 通过 exec 代理 Playwright 命令，自动记录操作序列', en: 'Action recording — proxy Playwright commands via exec, auto-record action sequences' },
+        { zh: '被动录制 — 用户自由操作浏览器，系统通过 CDP + DOM 事件注入自动记录', en: 'Passive recording — user operates browser freely, system auto-records via CDP + DOM event injection' },
+        { zh: 'API 监听 — 通过 CDP Network 域捕获请求入参和响应出参', en: 'API monitoring — capture request/response via CDP Network domain' },
         { zh: '参数化重放 — 支持 {{param}} 模板变量，相同流程不同输入', en: 'Parameterized replay — {{param}} template variables, same flow with different inputs' },
         { zh: '生成独立 Skill — 将工作流转为完整 Skill 目录（SKILL.md + tool.js）', en: 'Generate standalone Skill — convert workflow to full Skill directory (SKILL.md + tool.js)' },
-        { zh: '导出 Playwright 脚本 — 生成标准 JS 自动化脚本', en: 'Export Playwright script — generate standard JS automation script' },
-        { zh: '参数化分析 — 自动识别可变输入，输出参数化建议', en: 'Parameter analysis — auto-detect variable inputs, output parameterization suggestions' },
-        { zh: '一键安装/更新 — install/update 命令支持自然语言安装', en: 'One-click install/update — install/update commands support natural language installation' }
+        { zh: '导出 Playwright 脚本 — 生成标准 JS 自动化脚本，参数通过环境变量注入', en: 'Export Playwright script — generate standard JS automation script with env var params' },
+        { zh: 'agent-interact 集成 — 录制期间通过 Electron 置顶窗口与用户交互', en: 'agent-interact integration — interact with user via Electron topmost window during recording' }
     ],
     scripts: ['tool.js'],
-    version: '1.0',
+    version: '2.0',
     author: 'shetengteng',
     repo: 'https://github.com/shetengteng/skillix-hub/tree/main/skills/web-automation-builder',
     useCases: [
         {
-            title: { zh: '录制浏览器操作', en: 'Record browser actions' },
-            userInput: { zh: '帮我录制一下登录后台的操作', en: 'Record the login process for the admin panel' },
-            aiResponse: { zh: 'Agent 开始录制，通过 exec 代理所有 Playwright 操作，录制完成后保存为工作流', en: 'Agent starts recording, proxies all Playwright operations via exec, saves as workflow when done' }
+            title: { zh: '被动录制浏览器操作', en: 'Passively record browser actions' },
+            userInput: { zh: '帮我录制一下部署后端代码的操作', en: 'Record the deployment process for backend code' },
+            aiResponse: { zh: 'Agent 启动浏览器并注入监听，弹出 wait 弹框。用户自由操作后点击确认，Agent 分析录制数据并保存工作流', en: 'Agent launches browser with listeners, shows wait dialog. User operates freely, clicks confirm when done. Agent analyzes and saves workflow' }
         },
         {
             title: { zh: '重放工作流', en: 'Replay workflow' },
@@ -49,8 +50,8 @@ window.SKILL_DATA_WEB_AUTOMATION_BUILDER = {
         },
         {
             title: { zh: '导出 Playwright 脚本', en: 'Export Playwright script' },
-            userInput: { zh: '把这个工作流导出为 JS 脚本', en: 'Export this workflow as a JS script' },
-            aiResponse: { zh: 'Agent 调用 export 命令，生成标准 Playwright 自动化脚本，可脱离 Cursor 独立运行', en: 'Agent calls export, generates standard Playwright automation script that runs independently' }
+            userInput: { zh: '把这个工作流导出为 JS 脚本，参数用环境变量', en: 'Export this workflow as a JS script with env var params' },
+            aiResponse: { zh: 'Agent 导出标准 Playwright 脚本，参数通过环境变量注入：USERNAME=admin PASSWORD=xxx node deploy.js', en: 'Agent exports standard Playwright script with env var params: USERNAME=admin PASSWORD=xxx node deploy.js' }
         }
     ]
 };
