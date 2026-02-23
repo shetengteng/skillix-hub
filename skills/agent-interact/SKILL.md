@@ -90,26 +90,99 @@ node skills/agent-interact/tool.js dialog '{"type":"progress","title":"部署进
 
 当预定义类型无法满足需求时，使用 `custom` 类型自由编排弹框内容。通过 JSON 描述 `content` 数组，前端动态递归渲染。
 
-**可用组件**：
+**顶层结构**：
 
-| 分类 | kind | 说明 |
-|------|------|------|
-| 展示 | `text`, `heading`, `divider`, `alert`, `badge`, `code`, `image`, `kv`, `progress` | 纯展示，无交互 |
-| 数据 | `table`, `chart` | 表格和图表 |
-| 输入 | `input`, `textarea`, `select`, `checkbox` | 表单字段，数据随 action 提交 |
-| 布局 | `row`, `column`, `grid`, `section`, `group` | 嵌套布局容器 |
-
-```bash
-node skills/agent-interact/tool.js dialog '{"type":"custom","title":"部署确认","content":[{"kind":"alert","value":"即将部署到生产环境","level":"error"},{"kind":"kv","items":[{"key":"版本","value":"v2.3.1"},{"key":"分支","value":"release/2.3.1"}]},{"kind":"input","id":"reason","label":"部署原因","required":true}],"actions":[{"id":"deploy","label":"确认部署","variant":"destructive","submit":true,"requireValid":true},{"id":"cancel","label":"取消","variant":"outline","submit":false}]}'
+```json
+{
+  "type": "custom",
+  "title": "标题",
+  "content": [ /* CustomNode 数组 */ ],
+  "actions": [ /* 按钮数组，可选 */ ]
+}
 ```
+
+**组件属性速查表**：
+
+展示类：
+
+| kind | 必填属性 | 可选属性 |
+|------|----------|----------|
+| `text` | `value: string` | — |
+| `heading` | `value: string` | `level: 1\|2\|3\|4` |
+| `divider` | — | — |
+| `alert` | `value: string` | `level: "info"\|"warning"\|"error"\|"success"` |
+| `badge` | `value: string` | `variant: "default"\|"success"\|"warning"\|"error"` |
+| `code` | `value: string` | `language: string` |
+| `image` | `src: string`（仅 https） | `alt: string` |
+| `kv` | `items: [{key, value}]` | — |
+| `progress` | `percent: number` | `label: string` |
+
+数据类：
+
+| kind | 必填属性 | 可选属性 |
+|------|----------|----------|
+| `table` | `columns: string[]`, `rows: string[][]` | `sortable: boolean` |
+| `chart` | `chartType: "line"\|"bar"\|"pie"\|"doughnut"\|"radar"`, `data: {labels, datasets}` | — |
+
+输入类（`id` 必填，数据随 action 提交）：
+
+| kind | 必填属性 | 可选属性 |
+|------|----------|----------|
+| `input` | `id`, `label` | `required`, `placeholder`, `default` |
+| `textarea` | `id`, `label` | `required`, `placeholder`, `default` |
+| `select` | `id`, `label`, `options: string[]` | `required`, `default` |
+| `checkbox` | `id`, `label` | `default: boolean` |
+
+布局类（通过 `children` 嵌套其他组件）：
+
+| kind | 必填属性 | 可选属性 |
+|------|----------|----------|
+| `row` | `children: CustomNode[]` | `gap: "sm"\|"md"\|"lg"` |
+| `column` | `children: CustomNode[]` | `gap: "sm"\|"md"\|"lg"` |
+| `grid` | `children: CustomNode[]` | `columns: 2\|3\|4`, `gap: "sm"\|"md"\|"lg"` |
+| `section` | `children: CustomNode[]` | `title: string` |
+| `group` | `children: CustomNode[]` | — |
 
 **actions 字段**：
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
+| `id` | — | 按钮标识（必填） |
+| `label` | — | 按钮文本（必填） |
+| `variant` | `"default"` | `"default"\|"destructive"\|"outline"\|"secondary"\|"ghost"` |
 | `submit` | `true` | 是否提交表单数据 |
-| `requireValid` | `false` | 是否要求校验通过才能提交 |
+| `requireValid` | `false` | 是否要求输入校验通过才能提交 |
 | `closeOnSubmit` | `true` | 提交后是否关闭弹框 |
+
+**响应协议**（用户点击按钮后返回）：
+
+```json
+{
+  "dialogId": "d-xxx",
+  "action": "按钮id",
+  "data": { "输入字段id": "用户输入值" },
+  "valid": true,
+  "errors": []
+}
+```
+
+**示例 1：部署确认（alert + kv + input）**
+
+```bash
+node skills/agent-interact/tool.js dialog '{"type":"custom","title":"确认部署到生产环境","content":[{"kind":"alert","value":"即将部署到生产环境，请仔细确认","level":"error"},{"kind":"kv","items":[{"key":"版本","value":"v2.3.1"},{"key":"分支","value":"release/2.3.1"},{"key":"变更文件","value":"23 个"}]},{"kind":"divider"},{"kind":"input","id":"reason","label":"部署原因","placeholder":"请输入部署原因（必填）","required":true}],"actions":[{"id":"deploy","label":"确认部署","variant":"destructive","submit":true,"requireValid":true},{"id":"cancel","label":"取消","variant":"outline","submit":false}]}'
+```
+
+**示例 2：API 分析报告（table + chart + text）**
+
+```bash
+node skills/agent-interact/tool.js dialog '{"type":"custom","title":"API 性能分析","content":[{"kind":"alert","value":"检测到 2 个端点响应时间异常","level":"warning"},{"kind":"table","columns":["端点","P50 (ms)","P99 (ms)","错误率"],"rows":[["/api/users","45","320","0.1%"],["/api/orders","120","890","2.3%"],["/api/products","30","95","0%"]]},{"kind":"chart","chartType":"bar","data":{"labels":["/api/users","/api/orders","/api/products"],"datasets":[{"label":"P99 (ms)","data":[320,890,95]}]}},{"kind":"divider"},{"kind":"text","value":"建议：/api/orders 的 P99 接近 1 秒，建议检查数据库查询和 N+1 问题。"}],"actions":[{"id":"optimize","label":"开始优化"},{"id":"later","label":"稍后处理","variant":"outline"}]}'
+```
+
+**示例 3：数据对比（heading + group + badge）**
+
+```bash
+node skills/agent-interact/tool.js dialog '{"type":"custom","title":"优化前后对比","content":[{"kind":"heading","value":"优化前","level":3},{"kind":"group","children":[{"kind":"badge","value":"P50: 120ms","variant":"warning"},{"kind":"badge","value":"P99: 890ms","variant":"error"},{"kind":"badge","value":"错误率: 2.3%","variant":"error"}]},{"kind":"heading","value":"优化后","level":3},{"kind":"group","children":[{"kind":"badge","value":"P50: 45ms","variant":"success"},{"kind":"badge","value":"P99: 150ms","variant":"success"},{"kind":"badge","value":"错误率: 0.1%","variant":"success"}]},{"kind":"divider"},{"kind":"text","value":"优化措施：添加了数据库索引，启用了查询缓存。"}],"actions":[{"id":"ok","label":"了解"}]}'
+```
 
 **Schema 校验**：服务端使用 Ajv 严格校验，未知 `kind` 或格式错误直接返回 400 + 错误路径。收到 400 时仅修正报错路径字段，不重写整份 JSON。
 
