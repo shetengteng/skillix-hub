@@ -23,7 +23,7 @@ AI Skill is a reusable AI instruction set that helps AI programming assistants b
 | [playwright](./skills/playwright/) | Browser automation via 48 CLI commands controlling a real browser. Navigate, click, fill forms, screenshot, manage cookies/storage, intercept network, and more |
 | [api-tracer](./skills/api-tracer/) | Record and analyze browser network requests via CDP, capture full API info (URL, headers, cookies, request/response body), generate reports for automation |
 | [web-content-reader](./skills/web-content-reader/) | Read web page content with automatic SPA detection and browser rendering fallback for Vue/React pages |
-| [agent-interact](./skills/agent-interact/) | Visual interaction bridge between AI Agent and user via Electron standalone windows, supporting 7 interaction types (confirm, wait, chart, notification, form, approval, progress) |
+| [agent-interact](./skills/agent-interact/) | Visual interaction bridge between AI Agent and user via Electron standalone windows, supporting 8 interaction types (confirm, wait, chart, notification, form, approval, progress, custom rendering) — all initiated autonomously by LLM |
 | [skill-builder](./skills/skill-builder/) | Standardized Skill development workflow guide and scaffold tool for skillix-hub, with 8-phase lifecycle and template auto-generation |
 
 ## Installation
@@ -501,61 +501,69 @@ node skills/web-content-reader/tool.js read '{"url":"https://example.com","outpu
 
 ## Agent Interact Skill
 
-Agent Interact provides visual interaction capabilities for AI Agents. Through Electron standalone windows + shadcn-vue frontend, it supports 7 interaction types. Dialogs automatically pop up as always-on-top desktop windows.
+Agent Interact provides visual interaction capabilities for AI Agents. Through Electron standalone windows + Vue 3 frontend, it supports 8 interaction types. **All interactions are initiated autonomously by the LLM during task execution** — the Agent decides when user input is needed and picks the most appropriate dialog type automatically.
 
-### Installation
+### Install / Update
 
 ```bash
-cd skills/agent-interact && npm install
-cd ui && npm install && npm run build && cd ..
+# Install (dependencies + UI build)
+node skills/agent-interact/tool.js install
+
+# Update (delete node_modules + dist → reinstall + rebuild)
+node skills/agent-interact/tool.js update
 ```
 
-### Core Workflow
+### LLM-Initiated Interaction Examples
 
+The following shows how the LLM autonomously chooses interaction types in different scenarios:
+
+**Scenario 1: Agent detects multiple deployment targets**
+```
+LLM decision: Need user to choose target → auto-pops confirm dialog
+```
 ```bash
-# Start server + Electron
-node skills/agent-interact/tool.js start
+node skills/agent-interact/tool.js dialog '{"type":"confirm","title":"Select Environment","options":[{"id":"dev","label":"Development"},{"id":"prod","label":"Production"}]}'
+```
 
-# Confirm dialog (Electron window auto-pops)
-node skills/agent-interact/tool.js dialog '{"type":"confirm","title":"Select env","options":[{"id":"dev","label":"Dev"},{"id":"prod","label":"Prod"}]}'
+**Scenario 2: Agent about to execute irreversible operation**
+```
+LLM decision: Database deletion is irreversible → auto-pops approval dialog
+```
+```bash
+node skills/agent-interact/tool.js dialog '{"type":"approval","title":"Confirm Delete","message":"About to drop database","severity":"critical"}'
+```
 
-# Wait-for-action
-node skills/agent-interact/tool.js dialog '{"type":"wait","title":"Waiting","message":"Please complete verification"}'
-
-# Chart display
-node skills/agent-interact/tool.js dialog '{"type":"chart","title":"Analysis","chartType":"line","data":{"labels":["Mon","Tue"],"datasets":[{"label":"P99","data":[120,90]}]}}'
-
-# Notification (non-blocking, native system notification)
-node skills/agent-interact/tool.js dialog '{"type":"notification","level":"success","title":"Deploy done","message":"v2.0 deployed"}'
-
-# Form input
-node skills/agent-interact/tool.js dialog '{"type":"form","title":"Config","fields":[{"id":"host","label":"Host","type":"text","default":"localhost"}]}'
-
-# Approval gate
-node skills/agent-interact/tool.js dialog '{"type":"approval","title":"Confirm delete","message":"About to drop database","severity":"critical"}'
-
-# Progress display
-node skills/agent-interact/tool.js dialog '{"type":"progress","title":"Deploy","steps":[{"id":"build","label":"Build","status":"completed"},{"id":"test","label":"Test","status":"running"}],"percent":50}'
-
-# Stop server
-node skills/agent-interact/tool.js stop
+**Scenario 3: Agent needs to present complex analysis results**
+```
+LLM decision: Results contain tables + charts + metrics → auto-pops custom dialog
+```
+```bash
+node skills/agent-interact/tool.js dialog '{"type":"custom","title":"API Analysis","content":[{"kind":"alert","value":"P99 latency exceeds threshold","level":"warning"},{"kind":"table","columns":["Endpoint","P99","Error Rate"],"rows":[["/api/users","320ms","0.1%"],["/api/orders","890ms","2.3%"]]},{"kind":"input","id":"action","label":"Optimization plan","required":true}],"actions":[{"id":"optimize","label":"Start Optimization","submit":true}]}'
 ```
 
 ### Interaction Types
 
-| Type | Blocking | Description |
+| Type | Blocking | LLM Trigger Scenario |
 |------|----------|-------------|
-| confirm | Yes | User selects from options |
-| wait | Yes | Wait for user to complete external action |
-| chart | Yes | Data visualization |
-| notification | No | Native system notification |
+| confirm | Yes | User needs to select from multiple options |
+| wait | Yes | Waiting for user to complete external action (e.g. fingerprint verification) |
+| chart | Yes | Display data trends and visual charts |
+| notification | No | Notify user of task completion or anomaly (native system notification) |
 | form | Yes | Collect structured user input |
-| approval | Yes | Sensitive operation approval gate |
-| progress | Yes | Multi-step task progress display |
+| approval | Yes | Approval gate before high-risk operations |
+| progress | Yes | Display multi-step task execution progress |
+| custom | Yes | Freely compose complex content (21 component types) |
 
-### LLM Autonomous Decision
+### Custom Rendering
 
-The LLM autonomously decides when to involve the user during task execution, proactively choosing the appropriate interaction type. Users don't need to specify dialog types.
+The `custom` type supports 21 component types freely composable via JSON:
+
+| Category | Available Components |
+|----------|---------------------|
+| Display | text, heading, divider, badge, alert, code, image, kv, progress |
+| Data | table, chart |
+| Input | input, textarea, select, checkbox |
+| Layout | row, column, grid, group, section |
 
 ## Skill Builder
 

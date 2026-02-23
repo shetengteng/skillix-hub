@@ -219,6 +219,36 @@ const COMMANDS = {
       return error(`Failed to create dialog: ${e.message}`);
     }
   },
+
+  async install() {
+    const ROOT_DIR = __dirname;
+    try {
+      execSync('npm install', { cwd: ROOT_DIR, stdio: 'inherit' });
+      execSync('npm install', { cwd: UI_DIR, stdio: 'inherit' });
+      execSync('npm run build', { cwd: UI_DIR, stdio: 'inherit' });
+      return success({ message: 'Install completed (dependencies + UI build)' });
+    } catch (e) {
+      return error(`Install failed: ${e.message}`);
+    }
+  },
+
+  async update() {
+    const ROOT_DIR = __dirname;
+    const rootNm = path.join(ROOT_DIR, 'node_modules');
+    const uiNm = path.join(UI_DIR, 'node_modules');
+    const uiDist = path.join(UI_DIR, 'dist');
+    try {
+      if (fs.existsSync(rootNm)) fs.rmSync(rootNm, { recursive: true });
+      if (fs.existsSync(uiNm)) fs.rmSync(uiNm, { recursive: true });
+      if (fs.existsSync(uiDist)) fs.rmSync(uiDist, { recursive: true });
+      execSync('npm install', { cwd: ROOT_DIR, stdio: 'inherit' });
+      execSync('npm install', { cwd: UI_DIR, stdio: 'inherit' });
+      execSync('npm run build', { cwd: UI_DIR, stdio: 'inherit' });
+      return success({ message: 'Update completed (clean reinstall + UI rebuild)' });
+    } catch (e) {
+      return error(`Update failed: ${e.message}`);
+    }
+  },
 };
 
 async function main() {
@@ -237,7 +267,7 @@ async function main() {
   }
 
   if (!command) {
-    console.log(JSON.stringify(error("Usage: node tool.js <command> '{json_params}'\nCommands: start, stop, status, dialog")));
+    console.log(JSON.stringify(error("Usage: node tool.js <command> '{json_params}'\nCommands: start, stop, status, dialog, install, update")));
     process.exit(1);
   }
 

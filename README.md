@@ -23,7 +23,7 @@ AI Skill 是一种可复用的 AI 指令集，帮助 AI 编程助手更好地完
 | [playwright](./skills/playwright/) | 浏览器自动化工具，通过 48 个 CLI 命令控制真实浏览器，支持导航、点击、表单填写、截图、Cookie/存储管理、网络拦截等 |
 | [api-tracer](./skills/api-tracer/) | 录制和分析浏览器网络请求，通过 CDP 捕获完整 API 信息（URL、headers、cookie、请求/响应体），生成分析报告用于自动化 |
 | [web-content-reader](./skills/web-content-reader/) | 读取网页内容，支持 SPA 页面自动检测与浏览器渲染降级，当普通 fetch 无法获取 Vue/React 等页面数据时自动通过浏览器获取 |
-| [agent-interact](./skills/agent-interact/) | AI Agent 与用户之间的可视化交互桥梁，通过 Electron 独立窗口支持 7 种交互场景（确认、等待、图表、通知、表单、审批、进度） |
+| [agent-interact](./skills/agent-interact/) | AI Agent 与用户之间的可视化交互桥梁，通过 Electron 独立窗口支持 8 种交互场景（确认、等待、图表、通知、表单、审批、进度、自定义通用渲染） |
 | [skill-builder](./skills/skill-builder/) | skillix-hub 项目标准化 Skill 开发流程指南和脚手架工具，提供 8 阶段完整生命周期和模板自动生成 |
 
 ## 安装使用
@@ -547,61 +547,69 @@ node skills/web-content-reader/tool.js read '{"url":"https://example.com","outpu
 
 ## Agent Interact Skill 使用说明
 
-Agent Interact 为 AI Agent 提供可视化的用户交互能力。通过 Electron 独立窗口 + shadcn-vue 前端，支持 7 种交互场景。Agent 发起交互时自动弹出置顶窗口，用户无需切换应用。
+Agent Interact 为 AI Agent 提供可视化的用户交互能力。通过 Electron 独立窗口 + Vue 3 前端，支持 8 种交互场景。**所有交互均由 LLM 在任务执行过程中自主发起**，用户无需手动指定弹框类型 — Agent 会根据当前上下文自动判断何时需要用户介入，并选择最合适的交互方式。
 
-### 安装
+### 安装 / 更新
 
 ```bash
-cd skills/agent-interact && npm install
-cd ui && npm install && npm run build && cd ..
+# 安装（安装依赖 + 构建 UI）
+node skills/agent-interact/tool.js install
+
+# 更新（删除 node_modules + dist → 重新安装 + 构建）
+node skills/agent-interact/tool.js update
 ```
 
-### 核心工作流
+### LLM 自主触发示例
 
+以下展示 LLM 在不同场景下如何自主选择交互类型：
+
+**场景 1：Agent 检测到多个可选环境**
+```
+LLM 内部决策：需要用户选择部署目标 → 自动弹出 confirm 弹框
+```
 ```bash
-# 启动服务（同时启动 Electron）
-node skills/agent-interact/tool.js start
+node skills/agent-interact/tool.js dialog '{"type":"confirm","title":"选择部署环境","options":[{"id":"dev","label":"开发环境"},{"id":"prod","label":"生产环境"}]}'
+```
 
-# 确认选择（Electron 窗口自动弹出）
-node skills/agent-interact/tool.js dialog '{"type":"confirm","title":"选择环境","options":[{"id":"dev","label":"开发"},{"id":"prod","label":"生产"}]}'
-
-# 等待操作
-node skills/agent-interact/tool.js dialog '{"type":"wait","title":"等待验证","message":"请完成指纹验证"}'
-
-# 图表展示
-node skills/agent-interact/tool.js dialog '{"type":"chart","title":"分析","chartType":"line","data":{"labels":["Mon","Tue"],"datasets":[{"label":"P99","data":[120,90]}]}}'
-
-# 通知（非阻塞，走系统原生通知）
-node skills/agent-interact/tool.js dialog '{"type":"notification","level":"success","title":"部署完成","message":"v2.0 已部署"}'
-
-# 表单输入
-node skills/agent-interact/tool.js dialog '{"type":"form","title":"配置","fields":[{"id":"host","label":"主机","type":"text","default":"localhost"}]}'
-
-# 审批门控
+**场景 2：Agent 即将执行高危操作**
+```
+LLM 内部决策：删除数据库属于不可逆操作 → 自动弹出 approval 审批框
+```
+```bash
 node skills/agent-interact/tool.js dialog '{"type":"approval","title":"确认删除","message":"即将删除数据库","severity":"critical"}'
+```
 
-# 进度展示
-node skills/agent-interact/tool.js dialog '{"type":"progress","title":"部署","steps":[{"id":"build","label":"构建","status":"completed"},{"id":"test","label":"测试","status":"running"}],"percent":50}'
-
-# 停止服务
-node skills/agent-interact/tool.js stop
+**场景 3：Agent 需要展示复杂分析结果**
+```
+LLM 内部决策：分析结果包含表格+图表+指标 → 自动弹出 custom 通用渲染弹框
+```
+```bash
+node skills/agent-interact/tool.js dialog '{"type":"custom","title":"API 性能分析","content":[{"kind":"alert","value":"P99 延迟超过阈值","level":"warning"},{"kind":"kv","items":[{"key":"P50","value":"128ms"},{"key":"P99","value":"580ms"}]},{"kind":"table","columns":["端点","P99","错误率"],"rows":[["/api/users","320ms","0.1%"],["/api/orders","890ms","2.3%"]]},{"kind":"input","id":"reason","label":"优化建议","required":true}],"actions":[{"id":"optimize","label":"开始优化","submit":true},{"id":"later","label":"稍后处理","variant":"outline","submit":false}]}'
 ```
 
 ### 交互类型
 
-| 类型 | 阻塞 | 说明 |
+| 类型 | 阻塞 | LLM 触发场景 |
 |------|------|------|
-| confirm | 是 | 用户从选项中选择 |
-| wait | 是 | 等待用户完成外部操作 |
-| chart | 是 | 图表数据可视化 |
-| notification | 否 | 系统原生通知 |
-| form | 是 | 收集用户结构化输入 |
-| approval | 是 | 敏感操作审批门控 |
-| progress | 是 | 多步骤任务进度展示 |
+| confirm | 是 | 需要用户从多个选项中选择 |
+| wait | 是 | 等待用户完成外部操作（如指纹验证） |
+| chart | 是 | 展示数据趋势和可视化图表 |
+| notification | 否 | 通知用户任务完成或异常（系统原生通知） |
+| form | 是 | 收集用户输入的结构化数据 |
+| approval | 是 | 高危操作前的审批门控 |
+| progress | 是 | 展示多步骤任务的执行进度 |
+| custom | 是 | 自由编排复杂内容（21 种组件混合渲染） |
 
-### LLM 自主决策
+### custom 通用渲染
 
-LLM 在任务执行中自主判断何时需要用户介入，主动选择合适的交互类型弹框。用户不需要指定弹框类型。
+`custom` 类型支持 21 种组件自由组合，LLM 通过 JSON 描述即可编排任意弹框内容：
+
+| 分类 | 可用组件 |
+|------|----------|
+| 展示类 | text, heading, divider, badge, alert, code, image, kv, progress |
+| 数据类 | table, chart |
+| 输入类 | input, textarea, select, checkbox |
+| 布局类 | row, column, grid, group, section |
 
 ## Skill Builder 使用说明
 

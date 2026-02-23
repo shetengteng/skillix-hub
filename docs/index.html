@@ -144,18 +144,6 @@
                             </span>
                         </div>
                     </div>
-                    <div class="card-skill-footer">
-                        <div class="text-xs text-muted">
-                            <span class="lang-zh">功能：</span>
-                            <span class="lang-en">Features: </span>
-                            <span v-for="(feature, index) in skill.features.slice(0, 3)" :key="feature.en">
-                                <span class="lang-zh">{{ feature.zh }}</span>
-                                <span class="lang-en">{{ feature.en }}</span>
-                                <span v-if="index < Math.min(skill.features.length, 3) - 1">, </span>
-                            </span>
-                            <span v-if="skill.features.length > 3">...</span>
-                        </div>
-                    </div>
                 </div>
                 <!-- Coming Soon Card -->
                 <div class="card card-dashed">
