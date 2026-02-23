@@ -19,7 +19,7 @@ function createServer(port = DEFAULT_PORT) {
   }
 
   app.get('/api/status', (_req, res) => {
-    res.json({ status: 'running', port, activeDialogs: dm.list().length });
+    res.json({ status: 'running', port, activeDialogs: dm.list().length, connectedClients: dm.clientCount() });
   });
 
   app.get('/api/dialogs', (_req, res) => {

@@ -30,7 +30,7 @@ alwaysApply: true
 
 1. **保存会话摘要**（每个会话仅一次，重复调用会被去重）：
 ```bash
-python3 {{SCRIPT_PATH}}/service/memory/save_summary.py --topic "主题" --summary "100-200字摘要" --decisions "决策1,决策2" --todos "待办1,待办2" --session "<conversation_id>"
+python3 {{SCRIPT_PATH}}/service/memory/save_summary.py --topic "主题" --summary "200-500字摘要" --decisions "决策1,决策2" --todos "待办1,待办2" --session "<conversation_id>"
 ```
 
 2. **逐条保存关键事实**：

@@ -22,6 +22,14 @@ class DialogManager {
     this._wsClients.delete(ws);
   }
 
+  clientCount() {
+    let count = 0;
+    for (const ws of this._wsClients) {
+      if (ws.readyState === 1) count++;
+    }
+    return count;
+  }
+
   create(request) {
     const id = `d-${crypto.randomBytes(6).toString('hex')}`;
     const timeout = Math.min(request.timeout || DEFAULT_TIMEOUT, MAX_TIMEOUT);

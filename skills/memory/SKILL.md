@@ -87,7 +87,7 @@ python3 {{SCRIPT_PATH}}/service/memory/save_fact.py \
 
 ```bash
 python3 {{SCRIPT_PATH}}/service/memory/save_summary.py \
-  --topic "主题" --summary "100-200字摘要" \
+  --topic "主题" --summary "200-500字摘要" \
   --decisions "决策1,决策2" --todos "待办1,待办2" \
   --session "<conversation_id>"
 ```
@@ -106,7 +106,7 @@ python3 {{SCRIPT_PATH}}/service/memory/save_fact.py \
 
 这是系统在任务完成后自动发送的兜底消息（仅当第一层未保存时触发）。你必须：
 
-1. 生成本次会话的简要摘要（100-200 字）
+1. 生成本次会话的摘要（200-500 字）
 2. 提取关键决策和待办事项
 3. 调用 `save_summary.py` 保存摘要（注意加 `--source layer4_stop`）
 4. 如果 preCompact 未触发（短会话），同时用 `save_fact.py` 提取关键事实
@@ -117,7 +117,7 @@ python3 {{SCRIPT_PATH}}/service/memory/save_fact.py \
 ```bash
 python3 {{SCRIPT_PATH}}/service/memory/save_summary.py \
   --topic "会话主题" \
-  --summary "100-200字摘要" \
+  --summary "200-500字摘要" \
   --decisions "决策1,决策2" \
   --todos "待办1,待办2" \
   --source layer4_stop \

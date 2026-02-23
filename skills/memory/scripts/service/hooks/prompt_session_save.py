@@ -31,14 +31,14 @@ SAVE_TEMPLATE = """[Session Save]
 ## 摘要要求
 
 1. **主题**：用一句话描述本次会话的主要内容
-2. **摘要**：100-200 字的总结
+2. **摘要**：200-500 字的总结
 3. **关键决策**：列出本次会话中做出的重要决策
 4. **待办事项**：列出未完成的工作（如有）
 
 ## 保存摘要
 
 ```bash
-{save_summary_cmd} --topic "主题" --summary "100-200字摘要" --decisions "决策1,决策2" --todos "待办1,待办2" --source layer4_stop --session "{conv_id}"
+{save_summary_cmd} --topic "主题" --summary "200-500字摘要" --decisions "决策1,决策2" --todos "待办1,待办2" --source layer4_stop --session "{conv_id}"
 ```
 
 ## 逐条提取关键事实（必须执行）

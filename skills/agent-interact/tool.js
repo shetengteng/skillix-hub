@@ -44,10 +44,31 @@ function ensureUiBuild() {
 }
 
 function openBrowser(url) {
-  const cmd = process.platform === 'darwin' ? 'open'
-    : process.platform === 'win32' ? 'start'
-    : 'xdg-open';
-  try { execSync(`${cmd} ${url}`, { stdio: 'ignore' }); } catch { /* ok */ }
+  if (process.platform === 'darwin') {
+    try {
+      execSync(
+        `osascript -e 'tell application "Google Chrome" to make new window' -e 'tell application "Google Chrome" to set URL of active tab of front window to "${url}"' -e 'tell application "Google Chrome" to activate'`,
+        { stdio: 'ignore' }
+      );
+      return;
+    } catch { /* Chrome not available, fallback */ }
+    try { execSync(`open -n "${url}"`, { stdio: 'ignore' }); return; } catch { /* ok */ }
+  }
+  const cmd = process.platform === 'win32' ? 'start' : 'xdg-open';
+  try { execSync(`${cmd} "${url}"`, { stdio: 'ignore' }); } catch { /* ok */ }
+}
+
+function sendSystemNotification(title, message) {
+  if (process.platform === 'darwin') {
+    const escaped = message.replace(/"/g, '\\"');
+    const escapedTitle = title.replace(/"/g, '\\"');
+    try {
+      execSync(
+        `osascript -e 'display notification "${escaped}" with title "Agent Interact" subtitle "${escapedTitle}" sound name "Glass"'`,
+        { stdio: 'ignore' }
+      );
+    } catch { /* ok */ }
+  }
 }
 
 function httpRequest(method, urlPath, port, body) {
@@ -137,10 +158,22 @@ const COMMANDS = {
     if (!(await isRunning(port))) {
       const startResult = await COMMANDS.start({ port });
       if (startResult.error) return startResult;
+    } else {
+      try {
+        const status = await httpRequest('GET', '/api/status', port);
+        if (status.connectedClients === 0) {
+          openBrowser(`http://127.0.0.1:${port}`);
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+      } catch { /* proceed anyway */ }
     }
 
     const { type, port: _p, ...rest } = params;
     if (!type) return error('type is required');
+
+    if (type !== 'notification') {
+      sendSystemNotification(rest.title || 'Agent 需要你的操作', '请切换到浏览器窗口进行操作');
+    }
 
     const body = { type, ...rest };
 
