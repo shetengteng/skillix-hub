@@ -57,7 +57,11 @@
 
 .electron-window {
   border-radius: 12px;
-  overflow: hidden;
+}
+
+.electron-window [data-state="open"][role="dialog"] {
+  max-height: 85vh;
+  overflow-y: auto;
 }
 
 .dark {

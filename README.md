@@ -23,7 +23,7 @@ AI Skill 是一种可复用的 AI 指令集，帮助 AI 编程助手更好地完
 | [playwright](./skills/playwright/) | 浏览器自动化工具，通过 48 个 CLI 命令控制真实浏览器，支持导航、点击、表单填写、截图、Cookie/存储管理、网络拦截等 |
 | [api-tracer](./skills/api-tracer/) | 录制和分析浏览器网络请求，通过 CDP 捕获完整 API 信息（URL、headers、cookie、请求/响应体），生成分析报告用于自动化 |
 | [web-content-reader](./skills/web-content-reader/) | 读取网页内容，支持 SPA 页面自动检测与浏览器渲染降级，当普通 fetch 无法获取 Vue/React 等页面数据时自动通过浏览器获取 |
-| [agent-interact](./skills/agent-interact/) | AI Agent 与用户之间的可视化交互桥梁，支持确认选择、等待操作、图表展示三种弹框场景 |
+| [agent-interact](./skills/agent-interact/) | AI Agent 与用户之间的可视化交互桥梁，通过 Electron 独立窗口支持 7 种交互场景（确认、等待、图表、通知、表单、审批、进度） |
 | [skill-builder](./skills/skill-builder/) | skillix-hub 项目标准化 Skill 开发流程指南和脚手架工具，提供 8 阶段完整生命周期和模板自动生成 |
 
 ## 安装使用
@@ -547,7 +547,7 @@ node skills/web-content-reader/tool.js read '{"url":"https://example.com","outpu
 
 ## Agent Interact Skill 使用说明
 
-Agent Interact 为 AI Agent 提供可视化的用户交互能力。通过本地 Web Server + shadcn-vue 前端，支持确认选择、等待操作、图表展示三种弹框场景。
+Agent Interact 为 AI Agent 提供可视化的用户交互能力。通过 Electron 独立窗口 + shadcn-vue 前端，支持 7 种交互场景。Agent 发起交互时自动弹出置顶窗口，用户无需切换应用。
 
 ### 安装
 
@@ -559,28 +559,49 @@ cd ui && npm install && npm run build && cd ..
 ### 核心工作流
 
 ```bash
-# 启动交互服务
+# 启动服务（同时启动 Electron）
 node skills/agent-interact/tool.js start
 
-# 确认选择弹框
+# 确认选择（Electron 窗口自动弹出）
 node skills/agent-interact/tool.js dialog '{"type":"confirm","title":"选择环境","options":[{"id":"dev","label":"开发"},{"id":"prod","label":"生产"}]}'
 
-# 等待操作弹框
+# 等待操作
 node skills/agent-interact/tool.js dialog '{"type":"wait","title":"等待验证","message":"请完成指纹验证"}'
 
-# 图表展示弹框
+# 图表展示
 node skills/agent-interact/tool.js dialog '{"type":"chart","title":"分析","chartType":"line","data":{"labels":["Mon","Tue"],"datasets":[{"label":"P99","data":[120,90]}]}}'
+
+# 通知（非阻塞，走系统原生通知）
+node skills/agent-interact/tool.js dialog '{"type":"notification","level":"success","title":"部署完成","message":"v2.0 已部署"}'
+
+# 表单输入
+node skills/agent-interact/tool.js dialog '{"type":"form","title":"配置","fields":[{"id":"host","label":"主机","type":"text","default":"localhost"}]}'
+
+# 审批门控
+node skills/agent-interact/tool.js dialog '{"type":"approval","title":"确认删除","message":"即将删除数据库","severity":"critical"}'
+
+# 进度展示
+node skills/agent-interact/tool.js dialog '{"type":"progress","title":"部署","steps":[{"id":"build","label":"构建","status":"completed"},{"id":"test","label":"测试","status":"running"}],"percent":50}'
 
 # 停止服务
 node skills/agent-interact/tool.js stop
 ```
 
-### 触发词
+### 交互类型
 
-- **确认选择**：弹个框让我选、让我确认一下
-- **等待操作**：等我操作完、等我验证
-- **图表展示**：画个图、展示数据、可视化
-- **服务管理**：启动交互服务、停止交互服务
+| 类型 | 阻塞 | 说明 |
+|------|------|------|
+| confirm | 是 | 用户从选项中选择 |
+| wait | 是 | 等待用户完成外部操作 |
+| chart | 是 | 图表数据可视化 |
+| notification | 否 | 系统原生通知 |
+| form | 是 | 收集用户结构化输入 |
+| approval | 是 | 敏感操作审批门控 |
+| progress | 是 | 多步骤任务进度展示 |
+
+### LLM 自主决策
+
+LLM 在任务执行中自主判断何时需要用户介入，主动选择合适的交互类型弹框。用户不需要指定弹框类型。
 
 ## Skill Builder 使用说明
 

@@ -23,7 +23,7 @@ AI Skill is a reusable AI instruction set that helps AI programming assistants b
 | [playwright](./skills/playwright/) | Browser automation via 48 CLI commands controlling a real browser. Navigate, click, fill forms, screenshot, manage cookies/storage, intercept network, and more |
 | [api-tracer](./skills/api-tracer/) | Record and analyze browser network requests via CDP, capture full API info (URL, headers, cookies, request/response body), generate reports for automation |
 | [web-content-reader](./skills/web-content-reader/) | Read web page content with automatic SPA detection and browser rendering fallback for Vue/React pages |
-| [agent-interact](./skills/agent-interact/) | Visual interaction bridge between AI Agent and user, supporting confirm dialogs, wait-for-action, and chart display |
+| [agent-interact](./skills/agent-interact/) | Visual interaction bridge between AI Agent and user via Electron standalone windows, supporting 7 interaction types (confirm, wait, chart, notification, form, approval, progress) |
 | [skill-builder](./skills/skill-builder/) | Standardized Skill development workflow guide and scaffold tool for skillix-hub, with 8-phase lifecycle and template auto-generation |
 
 ## Installation
@@ -501,7 +501,7 @@ node skills/web-content-reader/tool.js read '{"url":"https://example.com","outpu
 
 ## Agent Interact Skill
 
-Agent Interact provides visual interaction capabilities for AI Agents. Through a local Web Server + shadcn-vue frontend, it supports confirm dialogs, wait-for-action, and chart display.
+Agent Interact provides visual interaction capabilities for AI Agents. Through Electron standalone windows + shadcn-vue frontend, it supports 7 interaction types. Dialogs automatically pop up as always-on-top desktop windows.
 
 ### Installation
 
@@ -513,28 +513,49 @@ cd ui && npm install && npm run build && cd ..
 ### Core Workflow
 
 ```bash
-# Start the interaction server
+# Start server + Electron
 node skills/agent-interact/tool.js start
 
-# Confirm dialog
+# Confirm dialog (Electron window auto-pops)
 node skills/agent-interact/tool.js dialog '{"type":"confirm","title":"Select env","options":[{"id":"dev","label":"Dev"},{"id":"prod","label":"Prod"}]}'
 
-# Wait-for-action dialog
+# Wait-for-action
 node skills/agent-interact/tool.js dialog '{"type":"wait","title":"Waiting","message":"Please complete verification"}'
 
-# Chart display dialog
+# Chart display
 node skills/agent-interact/tool.js dialog '{"type":"chart","title":"Analysis","chartType":"line","data":{"labels":["Mon","Tue"],"datasets":[{"label":"P99","data":[120,90]}]}}'
+
+# Notification (non-blocking, native system notification)
+node skills/agent-interact/tool.js dialog '{"type":"notification","level":"success","title":"Deploy done","message":"v2.0 deployed"}'
+
+# Form input
+node skills/agent-interact/tool.js dialog '{"type":"form","title":"Config","fields":[{"id":"host","label":"Host","type":"text","default":"localhost"}]}'
+
+# Approval gate
+node skills/agent-interact/tool.js dialog '{"type":"approval","title":"Confirm delete","message":"About to drop database","severity":"critical"}'
+
+# Progress display
+node skills/agent-interact/tool.js dialog '{"type":"progress","title":"Deploy","steps":[{"id":"build","label":"Build","status":"completed"},{"id":"test","label":"Test","status":"running"}],"percent":50}'
 
 # Stop server
 node skills/agent-interact/tool.js stop
 ```
 
-### Trigger Words
+### Interaction Types
 
-- **Confirm**: show me options, let me choose, confirm
-- **Wait**: wait for me, waiting for verification
-- **Chart**: show chart, visualize data, display graph
-- **Server**: start interaction server, stop interaction server
+| Type | Blocking | Description |
+|------|----------|-------------|
+| confirm | Yes | User selects from options |
+| wait | Yes | Wait for user to complete external action |
+| chart | Yes | Data visualization |
+| notification | No | Native system notification |
+| form | Yes | Collect structured user input |
+| approval | Yes | Sensitive operation approval gate |
+| progress | Yes | Multi-step task progress display |
+
+### LLM Autonomous Decision
+
+The LLM autonomously decides when to involve the user during task execution, proactively choosing the appropriate interaction type. Users don't need to specify dialog types.
 
 ## Skill Builder
 

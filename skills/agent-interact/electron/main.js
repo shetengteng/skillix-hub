@@ -13,12 +13,12 @@ let ws = null;
 let reconnectTimer = null;
 
 const WINDOW_SIZES = {
-  confirm:  { width: 520, height: 440 },
-  wait:     { width: 460, height: 340 },
-  chart:    { width: 740, height: 580 },
-  form:     { width: 540, height: 620 },
-  approval: { width: 540, height: 500 },
-  progress: { width: 520, height: 460 },
+  confirm:  { width: 560, height: 520 },
+  wait:     { width: 500, height: 380 },
+  chart:    { width: 780, height: 620 },
+  form:     { width: 580, height: 700 },
+  approval: { width: 580, height: 560 },
+  progress: { width: 560, height: 520 },
 };
 
 function createDialogWindow(dialog) {
