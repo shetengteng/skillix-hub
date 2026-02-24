@@ -62,8 +62,27 @@ node tool.js delete '{"id":"wf-xxx"}'
 ### 重放
 
 ```bash
+# 正常重放
 node tool.js replay '{"id":"wf-xxx"}'
 node tool.js replay '{"id":"wf-xxx","params":{"username":"admin","password":"123"}}'
+
+# 从指定步骤恢复（LLM 手动处理失败步骤后使用）
+node tool.js replay '{"id":"wf-xxx","startFrom":3,"params":{...}}'
+```
+
+### 录制期间辅助操作（Phase 4）
+
+Agent 在录制期间可以通过 `exec` 命令直接调用 Playwright 辅助用户操作：
+
+```bash
+# 导航到特定 URL
+node tool.js exec '{"command":"navigate","args":{"url":"https://example.com"}}'
+
+# 点击元素
+node tool.js exec '{"command":"click","args":{"selector":"#some-button"}}'
+
+# 填写表单
+node tool.js exec '{"command":"type","args":{"selector":"#input","text":"value"}}'
 ```
 
 ### 生成独立 Skill
@@ -160,11 +179,28 @@ node skills/agent-interact/tool.js dialog '{"type":"custom","schemaVersion":"1.0
 stop 返回的 rawEvents 包含 DOM 事件和网络请求的原始数据。LLM 需要：
 
 1. **过滤噪音**：去除无关点击（空白区域）、无意义滚动
-2. **合并输入**：连续的 input 事件合并为单次填写操作
-3. **识别意图**：为每步操作添加语义描述（"登录"、"选择分支"）
+2. **合并输入**：连续的 input 事件合并为单次填写操作；同一输入框的多次 change/input 事件只保留最终值
+3. **捕获操作意图**（关键，影响 LLM 自愈能力）：
+   - 每步必须包含 `intent` 字段，格式：「[在什么上下文中] + 操作目标 + [期望产生的页面变化]」
+   - 示例（正确）：「在部署任务列表第一行，点击 Deploy 按钮，以打开部署配置对话框」
+   - 示例（不足）：「点击 Deploy」（缺少上下文和期望结果，LLM 无法用于自愈）
+   - `description` 字段保留简短描述，`intent` 字段承载完整语义
 4. **识别参数**：将可变输入值替换为 `{{paramName}}`
 5. **关联 API**：将 DOM 操作与触发的 API 请求关联
-6. **推断等待**：根据导航和 API 响应推断步骤间的等待条件
+6. **生成等待条件**（`waitAfter` 字段，优先于固定时间等待）：
+   - 导航后：等待目标页面关键元素出现 `{ "type": "selector", "value": ".some-key-element" }`
+   - 点击触发 modal：等待 modal 容器出现 `{ "type": "selector", "value": ".modal-container" }`
+   - 提交后等待完成：等待加载状态消失 `{ "type": "selectorGone", "value": ".loading-spinner" }`
+   - 页面跳转：等待 URL 变化 `{ "type": "url", "value": "/target-path" }`
+7. **识别 UI 容器模式**：
+   - 点击按钮 → 弹出 modal：后续步骤的 intent 和 locator 应说明「在弹出对话框中」
+   - 下拉菜单展开：选项的 intent 应说明「在展开的下拉菜单中」
+   - 表格行操作：intent 应包含行锚定信息，如「在显示 job-name-xxx 的那一行中」
+8. **事件去重**：同一元素连续多次 click 合并为一次；导航后 500ms 内的误触点击丢弃
+9. **保留 locator 元数据**：
+   - `roleName`：录制脚本自动提取的 accessible name（aria-label / label[for] / aria-labelledby），生成 workflow 时必须保留
+   - `context`：录制脚本自动检测的容器上下文（modal / dropdown / table-row / form），生成 workflow 时必须保留在 locators 中
+   - 这两个字段是 `buildLocatorChain` 作用域限定和精确匹配的关键输入
 
 分析后生成的工作流 JSON 通过 save 命令保存。
 

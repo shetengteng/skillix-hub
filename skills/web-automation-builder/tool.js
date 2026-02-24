@@ -173,10 +173,19 @@ const COMMANDS = {
       }
     }
 
-    const result = replay(wf, params.params || {});
-    return result.success
-      ? success(result)
-      : error(result.error || `Replay failed at step ${result.results?.length || '?'}`);
+    const result = replay(wf, params.params || {}, params.startFrom);
+    if (result.success) return success(result);
+
+    // 失败时返回结构化上下文（供 LLM 自愈），不用裸 error 字符串
+    return success({
+      completed: false,
+      workflowId: result.workflowId,
+      workflowName: result.workflowName,
+      failedAt: result.failedAt,
+      failedStep: result.failedStep,
+      recovery: result.recovery,
+      results: result.results,
+    });
   },
 
   async generate(params) {
@@ -211,6 +220,31 @@ const COMMANDS = {
       return success({ message: `Exported to ${dest}`, path: dest });
     } catch (e) {
       return error(`Export failed: ${e.message}`);
+    }
+  },
+
+  // Phase 4: Agent 在录制期间可调用此命令辅助操作（如导航到特定 URL）
+  async exec(params) {
+    if (!params.command) return error('command is required (e.g. navigate, click, fill)');
+
+    const pw = getPlaywrightTool();
+    if (!pw) return error('Playwright Skill not found. Install it first.');
+
+    const { execSync } = require('child_process');
+    const args = params.args || {};
+    const argsJson = JSON.stringify(args);
+    const escaped = argsJson.replace(/'/g, "'\\''");
+
+    try {
+      const out = execSync(`node "${pw}" ${params.command} '${escaped}'`, {
+        encoding: 'utf-8',
+        timeout: params.timeout || 30000,
+      });
+      let result;
+      try { result = JSON.parse(out); } catch { result = out; }
+      return success({ command: params.command, args, result });
+    } catch (e) {
+      return error(`exec failed: ${e.message}`);
     }
   },
 
@@ -250,7 +284,7 @@ async function main() {
   if (!command) {
     console.log(JSON.stringify(error(
       "Usage: node tool.js <command> '{json_params}'\n" +
-      'Commands: record, stop, save, status, list, show, delete, replay, generate, export, install'
+      'Commands: record, stop, save, status, list, show, delete, replay, generate, export, exec, install'
     )));
     process.exit(1);
   }

@@ -27,18 +27,70 @@
     return parts.join(' > ');
   }
 
+  function getContainerContext(el) {
+    var cur = el.parentElement, depth = 0;
+    while (cur && depth < 6) {
+      var role = cur.getAttribute('role');
+      var cls = (cur.className && typeof cur.className === 'string') ? cur.className : '';
+      var tag = cur.tagName ? cur.tagName.toUpperCase() : '';
+      // modal / dialog
+      if (role === 'dialog' || cls.includes('modal') || cls.includes('Modal') || cls.includes('dialog')) {
+        return { type: 'modal' };
+      }
+      // dropdown / menu
+      if (role === 'menu' || role === 'listbox' || cls.includes('dropdown') || cls.includes('Dropdown') || cls.includes('menu')) {
+        return { type: 'dropdown' };
+      }
+      // table row — record row anchor text for stable row identification
+      if (tag === 'TR') {
+        var cells = cur.querySelectorAll ? Array.from(cur.querySelectorAll('td')) : [];
+        var anchor = null;
+        for (var ci = 0; ci < cells.length; ci++) {
+          var t = (cells[ci].textContent || '').trim();
+          if (t && t.length >= 2 && t.length <= 80) { anchor = t; break; }
+        }
+        return { type: 'table-row', rowAnchor: anchor };
+      }
+      // form
+      if (tag === 'FORM') {
+        return { type: 'form' };
+      }
+      cur = cur.parentElement;
+      depth++;
+    }
+    return null;
+  }
+
+  function getAccessibleName(el) {
+    var ariaLabel = el.getAttribute('aria-label');
+    if (ariaLabel) return ariaLabel;
+    var labelledBy = el.getAttribute('aria-labelledby');
+    if (labelledBy) {
+      var labelEl = document.getElementById(labelledBy);
+      if (labelEl) return (labelEl.textContent || '').trim();
+    }
+    if (el.id) {
+      var assocLabel = document.querySelector('label[for="' + el.id + '"]');
+      if (assocLabel) return (assocLabel.textContent || '').trim();
+    }
+    return null;
+  }
+
   function locators(el) {
+    var role = el.getAttribute('role') || el.tagName.toLowerCase();
     return {
       css: cssSelector(el),
       text: (el.textContent || '').trim().substring(0, 100) || null,
-      role: el.getAttribute('role') || el.tagName.toLowerCase(),
+      role: role,
+      roleName: getAccessibleName(el),
       ariaLabel: el.getAttribute('aria-label') || null,
       placeholder: el.getAttribute('placeholder') || null,
       testId: el.getAttribute('data-testid') || null,
       name: el.getAttribute('name') || null,
       id: el.id || null,
       tagName: el.tagName.toLowerCase(),
-      type: el.getAttribute('type') || null
+      type: el.getAttribute('type') || null,
+      context: getContainerContext(el)
     };
   }
 

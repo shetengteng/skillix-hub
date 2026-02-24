@@ -1,6 +1,8 @@
 'use strict';
 
 const { execSync } = require('child_process');
+const path = require('path');
+const os = require('os');
 const { getPlaywrightTool } = require('./config');
 
 const CMD_MAP = { fill: 'type', input: 'type' };
@@ -22,40 +24,30 @@ function renderValue(value, params) {
   return value;
 }
 
-function buildPlaywrightArgs(step, params) {
-  const cmd = CMD_MAP[step.command] || step.command;
-  const args = {};
+// 按稳定性优先级构建 locator 尝试链（设计文档 3.4 节）
+// context-aware: modal/dropdown 内的元素自动限定作用域
+function buildLocatorChain(loc) {
+  const chain = [];
+  if (!loc) return chain;
 
-  if (step.locators) {
-    const loc = renderValue(step.locators, params);
-    if (loc.text) {
-      args.text = loc.text;
-    } else if (loc.css) {
-      args.selector = loc.css;
-    } else if (loc.role) {
-      args.role = loc.role;
-      if (loc.name) args.name = loc.name;
-    } else if (loc.placeholder) {
-      args.placeholder = loc.placeholder;
-    } else if (loc.label || loc.ariaLabel) {
-      args.label = loc.label || loc.ariaLabel;
-    } else if (loc.testId) {
-      args.testId = loc.testId;
-    } else if (loc.id) {
-      args.selector = `#${loc.id}`;
-    }
+  let scopePrefix = '';
+  if (loc.context) {
+    if (loc.context.type === 'modal')    scopePrefix = '[role=dialog] ';
+    if (loc.context.type === 'dropdown') scopePrefix = '[role=menu] ';
   }
 
-  if (step.args) {
-    const rendered = renderValue(step.args, params);
-    Object.assign(args, rendered);
+  if (loc.testId)                    chain.push({ testId: loc.testId });
+  if (loc.ariaLabel || loc.label)    chain.push({ label: loc.ariaLabel || loc.label });
+  if (loc.placeholder)               chain.push({ placeholder: loc.placeholder });
+  if (loc.text)                      chain.push({ text: loc.text });
+  if (loc.role && loc.roleName)      chain.push({ role: loc.role, name: loc.roleName });
+  if (loc.role && !loc.roleName)     chain.push({ selector: `${scopePrefix}[role="${loc.role}"]` });
+  if (loc.id) {
+    const idSuffix = loc.id.includes('_') ? loc.id.split('_').pop() : loc.id;
+    chain.push({ selector: `${scopePrefix}[id$="${idSuffix}"]` });
   }
-
-  if (step.wait?.timeout) {
-    args.timeout = step.wait.timeout;
-  }
-
-  return { cmd, args };
+  if (loc.css)                       chain.push({ selector: `${scopePrefix}${loc.css}` });
+  return chain;
 }
 
 function execPlaywright(playwrightTool, cmd, args, timeout) {
@@ -74,75 +66,143 @@ function execPlaywright(playwrightTool, cmd, args, timeout) {
   }
 }
 
-function executeStep(step, index, params, playwrightTool, prevCmd) {
-  const { cmd, args } = buildPlaywrightArgs(step, params);
+// 执行 waitAfter 条件
+// Playwright tool waitFor 仅支持 text/textGone/time，selector 类型通过 evaluate 轮询实现
+function execWait(playwrightTool, waitAfter) {
+  if (!waitAfter) return;
+  const t = waitAfter.timeout || 10000;
+  switch (waitAfter.type) {
+    case 'selector': {
+      const pollCode = `async (page) => { const start = Date.now(); while (Date.now() - start < ${t}) { if (await page.$('${waitAfter.value.replace(/'/g, "\\'")}')) return true; await new Promise(r => setTimeout(r, 500)); } return false; }`;
+      execPlaywright(playwrightTool, 'runCode', { code: pollCode }, t + 5000);
+      break;
+    }
+    case 'selectorGone': {
+      const pollCode = `async (page) => { const start = Date.now(); while (Date.now() - start < ${t}) { if (!(await page.$('${waitAfter.value.replace(/'/g, "\\'")}')) ) return true; await new Promise(r => setTimeout(r, 500)); } return false; }`;
+      execPlaywright(playwrightTool, 'runCode', { code: pollCode }, t + 5000);
+      break;
+    }
+    case 'url':          execPlaywright(playwrightTool, 'waitFor', { text: waitAfter.value, timeout: t }); break;
+    case 'text':         execPlaywright(playwrightTool, 'waitFor', { text: waitAfter.value, timeout: t }); break;
+    case 'textGone':     execPlaywright(playwrightTool, 'waitFor', { textGone: waitAfter.value, timeout: t }); break;
+    case 'networkIdle':  execPlaywright(playwrightTool, 'waitFor', { time: Math.min(5, t / 1000) }); break;
+    case 'time':         execPlaywright(playwrightTool, 'waitFor', { time: waitAfter.value }); break;
+    default:             break;
+  }
+}
 
-  if (step.wait?.type === 'text' && step.wait.value) {
+function executeStep(step, index, params, playwrightTool, prevCmd) {
+  const cmd = CMD_MAP[step.command] || step.command;
+  const renderedLocators = step.locators ? renderValue(step.locators, params) : null;
+  const renderedArgs = step.args ? renderValue(step.args, params) : {};
+  const stepTimeout = cmd === 'navigate' ? 60000 : 30000;
+
+  const chain = buildLocatorChain(renderedLocators);
+
+  let stepSuccess = false;
+  let lastError = null;
+
+  if (chain.length === 0) {
+    // navigate 等无 locator 的步骤
     try {
-      execPlaywright(playwrightTool, 'waitFor', {
-        text: step.wait.value,
-        timeout: step.wait.timeout || 10000,
-      });
-    } catch { /* best-effort wait */ }
-  } else if (step.wait?.type === 'url' && step.wait.pattern) {
-    try {
-      execPlaywright(playwrightTool, 'waitFor', {
-        text: step.wait.pattern,
-        timeout: step.wait.timeout || 30000,
-      });
-    } catch { /* best-effort wait */ }
-  } else if (prevCmd === 'navigate' && cmd !== 'navigate' && cmd !== 'waitFor') {
-    try {
-      execPlaywright(playwrightTool, 'waitFor', { time: 2 });
-    } catch { /* best-effort wait */ }
+      execPlaywright(playwrightTool, cmd, renderedArgs, stepTimeout);
+      stepSuccess = true;
+    } catch (e) {
+      lastError = e;
+    }
+  } else {
+    for (const locArgs of chain) {
+      const args = Object.assign({}, locArgs, renderedArgs);
+      try {
+        execPlaywright(playwrightTool, cmd, args, stepTimeout);
+        stepSuccess = true;
+        break;
+      } catch (e) {
+        lastError = e;
+      }
+    }
   }
 
-  const stepTimeout = step.wait?.timeout || (cmd === 'navigate' ? 60000 : 30000);
+  if (stepSuccess) {
+    let warning = null;
 
-  try {
-    const result = execPlaywright(playwrightTool, cmd, args, stepTimeout);
-    return {
+    if (step.waitAfter) {
+      try { execWait(playwrightTool, step.waitAfter); } catch (waitErr) {
+        warning = 'waitAfter timeout: ' + (waitErr.message || '').slice(0, 200);
+      }
+    } else if (cmd === 'navigate' && prevCmd !== null) {
+      try { execPlaywright(playwrightTool, 'waitFor', { time: 2 }); } catch { /* best-effort */ }
+    }
+
+    const result = {
       success: true,
       step: index + 1,
       command: cmd,
       description: step.description,
-      result,
     };
-  } catch (e) {
+    if (warning) result.warning = warning;
+    return result;
+  } else {
+    // 失败截图（best-effort）
+    let screenshotPath = null;
+    try {
+      screenshotPath = path.join(os.tmpdir(), `wab-fail-step${index + 1}-${Date.now()}.png`);
+      execPlaywright(playwrightTool, 'screenshot', { path: screenshotPath });
+    } catch { screenshotPath = null; }
+
     return {
       success: false,
       step: index + 1,
       command: cmd,
       description: step.description,
-      error: e.message,
+      error: lastError?.message,
+      failedStep: {
+        intent: step.intent || step.description,
+        allLocators: step.locators,
+        error: lastError?.message,
+        screenshot: screenshotPath,
+      },
+      recovery: {
+        hint: `使用 playwright snapshot 查看当前页面状态，根据 intent 定位目标元素并手动执行，完成后调用 replay startFrom: ${index + 2} 继续`,
+        nextStartFrom: index + 2,
+      },
     };
   }
 }
 
-function replay(workflow, params) {
+function replay(workflow, params, startFrom) {
   const playwrightTool = getPlaywrightTool();
   if (!playwrightTool) {
     return { success: false, error: 'Playwright Skill not found' };
   }
 
   const results = [];
-  let failed = false;
+  const startIndex = Math.max(0, (startFrom || 1) - 1);
   let prevCmd = null;
 
-  for (let i = 0; i < workflow.steps.length; i++) {
+  for (let i = startIndex; i < workflow.steps.length; i++) {
     const step = workflow.steps[i];
     const result = executeStep(step, i, params || {}, playwrightTool, prevCmd);
     results.push(result);
     prevCmd = CMD_MAP[step.command] || step.command;
 
     if (!result.success) {
-      failed = true;
-      break;
+      return {
+        success: false,
+        workflowId: workflow.id,
+        workflowName: workflow.name,
+        totalSteps: workflow.steps.length,
+        executedSteps: results.length,
+        failedAt: result.step,
+        failedStep: result.failedStep,
+        recovery: result.recovery,
+        results,
+      };
     }
   }
 
   return {
-    success: !failed,
+    success: true,
     workflowId: workflow.id,
     workflowName: workflow.name,
     totalSteps: workflow.steps.length,
@@ -151,4 +211,4 @@ function replay(workflow, params) {
   };
 }
 
-module.exports = { replay, renderValue, buildPlaywrightArgs, CMD_MAP };
+module.exports = { replay, renderValue, buildLocatorChain, CMD_MAP };
