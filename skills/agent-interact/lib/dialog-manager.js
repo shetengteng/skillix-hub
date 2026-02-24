@@ -55,11 +55,23 @@ class DialogManager {
 
   notify(request) {
     const id = `n-${crypto.randomBytes(6).toString('hex')}`;
-    const autoClose = request.autoClose || 0;
+    const autoClose = request.autoClose || 8;
+
+    this._dialogs.set(id, {
+      request: { ...request },
+      resolve: () => {},
+      timer: null,
+      resolved: false,
+      createdAt: Date.now(),
+    });
+
     this._broadcast({ event: 'dialog:open', data: { id, ...request } });
-    if (autoClose > 0) {
-      setTimeout(() => this._broadcast({ event: 'dialog:close', data: { id } }), autoClose * 1000);
-    }
+
+    setTimeout(() => {
+      this._broadcast({ event: 'dialog:close', data: { id } });
+      this._dialogs.delete(id);
+    }, autoClose * 1000);
+
     return id;
   }
 

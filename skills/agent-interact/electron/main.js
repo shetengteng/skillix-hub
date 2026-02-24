@@ -13,18 +13,24 @@ let ws = null;
 let reconnectTimer = null;
 
 const BASE_SIZES = {
-  confirm:  { width: 500, height: 440 },
-  wait:     { width: 440, height: 400 },
-  chart:    { width: 720, height: 560 },
-  form:     { width: 520, height: 560 },
-  approval: { width: 520, height: 500 },
-  progress: { width: 500, height: 520 },
-  custom:   { width: 620, height: 560 },
+  confirm:      { width: 500, height: 440 },
+  wait:         { width: 440, height: 400 },
+  chart:        { width: 720, height: 560 },
+  form:         { width: 520, height: 560 },
+  approval:     { width: 520, height: 500 },
+  progress:     { width: 500, height: 520 },
+  custom:       { width: 620, height: 560 },
+  notification: { width: 420, height: 200 },
 };
 
 function estimateWindowSize(dialog) {
   const base = BASE_SIZES[dialog.type] || { width: 480, height: 400 };
   let { width, height } = base;
+
+  if (dialog.type === 'notification' && dialog.message) {
+    const lines = Math.ceil(dialog.message.length / 40);
+    height = Math.max(height, 120 + lines * 22);
+  }
 
   if (dialog.type === 'confirm' && dialog.options) {
     height = Math.max(height, 240 + dialog.options.length * 76);
@@ -139,6 +145,14 @@ function connectWs() {
         const dialog = msg.data;
         if (dialog.type === 'notification') {
           showNotification(dialog);
+          if (!windows.has(dialog.id)) {
+            const win = createDialogWindow(dialog);
+            const autoClose = dialog.autoClose || 8;
+            setTimeout(() => {
+              if (win && !win.isDestroyed()) win.close();
+              windows.delete(dialog.id);
+            }, autoClose * 1000);
+          }
           return;
         }
         if (!windows.has(dialog.id)) {
