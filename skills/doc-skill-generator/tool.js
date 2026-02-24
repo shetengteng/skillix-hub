@@ -221,7 +221,7 @@ const COMMANDS = {
     if (!params.target) return error('target is required');
     const srcDir = SKILL_DIR;
     const destDir = path.resolve(params.target.replace(/^~/, process.env.HOME || ''));
-    const COPY_ITEMS = ['SKILL.md', 'tool.js', 'package.json', 'lib'];
+    const COPY_ITEMS = ['SKILL.md', 'tool.js', 'package.json', 'lib', 'templates'];
 
     try {
       fs.mkdirSync(destDir, { recursive: true });

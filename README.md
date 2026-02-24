@@ -26,6 +26,7 @@ AI Skill 是一种可复用的 AI 指令集，帮助 AI 编程助手更好地完
 | [agent-interact](./skills/agent-interact/) | AI Agent 与用户之间的可视化交互桥梁，通过 Electron 独立窗口支持 8 种交互场景（确认、等待、图表、通知、表单、审批、进度、自定义通用渲染） |
 | [web-automation-builder](./skills/web-automation-builder/) | 被动录制用户浏览器操作（CDP + DOM 事件注入 + 网络监听），生成可重放的参数化工作流，支持生成独立 Skill 和导出 Playwright 脚本 |
 | [skill-builder](./skills/skill-builder/) | skillix-hub 项目标准化 Skill 开发流程指南和脚手架工具，提供 8 阶段完整生命周期和模板自动生成 |
+| [doc-skill-generator](./skills/doc-skill-generator/) | 从文档（网页、PDF、本地文件）中提取内容，自动生成 Cursor Skill。支持 Playwright BFS 深度采集 SPA 页面，两阶段生成流程（暂存 + 安装） |
 
 ## 安装使用
 
@@ -715,6 +716,62 @@ tests/<name>/           # 测试（run_tests.js, src/unit/, reports/）
 - **创建 Skill**：创建一个新 skill、帮我写个 skill
 - **初始化目录**：初始化 skill 目录
 - **查看规范**：skill 开发流程、设计文档模板、测试怎么写
+
+## Doc Skill Generator 使用说明
+
+Doc Skill Generator 从文档中提取内容，自动生成可用的 Cursor Skill。支持网页（含 SPA）、PDF、本地文件。采用两阶段生成流程：先输出到暂存目录，确认后安装到目标路径。
+
+**前置依赖**：需要 [Playwright Skill](./skills/playwright/) 已安装（用于网页采集）。
+
+### 安装
+
+```bash
+cd skills/doc-skill-generator && npm install
+
+# 全局安装
+node skills/doc-skill-generator/tool.js install '{"target":"~/.cursor/skills/doc-skill-generator"}'
+cd ~/.cursor/skills/doc-skill-generator && npm install
+```
+
+### 核心工作流
+
+```bash
+# 1. 采集文档（Playwright BFS 深度采集）
+node tool.js fetch '{"sources":[{"type":"url","value":"https://docs.example.com"}]}'
+
+# 2. 查看采集结果
+node tool.js show-extract '{"id":"ext-xxx"}'
+
+# 3. 分析文档类型
+node tool.js analyze '{"id":"ext-xxx"}'
+
+# 4. 生成到暂存目录
+node tool.js generate '{"id":"ext-xxx","skillName":"my-api"}'
+
+# 5. 在暂存目录创建 SKILL.md（Agent 根据 skillMdPrompt 指引完成）
+
+# 6. 安装到目标路径
+node tool.js install-skill '{"skillName":"my-api","target":"~/.cursor/skills/my-api"}'
+```
+
+### 命令参考
+
+| 命令 | 说明 |
+|------|------|
+| `fetch` | 采集文档（URL/PDF/本地文件） |
+| `show-extract` | 查看采集结果详情 |
+| `list-extracts` | 列出所有采集结果 |
+| `append` | 追加采集遗漏页面 |
+| `analyze` | 分析文档类型，输出 Skill 规格建议 |
+| `generate` | 生成到暂存目录（data/generated/） |
+| `install-skill` | 从暂存目录安装到目标路径 |
+| `update` | 更新已生成的 Skill（重新采集 + 生成 + 安装） |
+
+### 触发词
+
+- **采集文档**：读取文档、采集网页、抓取页面内容
+- **生成 Skill**：从文档生成 Skill、生成 API 客户端
+- **更新 Skill**：更新 Skill、重新读取文档
 
 ## 贡献
 
