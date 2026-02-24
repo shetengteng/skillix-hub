@@ -7,6 +7,8 @@ const fs = require('fs');
 const os = require('os');
 
 const WORKFLOW_FILE = path.join(__dirname, 'workflow.json');
+const REPLAY_HISTORY_FILE = path.join(__dirname, 'replay-history.jsonl');
+const OPTIMIZATION_LOG_FILE = path.join(__dirname, 'optimization-log.jsonl');
 const CMD_MAP = { fill: 'type', input: 'type' };
 
 function success(data) { return { result: data, error: null }; }
@@ -186,6 +188,80 @@ const COMMANDS = {
     return success({ completed: true, stepsExecuted: results.length, results });
   },
 
+  // LLM-First: 返回步骤列表，供 LLM 阅读后决定每步的执行策略
+  async steps(params) {
+    const wf = JSON.parse(fs.readFileSync(WORKFLOW_FILE, 'utf-8'));
+    return success({
+      name: wf.name,
+      totalSteps: wf.steps.length,
+      params: wf.params || [],
+      steps: wf.steps.map((s, i) => ({
+        step: i + 1,
+        intent: s.intent || s.description,
+        description: s.description,
+        command: s.command,
+        locators: s.locators || null,
+        args: s.args || null,
+        waitAfter: s.waitAfter || null,
+      })),
+    });
+  },
+
+  // LLM-First: 执行单个步骤（1-based），失败时 LLM 切换为手动模式
+  async step(params) {
+    if (!params.step) return error('step number is required (1-based)');
+    const pw = findPlaywright();
+    if (!pw) return error('Playwright Skill not found. Install it first.');
+
+    const wf = JSON.parse(fs.readFileSync(WORKFLOW_FILE, 'utf-8'));
+    const idx = params.step - 1;
+    if (idx < 0 || idx >= wf.steps.length) return error(`Invalid step: ${params.step}, total: ${wf.steps.length}`);
+
+    const step = wf.steps[idx];
+    const cmd = CMD_MAP[step.command] || step.command;
+    const renderedLocators = step.locators ? renderValue(step.locators, params) : null;
+    const renderedArgs = step.args ? renderValue(step.args, params) : {};
+    const stepTimeout = cmd === 'navigate' ? 60000 : 30000;
+
+    const chain = buildLocatorChain(renderedLocators);
+    let stepSuccess = false;
+    let lastError = null;
+
+    if (chain.length === 0) {
+      try { execPW(pw, cmd, renderedArgs, stepTimeout); stepSuccess = true; }
+      catch (e) { lastError = e; }
+    } else {
+      for (const locArgs of chain) {
+        try { execPW(pw, cmd, Object.assign({}, locArgs, renderedArgs), stepTimeout); stepSuccess = true; break; }
+        catch (e) { lastError = e; }
+      }
+    }
+
+    if (stepSuccess) {
+      let warning = null;
+      if (step.waitAfter) {
+        try { execWait(pw, step.waitAfter); } catch (waitErr) {
+          warning = 'waitAfter timeout: ' + (waitErr.message || '').slice(0, 200);
+        }
+      } else if (cmd === 'navigate') {
+        try { execPW(pw, 'waitFor', { time: 2 }); } catch { /* best-effort */ }
+      }
+      const result = { step: params.step, command: cmd, description: step.description, success: true };
+      if (warning) result.warning = warning;
+      return success(result);
+    }
+
+    return success({
+      step: params.step,
+      command: cmd,
+      description: step.description,
+      success: false,
+      intent: step.intent || step.description,
+      allLocators: step.locators,
+      error: lastError?.message,
+    });
+  },
+
   async info() {
     const wf = JSON.parse(fs.readFileSync(WORKFLOW_FILE, 'utf-8'));
     return success({
@@ -196,12 +272,128 @@ const COMMANDS = {
       createdAt: wf.createdAt,
     });
   },
+
+  async 'report-replay'(params) {
+    if (!params.steps || !Array.isArray(params.steps)) {
+      return error('steps array is required');
+    }
+
+    const wf = JSON.parse(fs.readFileSync(WORKFLOW_FILE, 'utf-8'));
+
+    const trace = {
+      overallSuccess: params.overallSuccess !== false,
+      steps: params.steps,
+    };
+    const historyLine = JSON.stringify({ ...trace, timestamp: new Date().toISOString() }) + '\n';
+    fs.appendFileSync(REPLAY_HISTORY_FILE, historyLine);
+
+    const optimizations = [];
+    for (const st of trace.steps) {
+      const idx = st.step - 1;
+      const wfStep = wf.steps[idx];
+      if (!wfStep) continue;
+
+      if (st.method === 'llm-manual' && st.successLocator) {
+        const updated = wfStep.locators ? JSON.parse(JSON.stringify(wfStep.locators)) : {};
+        const loc = st.successLocator;
+        if (loc.type === 'ariaLabel') updated.ariaLabel = loc.value;
+        else if (loc.type === 'css') updated.css = loc.value;
+        else if (loc.type === 'text') updated.text = loc.value;
+        else if (loc.type === 'testId') updated.testId = loc.value;
+        else if (loc.type === 'id') updated.id = loc.value;
+
+        optimizations.push({
+          type: 'locator-update',
+          step: st.step,
+          description: wfStep.description,
+          reason: (st.issues || []).join('; ') || 'LLM 手动操作发现更稳定的 locator',
+          before: wfStep.locators,
+          after: updated,
+        });
+      }
+
+      if ((st.issues || []).some(i => /waitAfter|timeout/i.test(i)) && wfStep.waitAfter) {
+        optimizations.push({
+          type: 'waitAfter-fix',
+          step: st.step,
+          description: wfStep.description,
+          reason: 'waitAfter 超时但步骤实际成功',
+          before: wfStep.waitAfter,
+          after: { type: 'time', value: 3 },
+        });
+      }
+
+      if (st.method === 'llm-manual' && st.hint) {
+        optimizations.push({
+          type: 'step-hint',
+          step: st.step,
+          description: wfStep.description,
+          reason: st.hint,
+          before: wfStep.intent || wfStep.description,
+          after: `${wfStep.intent || wfStep.description}（注意：${st.hint}）`,
+        });
+      }
+    }
+
+    if (optimizations.length === 0) {
+      return success({ message: '所有步骤均顺利执行，无需优化', optimizations: [] });
+    }
+
+    return success({
+      message: `发现 ${optimizations.length} 个可优化项`,
+      optimizations,
+      hint: '调用 apply-optimization 命令应用优化，传入要应用的 optimizations 数组',
+    });
+  },
+
+  async 'apply-optimization'(params) {
+    if (!params.optimizations || !Array.isArray(params.optimizations)) {
+      return error('optimizations array is required');
+    }
+
+    const wf = JSON.parse(fs.readFileSync(WORKFLOW_FILE, 'utf-8'));
+    const applied = [];
+
+    for (const opt of params.optimizations) {
+      const idx = opt.step - 1;
+      if (idx < 0 || idx >= wf.steps.length) continue;
+
+      switch (opt.type) {
+        case 'locator-update':
+          wf.steps[idx].locators = opt.after;
+          applied.push({ step: opt.step, type: opt.type, description: opt.description });
+          break;
+        case 'waitAfter-fix':
+          wf.steps[idx].waitAfter = opt.after;
+          applied.push({ step: opt.step, type: opt.type, description: opt.description });
+          break;
+        case 'step-hint':
+          wf.steps[idx].intent = opt.after;
+          applied.push({ step: opt.step, type: opt.type, description: opt.description });
+          break;
+        default:
+          break;
+      }
+    }
+
+    fs.writeFileSync(WORKFLOW_FILE, JSON.stringify(wf, null, 2));
+
+    for (const a of applied) {
+      const logLine = JSON.stringify({ ...a, timestamp: new Date().toISOString() }) + '\n';
+      fs.appendFileSync(OPTIMIZATION_LOG_FILE, logLine);
+    }
+
+    return success({
+      message: `已应用 ${applied.length} 项优化`,
+      applied,
+    });
+  },
 };
 
 async function main() {
   const [command, argsJson] = [process.argv[2], process.argv[3]];
   if (!command) {
-    console.log(JSON.stringify(error('Usage: node tool.js <run|info> \'{json_params}\'')));
+    console.log(JSON.stringify(error('Usage: node tool.js <run|steps|step|info> \'{json_params}\'')));
     process.exit(1);
   }
   const handler = COMMANDS[command];

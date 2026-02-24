@@ -15,11 +15,14 @@ description: |
 ## 安装 / 更新
 
 ```bash
-# 安装依赖
-cd skills/web-automation-builder && npm install
+# 安装（安装依赖 + 构建）
+node skills/web-automation-builder/tool.js install
 
-# 安装到全局
+# 全局安装（复制到 ~/.cursor/skills/ + 安装依赖）
 node skills/web-automation-builder/tool.js install '{"target":"~/.cursor/skills/web-automation-builder"}'
+
+# 更新（从源码覆盖 + 清理重装）
+node skills/web-automation-builder/tool.js update '{"target":"~/.cursor/skills/web-automation-builder"}'
 ```
 
 ## 前置依赖
@@ -62,13 +65,25 @@ node tool.js delete '{"id":"wf-xxx"}'
 ### 重放
 
 ```bash
-# 正常重放
+# 批量重放（快速路径）
 node tool.js replay '{"id":"wf-xxx"}'
 node tool.js replay '{"id":"wf-xxx","params":{"username":"admin","password":"123"}}'
 
-# 从指定步骤恢复（LLM 手动处理失败步骤后使用）
+# 从指定步骤恢复
 node tool.js replay '{"id":"wf-xxx","startFrom":3,"params":{...}}'
 ```
+
+### LLM-First 逐步重放（推荐）
+
+```bash
+# 获取步骤列表（含 intent、locators），LLM 阅读后决定每步执行策略
+node tool.js replaySteps '{"id":"wf-xxx"}'
+
+# 执行单个步骤（1-based）
+node tool.js replayStep '{"id":"wf-xxx","step":1,"params":{"key":"value"}}'
+```
+
+LLM 根据每步的 intent 和置信度，选择用 `replayStep` 工具执行或直接用 playwright 手动操作。
 
 ### 录制期间辅助操作（Phase 4）
 

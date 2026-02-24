@@ -47,13 +47,18 @@ function generateSkillMd(workflow, skillName) {
     ? JSON.stringify(Object.fromEntries(workflow.params.map(p => [p.id, p.default || `<${p.label || p.id}>`])))
     : '{}';
 
+  const paramsKeys = workflow.params && workflow.params.length > 0
+    ? workflow.params.map(p => `"${p.id}": "<${p.label || p.id}>"`).join(', ')
+    : '';
+
   let tpl = readTemplate('SKILL.md.tpl');
   tpl = tpl.replace(/\{\{SKILL_NAME\}\}/g, skillName);
   tpl = tpl.replace(/\{\{WORKFLOW_NAME\}\}/g, workflow.name);
-  tpl = tpl.replace('{{DESCRIPTION}}', workflow.description || `自动执行 ${workflow.name} 工作流。`);
-  tpl = tpl.replace('{{PARAM_TABLE}}', paramTable);
-  tpl = tpl.replace('{{STEPS_DESC}}', stepsDesc);
-  tpl = tpl.replace('{{PARAMS_EXAMPLE}}', paramsExample);
+  tpl = tpl.replace(/\{\{DESCRIPTION\}\}/g, workflow.description || `自动执行 ${workflow.name} 工作流。`);
+  tpl = tpl.replace(/\{\{PARAM_TABLE\}\}/g, paramTable);
+  tpl = tpl.replace(/\{\{STEPS_DESC\}\}/g, stepsDesc);
+  tpl = tpl.replace(/\{\{PARAMS_EXAMPLE\}\}/g, paramsExample);
+  tpl = tpl.replace(/\{\{PARAMS_KEYS\}\}/g, paramsKeys);
   return tpl;
 }
 
@@ -65,6 +70,11 @@ function generate(workflow, skillName, targetDir) {
   fs.writeFileSync(path.join(dest, 'package.json'), generatePackageJson(skillName, workflow.description));
   fs.writeFileSync(path.join(dest, 'workflow.json'), JSON.stringify(workflow, null, 2));
   fs.writeFileSync(path.join(dest, 'SKILL.md'), generateSkillMd(workflow, skillName));
+
+  const historyFile = path.join(dest, 'replay-history.jsonl');
+  const logFile = path.join(dest, 'optimization-log.jsonl');
+  if (!fs.existsSync(historyFile)) fs.writeFileSync(historyFile, '');
+  if (!fs.existsSync(logFile)) fs.writeFileSync(logFile, '');
 
   return dest;
 }

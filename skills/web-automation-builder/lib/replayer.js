@@ -101,6 +101,7 @@ function executeStep(step, index, params, playwrightTool, prevCmd) {
 
   let stepSuccess = false;
   let lastError = null;
+  let locatorIndex = null;
 
   if (chain.length === 0) {
     // navigate 等无 locator 的步骤
@@ -111,11 +112,12 @@ function executeStep(step, index, params, playwrightTool, prevCmd) {
       lastError = e;
     }
   } else {
-    for (const locArgs of chain) {
-      const args = Object.assign({}, locArgs, renderedArgs);
+    for (let li = 0; li < chain.length; li++) {
+      const args = Object.assign({}, chain[li], renderedArgs);
       try {
         execPlaywright(playwrightTool, cmd, args, stepTimeout);
         stepSuccess = true;
+        locatorIndex = li;
         break;
       } catch (e) {
         lastError = e;
@@ -141,6 +143,7 @@ function executeStep(step, index, params, playwrightTool, prevCmd) {
       description: step.description,
     };
     if (warning) result.warning = warning;
+    if (locatorIndex !== null) result.locatorIndex = locatorIndex;
     return result;
   } else {
     // 失败截图（best-effort）
@@ -211,4 +214,21 @@ function replay(workflow, params, startFrom) {
   };
 }
 
-module.exports = { replay, renderValue, buildLocatorChain, CMD_MAP };
+function getSteps(workflow) {
+  return {
+    name: workflow.name,
+    totalSteps: workflow.steps.length,
+    params: workflow.params || [],
+    steps: workflow.steps.map((s, i) => ({
+      step: i + 1,
+      intent: s.intent || s.description,
+      description: s.description,
+      command: s.command,
+      locators: s.locators || null,
+      args: s.args || null,
+      waitAfter: s.waitAfter || null,
+    })),
+  };
+}
+
+module.exports = { replay, executeStep, getSteps, renderValue, buildLocatorChain, CMD_MAP };

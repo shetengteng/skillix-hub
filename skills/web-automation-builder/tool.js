@@ -8,7 +8,7 @@ const { success, error } = require('./lib/response');
 const { getPlaywrightTool, filterNavigations } = require('./lib/config');
 const { readState, requestStop, waitForResult, cleanupFiles, isProcessAlive } = require('./lib/recorder');
 const store = require('./lib/store');
-const { replay } = require('./lib/replayer');
+const { replay, executeStep, getSteps } = require('./lib/replayer');
 const { generate } = require('./lib/generator');
 const { exportScript } = require('./lib/exporter');
 
@@ -188,6 +188,33 @@ const COMMANDS = {
     });
   },
 
+  // LLM-First: 返回 workflow 步骤列表
+  async replaySteps(params) {
+    if (!params.id) return error('id is required');
+    const wf = store.load(params.id);
+    if (!wf) return error(`Workflow not found: ${params.id}`);
+    return success(getSteps(wf));
+  },
+
+  // LLM-First: 执行 workflow 中的单个步骤
+  async replayStep(params) {
+    if (!params.id) return error('id is required');
+    if (!params.step) return error('step number is required (1-based)');
+    const wf = store.load(params.id);
+    if (!wf) return error(`Workflow not found: ${params.id}`);
+
+    const idx = params.step - 1;
+    if (idx < 0 || idx >= wf.steps.length) {
+      return error(`Invalid step: ${params.step}, total: ${wf.steps.length}`);
+    }
+
+    const pw = getPlaywrightTool();
+    if (!pw) return error('Playwright Skill not found. Install it first.');
+
+    const result = executeStep(wf.steps[idx], idx, params.params || {}, pw, null);
+    return success(result);
+  },
+
   async generate(params) {
     if (!params.id) return error('id is required');
     if (!params.skillName) return error('skillName is required');
@@ -249,31 +276,73 @@ const COMMANDS = {
   },
 
   async install(params) {
+    const { execSync } = require('child_process');
     const target = params.target;
-    if (!target) return error('target is required (e.g. "~/.cursor/skills/web-automation-builder")');
+    const COPY_ITEMS = ['SKILL.md', 'tool.js', 'package.json', 'package-lock.json', 'lib', 'templates'];
 
-    const srcDir = path.join(__dirname);
-    const destDir = path.resolve(target.replace(/^~/, process.env.HOME || ''));
-    const COPY_ITEMS = ['SKILL.md', 'tool.js', 'package.json', 'lib', 'templates'];
+    if (target) {
+      const srcDir = __dirname;
+      const destDir = path.resolve(target.replace(/^~/, process.env.HOME || ''));
+
+      try {
+        fs.mkdirSync(destDir, { recursive: true });
+        for (const item of COPY_ITEMS) {
+          const src = path.join(srcDir, item);
+          if (!fs.existsSync(src)) continue;
+          fs.cpSync(src, path.join(destDir, item), { recursive: true, force: true });
+        }
+
+        execSync('npm install', { cwd: destDir, stdio: 'inherit' });
+
+        return success({
+          message: `Installed to ${destDir} (copy + npm install)`,
+          path: destDir,
+        });
+      } catch (e) {
+        return error(`Install failed: ${e.message}`);
+      }
+    }
 
     try {
-      fs.mkdirSync(destDir, { recursive: true });
-      for (const item of COPY_ITEMS) {
-        const src = path.join(srcDir, item);
-        if (!fs.existsSync(src)) continue;
-        fs.cpSync(src, path.join(destDir, item), { recursive: true, force: true });
-      }
-
-      const pw = getPlaywrightTool();
-      const pwStatus = pw ? 'found' : 'NOT FOUND — install Playwright Skill first';
-
-      return success({
-        message: `Installed to ${destDir}`,
-        path: destDir,
-        playwright: pwStatus,
-      });
+      execSync('npm install', { cwd: __dirname, stdio: 'inherit' });
+      return success({ message: 'Dependencies installed in source directory' });
     } catch (e) {
       return error(`Install failed: ${e.message}`);
+    }
+  },
+
+  async update(params) {
+    const { execSync } = require('child_process');
+    const target = params.target;
+    const destDir = target
+      ? path.resolve(target.replace(/^~/, process.env.HOME || ''))
+      : __dirname;
+    const COPY_ITEMS = ['SKILL.md', 'tool.js', 'package.json', 'package-lock.json', 'lib', 'templates'];
+
+    if (target) {
+      const srcDir = __dirname;
+      try {
+        for (const item of COPY_ITEMS) {
+          const src = path.join(srcDir, item);
+          if (!fs.existsSync(src)) continue;
+          const dest = path.join(destDir, item);
+          if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true });
+          fs.cpSync(src, dest, { recursive: true, force: true });
+        }
+      } catch (e) {
+        return error(`Update copy failed: ${e.message}`);
+      }
+    }
+
+    const nm = path.join(destDir, 'node_modules');
+    try {
+      if (fs.existsSync(nm)) fs.rmSync(nm, { recursive: true });
+      execSync('npm install', { cwd: destDir, stdio: 'inherit' });
+      return success({
+        message: `Update completed at ${destDir} (clean reinstall)`,
+      });
+    } catch (e) {
+      return error(`Update failed: ${e.message}`);
     }
   },
 };
@@ -284,7 +353,7 @@ async function main() {
   if (!command) {
     console.log(JSON.stringify(error(
       "Usage: node tool.js <command> '{json_params}'\n" +
-      'Commands: record, stop, save, status, list, show, delete, replay, generate, export, exec, install'
+      'Commands: record, stop, save, status, list, show, delete, replay, replaySteps, replayStep, generate, export, exec, install, update'
     )));
     process.exit(1);
   }
