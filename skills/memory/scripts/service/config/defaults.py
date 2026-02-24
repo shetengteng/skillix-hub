@@ -139,7 +139,7 @@ def _save_json_file(path: str, data: dict):
 
 DAILY_DIR_NAME = "daily"
 MEMORY_MD = "MEMORY.md"
-USER_MEMORY_MD = "USER_MEMORY.md"
+NOTES_MD = "NOTES.md"
 FACTS_FILE = "facts.jsonl"
 SESSIONS_FILE = "sessions.jsonl"
 INDEX_DB = "index.sqlite"

@@ -197,6 +197,7 @@ Agent: 已将所有配置重置为默认值。
 .cursor/skills/memory-data/
 ├── config.json          # 项目级配置（可选）
 ├── MEMORY.md            # 核心记忆（Agent 直接编辑）
+├── NOTES.md             # 用户笔记（手动维护，不被自动修改）
 ├── facts.jsonl          # 全局事实记录
 ├── sessions.jsonl       # 会话摘要
 ├── index.sqlite         # 搜索索引（FTS5 + 向量）

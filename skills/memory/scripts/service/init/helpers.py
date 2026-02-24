@@ -109,6 +109,15 @@ def init_memory_dir(project_path):
             with open(memory_md, "w", encoding="utf-8") as f:
                 f.write("# 核心记忆\n\n## 用户偏好\n\n## 项目背景\n\n## 重要决策\n")
 
+    notes_md = os.path.join(memory_dir, "NOTES.md")
+    if not os.path.exists(notes_md):
+        notes_template = os.path.join(TEMPLATES_DIR, "NOTES.md")
+        if os.path.exists(notes_template):
+            shutil.copy2(notes_template, notes_md)
+        else:
+            with open(notes_md, "w", encoding="utf-8") as f:
+                f.write("# 笔记\n\n在这里写下你希望 AI 始终记住的内容。此文件由你手动维护，不会被自动修改。\n")
+
     readme_md = os.path.join(memory_dir, "README.md")
     if not os.path.exists(readme_md):
         readme_template = os.path.join(TEMPLATES_DIR, "memory-data-README.md")

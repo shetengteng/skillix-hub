@@ -20,7 +20,7 @@ const defaultConfig = {
     navigation: 60000,
   },
   outputDir: path.join(os.tmpdir(), 'playwright-skill-output'),
-  stateDir: path.join(path.dirname(path.dirname(__filename)), 'playwright-data'),
+  stateDir: path.join(path.dirname(path.dirname(path.dirname(__filename))), 'playwright-data'),
 };
 
 function resolveConfig(overrides = {}) {

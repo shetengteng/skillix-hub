@@ -1,0 +1,20 @@
+请为 "{{SKILL_NAME}}" Skill 创建 SKILL.md，路径：{{DEST}}/SKILL.md
+
+docs/ 目录已包含 {{DOC_COUNT}} 个文档文件（共约 {{TOTAL_TOKENS}} tokens）。
+文档类型：{{DOC_TYPE}}
+来源：{{SOURCES}}
+
+文档文件列表：
+{{DOC_INDEX}}
+
+创建要求：
+1. 先阅读核心文档文件（{{TOP_DOCS}}）以理解这个库/工具的功能
+2. 编写一份帮助 AI Agent 理解和使用该文档的 SKILL.md
+3. SKILL.md 应包含：
+   - YAML frontmatter，含 name 和简洁的 description（2-3 句话概括）
+   - 简要介绍这个库的功能和使用场景
+   - 文档涵盖的核心概念或组件
+   - "使用方式" 章节，说明 Agent 应如何利用 docs/ 中的文件
+   - 文档索引，列出所有 doc 文件
+4. SKILL.md 保持精简（80 行以内），详细内容在 docs/ 中
+5. 使用与文档相同的语言编写

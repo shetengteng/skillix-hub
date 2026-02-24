@@ -23,6 +23,10 @@ skills/agent-interact/ui/dist/
 skills/agent-interact/.server.pid
 skills/agent-interact/.electron.pid
 
+# Skill runtime data (all *-data directories under skills/)
+skills/*-data/
+skills/**/.*-data/
+
 # OS
 .DS_Store
 Thumbs.db

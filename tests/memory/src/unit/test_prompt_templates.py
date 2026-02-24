@@ -94,7 +94,7 @@ class TestSessionSaveTemplate(unittest.TestCase):
             distill_section=distill,
         )
         self.assertIn("精炼核心记忆", result)
-        self.assertIn("USER_MEMORY.md", result)
+        self.assertIn("NOTES.md", result)
 
     def test_template_without_distill_section(self):
         tpl = save_load("session_save_template.txt")
@@ -127,10 +127,10 @@ class TestDistillSectionTemplate(unittest.TestCase):
         self.assertIn("distill_refined.py", result)
         self.assertIn("test-distill", result)
 
-    def test_template_mentions_user_memory(self):
+    def test_template_mentions_notes(self):
         tpl = save_load("distill_section_template.txt")
-        self.assertIn("USER_MEMORY.md", tpl)
-        self.assertIn("用户自定义记忆", tpl)
+        self.assertIn("NOTES.md", tpl)
+        self.assertIn("用户笔记", tpl)
 
     def test_template_contains_refine_rules(self):
         tpl = save_load("distill_section_template.txt")

@@ -11,8 +11,9 @@ const DATA_DIR = path.join(SKILLS_PARENT, 'doc-skill-generator-data');
 const EXTRACTS_DIR = path.join(DATA_DIR, 'extracts');
 const CACHE_DIR = path.join(DATA_DIR, 'cache');
 const SPECS_DIR = path.join(DATA_DIR, 'specs');
+const GENERATED_DIR = path.join(DATA_DIR, 'generated');
 
-for (const dir of [EXTRACTS_DIR, CACHE_DIR, SPECS_DIR]) {
+for (const dir of [EXTRACTS_DIR, CACHE_DIR, SPECS_DIR, GENERATED_DIR]) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
@@ -31,5 +32,6 @@ module.exports = {
   EXTRACTS_DIR,
   CACHE_DIR,
   SPECS_DIR,
+  GENERATED_DIR,
   getPlaywrightTool,
 };

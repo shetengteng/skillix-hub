@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""USER_MEMORY.md 加载测试"""
+"""NOTES.md 加载测试"""
 import json
 import sys
 import unittest
@@ -11,43 +11,44 @@ from test_common import IsolatedWorkspaceCase, SCRIPTS_DIR
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from service.hooks.load_memory import load_context
-from service.config import MEMORY_MD, USER_MEMORY_MD
+from service.config import MEMORY_MD, NOTES_MD
 
 
-class TestUserMemoryLoad(IsolatedWorkspaceCase):
+class TestNotesLoad(IsolatedWorkspaceCase):
 
-    def test_loads_user_memory_when_exists(self):
-        user_md = self.memory_dir / USER_MEMORY_MD
-        user_md.write_text(
-            "# 用户笔记\n\n- 项目截止日期 2026-03-15\n- 联系人张三\n",
+    def test_loads_notes_when_exists(self):
+        notes = self.memory_dir / NOTES_MD
+        notes.write_text(
+            "# 笔记\n\n- 项目截止日期 2026-03-15\n- 联系人张三\n",
             encoding="utf-8",
         )
         context = load_context(self.workspace)
-        self.assertIn("用户自定义记忆", context)
+        self.assertIn("用户笔记", context)
         self.assertIn("项目截止日期", context)
         self.assertIn("联系人张三", context)
 
-    def test_no_user_memory_when_file_missing(self):
+    def test_no_notes_when_file_missing(self):
+        (self.memory_dir / NOTES_MD).unlink(missing_ok=True)
         context = load_context(self.workspace)
-        self.assertNotIn("用户自定义记忆", context)
+        self.assertNotIn("用户笔记", context)
 
-    def test_no_user_memory_when_file_empty(self):
-        user_md = self.memory_dir / USER_MEMORY_MD
-        user_md.write_text("", encoding="utf-8")
+    def test_no_notes_when_file_empty(self):
+        notes = self.memory_dir / NOTES_MD
+        notes.write_text("", encoding="utf-8")
         context = load_context(self.workspace)
-        self.assertNotIn("用户自定义记忆", context)
+        self.assertNotIn("用户笔记", context)
 
     def test_both_memory_files_loaded(self):
-        user_md = self.memory_dir / USER_MEMORY_MD
-        user_md.write_text("- 用户自定义内容\n", encoding="utf-8")
+        notes = self.memory_dir / NOTES_MD
+        notes.write_text("- 用户自定义内容\n", encoding="utf-8")
         context = load_context(self.workspace)
         self.assertIn("核心记忆", context)
-        self.assertIn("用户自定义记忆", context)
+        self.assertIn("用户笔记", context)
         self.assertIn("用户自定义内容", context)
         self.assertIn("语言：中文", context)
 
-    def test_user_memory_constant_value(self):
-        self.assertEqual(USER_MEMORY_MD, "USER_MEMORY.md")
+    def test_notes_constant_value(self):
+        self.assertEqual(NOTES_MD, "NOTES.md")
 
 
 class TestUpdateSessionState(IsolatedWorkspaceCase):

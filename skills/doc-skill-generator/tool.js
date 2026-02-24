@@ -8,7 +8,7 @@ const { fetchAll, loadExtract, listExtracts, deleteExtract } = require('./lib/fe
 const { summarizeExtract, extractToMarkdown } = require('./lib/extractor');
 const { analyze } = require('./lib/analyzer');
 const { generate } = require('./lib/generator');
-const { SKILL_DIR, EXTRACTS_DIR } = require('./lib/config');
+const { SKILL_DIR, EXTRACTS_DIR, GENERATED_DIR } = require('./lib/config');
 
 const COMMANDS = {
   async fetch(params) {
@@ -149,23 +149,44 @@ const COMMANDS = {
   async generate(params) {
     if (!params.id) return error('id is required');
     if (!params.skillName) return error('skillName is required');
-    if (!params.target) return error('target is required');
 
     const extract = loadExtract(params.id);
     if (!extract) return error(`Extract not found: ${params.id}`);
 
     try {
       const analysis = analyze(extract);
-      const dest = generate(extract, analysis, params.skillName, params.target);
+      const { dest, docFiles, prompt } = generate(extract, analysis, params.skillName);
       return success({
-        message: `Generated skill "${params.skillName}" at ${dest}`,
-        path: dest,
+        message: `Generated to staging: ${dest}. Use "install-skill" to install to target.`,
+        stagingPath: dest,
         docType: analysis.docType?.primary,
+        docFiles: docFiles.length,
         commands: analysis.suggestedCommands?.length || 0,
+        skillMdPrompt: prompt,
       });
     } catch (e) {
       return error(`Generate failed: ${e.message}`);
     }
+  },
+
+  async 'install-skill'(params) {
+    if (!params.skillName) return error('skillName is required');
+    if (!params.target) return error('target is required');
+
+    const stagingDir = path.join(GENERATED_DIR, params.skillName);
+    if (!fs.existsSync(stagingDir)) {
+      return error(`No staged skill found: ${stagingDir}. Run "generate" first.`);
+    }
+
+    const dest = path.resolve(params.target.replace(/^~/, process.env.HOME || ''));
+    fs.mkdirSync(dest, { recursive: true });
+    fs.cpSync(stagingDir, dest, { recursive: true, force: true });
+
+    return success({
+      message: `Installed "${params.skillName}" from staging to ${dest}`,
+      stagingPath: stagingDir,
+      installedPath: dest,
+    });
   },
 
   async update(params) {
@@ -190,7 +211,10 @@ const COMMANDS = {
     const extractId = fetchResult.result.id;
     const skillName = path.basename(dest);
 
-    return COMMANDS.generate({ id: extractId, skillName, target: params.target });
+    const genResult = await COMMANDS.generate({ id: extractId, skillName });
+    if (genResult.error) return genResult;
+
+    return COMMANDS['install-skill']({ skillName, target: params.target });
   },
 
   async install(params) {
