@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../
 from service.config import MEMORY_MD, get_memory_dir, get_daily_dir
 from storage.jsonl import read_daily_facts
 from core.utils import utcnow, parse_iso
+from service.memory.session_state import read_session_state
 from service.logger import get_logger, redirect_to_project
 from datetime import timedelta
 
@@ -24,7 +25,7 @@ DISTILL_DEFAULTS = {
     "enabled": True,
     "min_confidence": 0.85,
     "min_age_days": 1,
-    "max_items_per_run": 5,
+    "max_items_per_run": 15,
     "keywords_rules": {
         "项目规范": ["原则", "规范", "规则", "必须", "不能", "禁止", "不允许", "约定"],
         "重要决策": ["决定", "选择", "使用", "采用", "方案", "替代", "改为", "切换"],
@@ -172,8 +173,9 @@ def write_to_memory_md(path, section_items):
         f.writelines(lines)
 
 
-def distill(project_path, config=None):
-    """主入口：从 daily 提炼高价值事实到 MEMORY.md"""
+def distill(project_path, config=None, session_id=None):
+    """主入口：从 daily 提炼高价值事实到 MEMORY.md。
+    如果当前会话已由 Agent 精炼（distilled=true），则跳过。"""
     if config is None:
         config = DISTILL_DEFAULTS
 
@@ -182,6 +184,13 @@ def distill(project_path, config=None):
         return 0
 
     memory_dir = get_memory_dir(project_path)
+
+    if session_id:
+        state = read_session_state(memory_dir, session_id)
+        if state.get("distilled"):
+            log.info("当前会话已由 Agent 精炼，跳过规则提炼 session=%s", session_id[:12])
+            return 0
+
     daily_dir = get_daily_dir(project_path)
     memory_md_path = os.path.join(memory_dir, MEMORY_MD)
 

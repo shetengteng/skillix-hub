@@ -6,7 +6,7 @@ import copy
 import functools
 from .defaults import (
     _DEFAULTS, _get_dotpath,
-    DAILY_DIR_NAME, MEMORY_MD, SESSIONS_FILE, INDEX_DB, FACTS_FILE,
+    DAILY_DIR_NAME, MEMORY_MD, USER_MEMORY_MD, SESSIONS_FILE, INDEX_DB, FACTS_FILE,
     get_project_path,
 )
 from .manager import Config

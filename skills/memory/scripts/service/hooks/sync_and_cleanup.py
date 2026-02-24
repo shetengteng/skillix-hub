@@ -52,10 +52,10 @@ def sync_index(project_path: str):
         log.warning("索引同步异常: %s", e)
 
 
-def distill_facts(project_path: str):
+def distill_facts(project_path: str, session_id: str = None):
     """调用 distill_to_memory.py 将高价值事实提炼到 MEMORY.md"""
     try:
-        count = distill(project_path)
+        count = distill(project_path, session_id=session_id)
         if count > 0:
             log.info("事实提炼完成: %d 条写入 MEMORY.md", count)
     except Exception as e:
@@ -306,7 +306,7 @@ def main(event, project_path):
     truncate_sessions(memory_dir)
     auto_generate_summary(memory_dir, event)
     check_summary_saved(memory_dir, event)
-    distill_facts(project_path)
+    distill_facts(project_path, session_id=event.get("conversation_id"))
     log_session_metrics(memory_dir, event)
     log_session_end(memory_dir, event)
     clean_old_logs(project_path)

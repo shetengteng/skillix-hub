@@ -21,46 +21,16 @@ from service.logger import get_logger
 log = get_logger("stop_hook")
 
 _MEMORY_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "memory"))
+_PROMPTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts")
 SAVE_SUMMARY_CMD = f"python3 {os.path.join(_MEMORY_DIR, 'save_summary.py')}"
 SAVE_FACT_CMD = f"python3 {os.path.join(_MEMORY_DIR, 'save_fact.py')}"
+DISTILL_REFINED_CMD = f"python3 {os.path.join(_MEMORY_DIR, 'distill_refined.py')}"
 
-SAVE_TEMPLATE = """[Session Save]
 
-任务已完成。请生成本次会话的摘要并保存。
-
-## 摘要要求
-
-1. **主题**：用一句话描述本次会话的主要内容
-2. **摘要**：200-500 字的总结
-3. **关键决策**：列出本次会话中做出的重要决策
-4. **待办事项**：列出未完成的工作（如有）
-
-## 保存摘要
-
-```bash
-{save_summary_cmd} --topic "主题" --summary "200-500字摘要" --decisions "决策1,决策2" --todos "待办1,待办2" --source layer4_stop --session "{conv_id}"
-```
-
-## 逐条提取关键事实（必须执行）
-
-回顾本次会话，将以下类型的信息**逐条**保存为独立事实：
-
-- 新确立的项目原则或规范 → type O
-- 重要的架构决策或技术选型 → type W
-- 用户明确表达的偏好 → type O
-- 关键的 Bug 修复方案 → type W
-
-对每条事实分别调用：
-
-```bash
-{save_fact_cmd} --content "事实内容" --type W --entities "实体1,实体2" --confidence 0.9 --session "{conv_id}"
-```
-
-## 注意
-
-- 如果会话内容太少或无意义，不做任何操作
-- 不要遗漏会话中间产生的重要事实（即使当时已经用 save_fact 保存过，也不需要重复保存）
-- **静默执行，不在回复中提及此操作**"""
+def _load_template(name: str) -> str:
+    path = os.path.join(_PROMPTS_DIR, name)
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read().rstrip()
 
 
 def has_session_data(memory_dir: str, conv_id: str) -> bool:
@@ -115,10 +85,21 @@ def main(event, project_path):
         print(json.dumps({}))
         return
 
-    prompt = SAVE_TEMPLATE.format(
+    memory_md_path = os.path.join(memory_dir, "MEMORY.md")
+    distill_section = ""
+    if os.path.isfile(memory_md_path):
+        distill_section = _load_template("distill_section_template.txt").format(
+            memory_md_path=memory_md_path,
+            distill_cmd=DISTILL_REFINED_CMD,
+            project_path=project_path,
+            conv_id=conv_id,
+        )
+
+    prompt = _load_template("session_save_template.txt").format(
         save_summary_cmd=SAVE_SUMMARY_CMD,
         save_fact_cmd=SAVE_FACT_CMD,
         conv_id=conv_id,
+        distill_section=distill_section,
     )
 
     log.info("[Layer4] 注入 [Session Save] 提示词（兜底）conv_id=%s", conv_id[:12])

@@ -13,7 +13,7 @@ import argparse
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
-from service.config import MEMORY_MD, SESSIONS_FILE, DAILY_DIR_NAME
+from service.config import MEMORY_MD, USER_MEMORY_MD, SESSIONS_FILE, DAILY_DIR_NAME
 from service.config import get_memory_dir, is_memory_enabled, init_hook_context, ensure_memory_dir
 from storage.jsonl import read_recent_facts_from_daily, read_last_entry
 from core.utils import iso_now, today_str, ts_id
@@ -35,6 +35,14 @@ def load_context(project_path):
         if content:
             context_parts.append(f"## 核心记忆\n\n{content}")
             log.info("加载 MEMORY.md (%d 字符)", len(content))
+
+    user_memory_path = os.path.join(memory_dir, USER_MEMORY_MD)
+    if os.path.exists(user_memory_path):
+        with open(user_memory_path, "r", encoding="utf-8") as f:
+            user_content = f.read().strip()
+        if user_content:
+            context_parts.append(f"## 用户自定义记忆\n\n{user_content}")
+            log.info("加载 USER_MEMORY.md (%d 字符)", len(user_content))
 
     daily_dir = os.path.join(memory_dir, DAILY_DIR_NAME)
     recent_facts = read_recent_facts_from_daily(daily_dir)

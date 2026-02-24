@@ -96,6 +96,30 @@ def update_fact_count(memory_dir: str, session_id: str, memory_type: str):
         log.warning("更新 fact 计数失败 session=%s: %s", session_id[:12], e)
 
 
+def update_session_state(memory_dir: str, session_id: str, updates: dict):
+    """通用更新会话状态字段（加锁 merge 写入）"""
+    if not session_id:
+        return
+    state_dir = os.path.join(memory_dir, "session_state")
+    os.makedirs(state_dir, exist_ok=True)
+    try:
+        with FileLock(_lock_path(memory_dir, session_id), timeout=5):
+            path = _state_path(memory_dir, session_id)
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    state = json.load(f)
+            else:
+                state = {"session_id": session_id, "created_at": iso_now()}
+
+            state.update(updates)
+            state["updated_at"] = iso_now()
+
+            with open(path, "w") as f:
+                json.dump(state, ensure_ascii=False, fp=f)
+    except (TimeoutError, OSError) as e:
+        log.warning("更新会话状态失败 session=%s: %s", session_id[:12], e)
+
+
 # --- 全局文件锁（sessions.jsonl 写入串行化）---
 
 def _sessions_lock_path(memory_dir: str) -> str:
