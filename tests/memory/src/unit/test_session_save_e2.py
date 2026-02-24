@@ -214,9 +214,10 @@ class TestFlushMemoryStageTemplate(IsolatedWorkspaceCase):
     """flush_memory.py 模板包含阶段摘要要求"""
 
     def test_flush_template_contains_type_s(self):
-        from service.hooks.flush_memory import FLUSH_TEMPLATE
-        self.assertIn("--type S", FLUSH_TEMPLATE)
-        self.assertIn("阶段摘要", FLUSH_TEMPLATE)
+        from service.hooks.flush_memory import _load_template
+        template = _load_template("flush_template.txt")
+        self.assertIn("--type S", template)
+        self.assertIn("阶段摘要", template)
 
 
 class TestAutoGenerateSummary(IsolatedWorkspaceCase):

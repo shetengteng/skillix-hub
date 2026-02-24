@@ -1,9 +1,12 @@
 """配置服务：提供 Config 类、默认值、常量和配置访问函数。"""
+from __future__ import annotations
+
 import os
 import sys
 import json
 import copy
 import functools
+from typing import Any, Callable
 from .defaults import (
     _DEFAULTS, _get_dotpath,
     DAILY_DIR_NAME, MEMORY_MD, USER_MEMORY_MD, SESSIONS_FILE, INDEX_DB, FACTS_FILE,
@@ -51,10 +54,8 @@ def init_hook_context(event: dict) -> str:
     os.environ["MEMORY_PROJECT_PATH"] = project_path
     redirect_to_project(project_path)
     if is_memory_enabled(project_path):
-        memory_dir = os.path.join(
-            project_path,
-            _get_dotpath(_DEFAULTS, "paths.data_dir", ".cursor/skills/memory-data"),
-        )
+        data_dir = str(_get_dotpath(_DEFAULTS, "paths.data_dir", ".cursor/skills/memory-data"))
+        memory_dir = os.path.join(project_path, data_dir)
         ensure_memory_dir(memory_dir)
     return project_path
 
@@ -64,10 +65,11 @@ def get_config(project_path=None):
     return Config(project_path) if project_path else Config()
 
 
-def get_memory_dir(project_path):
+def get_memory_dir(project_path: str) -> str:
     """项目的记忆数据目录绝对路径。"""
     cfg = get_config(project_path)
-    return os.path.join(project_path, cfg.get("paths.data_dir"))
+    data_dir = str(cfg.get("paths.data_dir"))
+    return os.path.join(project_path, data_dir)
 
 
 def get_daily_dir(project_path):
@@ -129,14 +131,13 @@ def require_hook_memory(disabled_output=None):
     if disabled_output is None:
         disabled_output = {}
 
-    def decorator(main_fn):
-        @functools.wraps(main_fn)
-        def wrapper():
+    def decorator(main_fn: Callable[..., Any]) -> Callable[[], None]:
+        def wrapper() -> None:
             import datetime as _dt
             with open("/tmp/memory_hook_debug.log", "a") as _f:
                 _f.write(f"{_dt.datetime.now()} {main_fn.__name__} called\n")
 
-            event = {}
+            event: dict[str, Any] = {}
             try:
                 raw = sys.stdin.read().strip()
                 if raw:
@@ -152,6 +153,9 @@ def require_hook_memory(disabled_output=None):
                 print(json.dumps(disabled_output))
                 return
 
-            return main_fn(event, project_path)
+            main_fn(event, project_path)
+
+        wrapper.__name__ = main_fn.__name__
+        wrapper.__doc__ = main_fn.__doc__
         return wrapper
     return decorator
