@@ -9,10 +9,15 @@ const path = require('path');
 const { execSync } = require('child_process');
 const { DEFAULT_PORT, PORT_RANGE, PID_FILE } = require('./lib/config');
 
+const os = require('os');
+
 const UI_DIR = path.join(__dirname, 'ui');
 const UI_DIST = path.join(UI_DIR, 'dist');
-const ELECTRON_PID_FILE = path.join(__dirname, '.electron.pid');
 const ELECTRON_MAIN = path.join(__dirname, 'electron', 'main.js');
+
+function electronPidFile(port) {
+  return path.join(os.tmpdir(), `agent-interact-electron-${port}.pid`);
+}
 
 function getPort(params) {
   return params.port || DEFAULT_PORT;
@@ -53,14 +58,15 @@ function getElectronBin() {
   }
 }
 
-function isElectronRunning() {
-  if (!fs.existsSync(ELECTRON_PID_FILE)) return false;
-  const pid = parseInt(fs.readFileSync(ELECTRON_PID_FILE, 'utf-8').trim(), 10);
+function isElectronRunning(port) {
+  const pidFile = electronPidFile(port);
+  if (!fs.existsSync(pidFile)) return false;
+  const pid = parseInt(fs.readFileSync(pidFile, 'utf-8').trim(), 10);
   try {
     process.kill(pid, 0);
     return true;
   } catch {
-    try { fs.unlinkSync(ELECTRON_PID_FILE); } catch { /* ok */ }
+    try { fs.unlinkSync(pidFile); } catch { /* ok */ }
     return false;
   }
 }
@@ -77,17 +83,18 @@ function startElectron(port) {
   child.unref();
 
   try {
-    fs.writeFileSync(ELECTRON_PID_FILE, String(child.pid));
+    fs.writeFileSync(electronPidFile(port), String(child.pid));
   } catch { /* ok */ }
 
   return child.pid;
 }
 
-function stopElectron() {
-  if (!fs.existsSync(ELECTRON_PID_FILE)) return;
-  const pid = parseInt(fs.readFileSync(ELECTRON_PID_FILE, 'utf-8').trim(), 10);
+function stopElectron(port) {
+  const pidFile = electronPidFile(port);
+  if (!fs.existsSync(pidFile)) return;
+  const pid = parseInt(fs.readFileSync(pidFile, 'utf-8').trim(), 10);
   try { process.kill(pid, 'SIGTERM'); } catch { /* already dead */ }
-  try { fs.unlinkSync(ELECTRON_PID_FILE); } catch { /* ok */ }
+  try { fs.unlinkSync(pidFile); } catch { /* ok */ }
 }
 
 function openBrowserFallback(url) {
@@ -128,7 +135,7 @@ function isRunning(port) {
 }
 
 function ensureElectron(port) {
-  if (isElectronRunning()) return 'running';
+  if (isElectronRunning(port)) return 'running';
   const pid = startElectron(port);
   if (pid) return 'started';
   openBrowserFallback(`http://127.0.0.1:${port}`);
@@ -175,7 +182,7 @@ const COMMANDS = {
 
   async stop(params) {
     const port = getPort(params);
-    stopElectron();
+    stopElectron(port);
     if (!(await isRunning(port))) {
       return success({ message: 'Server is not running' });
     }
@@ -191,9 +198,9 @@ const COMMANDS = {
     const port = getPort(params);
     try {
       const data = await httpRequest('GET', '/api/status', port);
-      return success({ ...data, electron: isElectronRunning() ? 'running' : 'stopped' });
+      return success({ ...data, electron: isElectronRunning(port) ? 'running' : 'stopped' });
     } catch {
-      return success({ status: 'stopped', electron: isElectronRunning() ? 'running' : 'stopped' });
+      return success({ status: 'stopped', electron: isElectronRunning(port) ? 'running' : 'stopped' });
     }
   },
 
