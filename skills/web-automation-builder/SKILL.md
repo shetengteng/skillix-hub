@@ -138,30 +138,52 @@ LLM 在录制流程中的行为协议：
    - 提供文本输入区域让用户补充说明
    - 用户选择"生成并保存"或"不需要"
 7. 用户确认后 → 生成结构化工作流 JSON → 调用 save 保存
-8. 向用户报告保存结果，询问是否生成独立 Skill
+8. 弹出 agent-interact custom 对话框询问产物生成（见下方代码）
+   - 提供生成模式选择（Skill / Skill+Playwright / 仅Playwright）
+   - 提供 Skill 名称和目标路径输入
+   - 用户选择"生成"或"跳过"
+9. 用户确认后 → 调用 generate 命令生成产物
 ```
 
-### agent-interact 交互（必须执行，不可跳过）
+**重要**：步骤 8 必须通过 agent-interact 弹框交互，禁止在对话文本中提问。所有需要用户选择或输入的环节都应使用 agent-interact。
 
-record 命令返回成功后，**必须立即**调用 agent-interact skill 弹出等待对话框。
-这是用户唯一的交互入口——告知系统"操作完成"。
+### agent-interact 强制交互规则
+
+**核心原则**：在整个录制流程中，所有需要用户选择、确认或输入的环节，**必须**通过 agent-interact 弹框完成。**禁止**在对话文本中提问或列出选项让用户回复。
+
+违反此规则的典型错误：
+- ❌ 在对话中写"需要我生成 Skill 吗？请选择：1. Skill 2. Playwright"
+- ❌ 在对话中写"请告诉我 Skill 名称和目标路径"
+- ✅ 调用 agent-interact dialog 弹出选择/输入对话框
+
+**必须使用 agent-interact 的环节**：
+- 步骤 3：录制等待（wait 类型）
+- 步骤 6：分析报告展示 + 确认（custom 类型）
+- 步骤 8：产物选择 + 参数输入（custom 类型）
 
 **调用方式**（选择一种可用的路径）：
 
 ```bash
 # 方式 1：项目内 skill
-node skills/agent-interact/tool.js dialog '{"type":"wait","title":"🔴 正在录制浏览器操作","message":"浏览器已打开，请在浏览器中完成所有操作。\n操作完成后点击下方按钮停止录制。","confirmText":"✅ 操作完成，停止录制","timeout":3600}'
+node skills/agent-interact/tool.js dialog '<JSON>'
 
 # 方式 2：全局安装的 skill
-node ~/.cursor/skills/agent-interact/tool.js dialog '{"type":"wait","title":"🔴 正在录制浏览器操作","message":"浏览器已打开，请在浏览器中完成所有操作。\n操作完成后点击下方按钮停止录制。","confirmText":"✅ 操作完成，停止录制","timeout":3600}'
+node ~/.cursor/skills/agent-interact/tool.js dialog '<JSON>'
 ```
 
-**降级策略**：仅当 agent-interact skill 完全不存在时，才降级为对话模式：
-在对话中告知用户"浏览器已打开，请操作完成后告诉我"，然后等待用户回复。
+**降级策略**：仅当 agent-interact skill 完全不存在时，才降级为对话模式。
 
 **注意**：
 - LLM 不应在 record 和 agent-interact 之间插入任何其他操作或对话。
 - agent-interact dialog 命令是阻塞的（等用户点击才返回），应设置足够长的超时等待（如 `block_until_ms: 3600000`），**不要**用 `sleep + 轮询` 方式。
+
+### 录制等待对话框（步骤 3）
+
+record 命令返回成功后，**必须立即**弹出等待对话框：
+
+```bash
+node skills/agent-interact/tool.js dialog '{"type":"wait","title":"🔴 正在录制浏览器操作","message":"浏览器已打开，请在浏览器中完成所有操作。\n操作完成后点击下方按钮停止录制。","confirmText":"✅ 操作完成，停止录制","timeout":3600}'
+```
 
 ### 分析报告对话框（步骤 6）
 
@@ -172,6 +194,21 @@ node skills/agent-interact/tool.js dialog '{"type":"custom","schemaVersion":"1.0
 ```
 
 用户点击"生成并保存"后，LLM 根据 rawEvents + 用户补充信息生成工作流 JSON 并保存。
+
+### 产物选择对话框（步骤 8）
+
+save 命令成功后，**必须立即**弹出 agent-interact custom 对话框让用户选择产物形态：
+
+```bash
+node skills/agent-interact/tool.js dialog '{"type":"custom","schemaVersion":"1.0","title":"🎯 生成产物选择","timeout":300,"content":[{"kind":"kv","items":[{"key":"工作流名称","value":"<name>"},{"key":"工作流 ID","value":"<id>"},{"key":"步骤数","value":"<stepCount>"}]},{"kind":"divider"},{"kind":"heading","value":"选择生成方式","level":3},{"kind":"select","id":"generateMode","label":"生成模式","options":["Skill 产物（SKILL.md + tool.js + workflow.json + package.json）","Skill + Playwright 脚本（两者兼有）","仅 Playwright 脚本（不生成 Skill）"],"default":"Skill + Playwright 脚本（两者兼有）"},{"kind":"divider"},{"kind":"input","id":"skillName","label":"Skill 名称","placeholder":"例如：deploy-staging"},{"kind":"input","id":"targetPath","label":"目标路径","placeholder":"例如：~/.cursor/skills/deploy-staging"}],"actions":[{"id":"generate","label":"✅ 生成","submit":true},{"id":"skip","label":"⏭️ 跳过","variant":"outline","submit":false}]}'
+```
+
+用户选择后，LLM 根据 `generateMode` 字段调用 generate 命令：
+- "Skill 产物..." → `generate '{"id":"<id>","skillName":"<name>","target":"<path>"}'`
+- "Skill + Playwright..." → `generate '{"id":"<id>","skillName":"<name>","target":"<path>","includePlaywright":true}'`
+- "仅 Playwright..." → `generate '{"id":"<id>","skillName":"<name>","target":"<path>","format":"playwright"}'`
+
+如果用户未填写 skillName 或 targetPath，LLM 应根据工作流名称自动生成合理的默认值。
 
 ### custom dialog schema 强制约束
 
@@ -193,7 +230,7 @@ node skills/agent-interact/tool.js dialog '{"type":"custom","schemaVersion":"1.0
 |------|------|
 | 用户要求执行重复性浏览器操作 | 主动建议录制 |
 | 用户说"录制"、"记录操作"、"学习操作" | 执行录制流程 |
-| 录制完成后 | 询问是否生成 Skill |
+| 录制完成后 | 弹出产物选择对话框 |
 | 用户说"重放"、"再执行一次" | 执行 replay |
 
 ### LLM 分析 rawEvents 的要求

@@ -176,13 +176,30 @@ class Recorder {
 
     await this._injectDOMListeners(page);
 
+    let lastNavRequestUrl = null;
+    page.on('request', (request) => {
+      if (request.isNavigationRequest() && request.frame() === page.mainFrame()) {
+        lastNavRequestUrl = request.url();
+      }
+    });
+
     page.on('framenavigated', async (frame) => {
       if (frame === page.mainFrame()) {
+        const finalUrl = frame.url();
+        if (lastNavRequestUrl && lastNavRequestUrl !== finalUrl) {
+          this._rawEvents.push({
+            type: 'navigation',
+            timestamp: new Date().toISOString(),
+            url: lastNavRequestUrl,
+            redirectedTo: finalUrl,
+          });
+        }
         this._rawEvents.push({
           type: 'navigation',
           timestamp: new Date().toISOString(),
-          url: frame.url(),
+          url: finalUrl,
         });
+        lastNavRequestUrl = null;
       }
     });
 

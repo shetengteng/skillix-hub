@@ -73,6 +73,15 @@ function generate(workflow, skillName, targetDir, options = {}) {
     const scriptName = `${skillName}.js`;
     fs.writeFileSync(path.join(dest, scriptName), toPlaywrightScript(workflow));
     files.push(scriptName);
+    const pkg = JSON.stringify({
+      name: skillName,
+      version: '1.0.0',
+      description: workflow.description || `Playwright script: ${skillName}`,
+      main: scriptName,
+      dependencies: { playwright: '^1.50.0' },
+    }, null, 2);
+    fs.writeFileSync(path.join(dest, 'package.json'), pkg);
+    files.push('package.json');
     return { dest, files };
   }
 

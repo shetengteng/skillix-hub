@@ -165,20 +165,29 @@
   }, true);
 
   var lastUrl = location.href;
-  var observer = new MutationObserver(function() {
+
+  function checkUrlChange() {
     if (location.href !== lastUrl) {
       push({ type: 'navigation', fromUrl: lastUrl, toUrl: location.href });
       lastUrl = location.href;
     }
-  });
+  }
+
+  var origPushState = history.pushState;
+  var origReplaceState = history.replaceState;
+  history.pushState = function() {
+    origPushState.apply(this, arguments);
+    checkUrlChange();
+  };
+  history.replaceState = function() {
+    origReplaceState.apply(this, arguments);
+    checkUrlChange();
+  };
+
+  var observer = new MutationObserver(checkUrlChange);
   observer.observe(document.body, { childList: true, subtree: true });
 
-  window.addEventListener('popstate', function() {
-    if (location.href !== lastUrl) {
-      push({ type: 'navigation', fromUrl: lastUrl, toUrl: location.href });
-      lastUrl = location.href;
-    }
-  });
+  window.addEventListener('popstate', checkUrlChange);
 
   window.addEventListener('hashchange', function(e) {
     push({ type: 'navigation', fromUrl: e.oldURL, toUrl: e.newURL });

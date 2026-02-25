@@ -47,8 +47,8 @@ function test_generator() {
       updatedAt: '2026-02-23T10:00:05Z',
     };
 
-    const dest = generate(wf, 'login-admin', sandbox);
-    assert(dest === sandbox, 'generate returns target path');
+    const result = generate(wf, 'login-admin', sandbox);
+    assert(result.dest === sandbox, 'generate returns target path');
 
     assert(fs.existsSync(path.join(sandbox, 'SKILL.md')), 'generates SKILL.md');
     assert(fs.existsSync(path.join(sandbox, 'tool.js')), 'generates tool.js');

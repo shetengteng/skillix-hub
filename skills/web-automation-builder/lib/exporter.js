@@ -48,7 +48,7 @@ function buildLocatorCode(loc, indent) {
 
   let scopePrefix = '';
   if (loc.context) {
-    if (loc.context.type === 'modal') scopePrefix = '[role=dialog] ';
+    if (loc.context.type === 'modal') scopePrefix = '[class*="modal"] ';
     if (loc.context.type === 'dropdown') scopePrefix = '[role=menu] ';
   }
 
@@ -67,15 +67,27 @@ function buildLocatorCode(loc, indent) {
   if (loc.role && loc.roleName) {
     entries.push(`${I}() => page.getByRole(${esc(loc.role)}, { name: ${esc(loc.roleName)} })`);
   }
-  if (loc.role && !loc.roleName) {
+  const HTML_TAGS = new Set(['a', 'button', 'div', 'span', 'input', 'select', 'textarea', 'form', 'li', 'ul', 'ol', 'table', 'tr', 'td', 'th', 'img', 'label', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'nav', 'section', 'article', 'header', 'footer', 'main']);
+  if (loc.role && !loc.roleName && !HTML_TAGS.has(loc.role)) {
     entries.push(`${I}() => page.locator('${scopePrefix}[role="${loc.role}"]')`);
+  }
+  const formTag = loc.tagName || (loc.role && HTML_TAGS.has(loc.role) ? loc.role : null);
+  if (formTag && ['input', 'select', 'textarea'].includes(formTag)) {
+    const typeAttr = loc.type ? `[type="${loc.type}"]` : '';
+    entries.push(`${I}() => page.locator('${scopePrefix}${formTag}${typeAttr}').first()`);
   }
   if (loc.id) {
     const idSuffix = loc.id.includes('_') ? loc.id.split('_').pop() : loc.id;
     entries.push(`${I}() => page.locator('${scopePrefix}[id$="${idSuffix}"]')`);
   }
   if (loc.css) {
-    entries.push(`${I}() => page.locator('${scopePrefix}${loc.css.replace(/'/g, "\\'")}')`);
+    let css = loc.css.replace(/'/g, "\\'");
+    if (scopePrefix && css.split('>').length > 5) {
+      const parts = css.split('>').map(s => s.trim());
+      const tail = parts.slice(-3).join(' > ');
+      entries.push(`${I}() => page.locator('${scopePrefix}${tail}')`);
+    }
+    entries.push(`${I}() => page.locator('${scopePrefix}${css}')`);
   }
 
   return entries;
@@ -90,12 +102,15 @@ function genWaitAfterCode(waitAfter, indent) {
   switch (waitAfter.type) {
     case 'selector':
       lines.push(`${I}await page.waitForSelector(${esc(waitAfter.value)}, { timeout: ${t} }).catch(() => {});`);
+      if (waitAfter.value && waitAfter.value.includes('modal')) {
+        lines.push(`${I}await page.waitForTimeout(2000);`);
+      }
       break;
     case 'selectorGone':
       lines.push(`${I}await page.waitForSelector(${esc(waitAfter.value)}, { state: 'hidden', timeout: ${t} }).catch(() => {});`);
       break;
     case 'url':
-      lines.push(`${I}await page.waitForURL(${esc('**' + waitAfter.value + '*')}, { timeout: ${t} }).catch(() => {});`);
+      lines.push(`${I}await page.waitForURL(${esc('**' + waitAfter.value + '*')}, { timeout: ${Math.max(t, 60000)} }).catch(() => {});`);
       break;
     case 'text':
       lines.push(`${I}await page.getByText(${esc(waitAfter.value)}).waitFor({ timeout: ${t} }).catch(() => {});`);
@@ -123,10 +138,14 @@ function toPlaywrightScript(workflow) {
   lines.push(`'use strict';`);
   lines.push(``);
   lines.push(`const { chromium } = require('playwright');`);
+  lines.push(`const path = require('path');`);
   lines.push(``);
   lines.push(`// ${workflow.name}`);
   if (workflow.description) lines.push(`// ${workflow.description}`);
   lines.push(`// Generated: ${new Date().toISOString()}`);
+  lines.push(``);
+  lines.push(`const CHROME_PROFILE = process.env.CHROME_PROFILE`);
+  lines.push(`  || path.join(require('os').homedir(), '.cursor/skills/web-automation-builder-data/chrome-profile');`);
   lines.push(``);
 
   if (hasParams) {
@@ -144,7 +163,7 @@ function toPlaywrightScript(workflow) {
   lines.push(`  for (const fn of locatorFns) {`);
   lines.push(`    try {`);
   lines.push(`      const el = fn();`);
-  lines.push(`      await el.waitFor({ state: 'visible', timeout: 5000 });`);
+  lines.push(`      await el.waitFor({ state: 'visible', timeout: 8000 });`);
   lines.push(`      await action(el);`);
   lines.push(`      return true;`);
   lines.push(`    } catch {}`);
@@ -154,9 +173,11 @@ function toPlaywrightScript(workflow) {
   lines.push(``);
 
   lines.push(`(async () => {`);
-  lines.push(`  const browser = await chromium.launch({ headless: false });`);
-  lines.push(`  const context = await browser.newContext();`);
-  lines.push(`  const page = await context.newPage();`);
+  lines.push(`  const context = await chromium.launchPersistentContext(CHROME_PROFILE, {`);
+  lines.push(`    headless: false,`);
+  lines.push(`    args: ['--no-first-run', '--no-default-browser-check'],`);
+  lines.push(`  });`);
+  lines.push(`  const page = context.pages()[0] || await context.newPage();`);
   lines.push(`  const results = [];`);
   lines.push(``);
 
@@ -308,7 +329,7 @@ function toPlaywrightScript(workflow) {
     lines.push(``);
   }
 
-  lines.push(`  await browser.close();`);
+  lines.push(`  await context.close();`);
   lines.push(``);
   lines.push(`  const failed = results.filter(r => !r.success && !r.skipped);`);
   lines.push(`  console.log(JSON.stringify({ completed: failed.length === 0, results }, null, 2));`);
