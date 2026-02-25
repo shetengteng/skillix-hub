@@ -24,7 +24,6 @@ from service.config import get_memory_dir
 from storage.jsonl import read_last_entry, read_jsonl
 from core.utils import iso_now, today_str, ts_id, utcnow, parse_iso
 from service.memory.session_state import is_summary_saved, mark_summary_saved, read_session_state
-from service.memory.distill_to_memory import distill
 from service.logger import get_logger
 
 log = get_logger("end_session")
@@ -50,16 +49,6 @@ def sync_index(project_path: str):
         log.warning("索引同步超时")
     except Exception as e:
         log.warning("索引同步异常: %s", e)
-
-
-def distill_facts(project_path: str, session_id: str = None):
-    """调用 distill_to_memory.py 将高价值事实提炼到 MEMORY.md"""
-    try:
-        count = distill(project_path, session_id=session_id)
-        if count > 0:
-            log.info("事实提炼完成: %d 条写入 MEMORY.md", count)
-    except Exception as e:
-        log.warning("事实提炼异常: %s", e)
 
 
 def check_summary_saved(memory_dir: str, event: dict):
@@ -306,7 +295,6 @@ def main(event, project_path):
     truncate_sessions(memory_dir)
     auto_generate_summary(memory_dir, event)
     check_summary_saved(memory_dir, event)
-    distill_facts(project_path, session_id=event.get("conversation_id"))
     log_session_metrics(memory_dir, event)
     log_session_end(memory_dir, event)
     clean_old_logs(project_path)
