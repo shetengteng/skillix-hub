@@ -103,10 +103,17 @@ node tool.js exec '{"command":"type","args":{"selector":"#input","text":"value"}
 ### 生成独立 Skill
 
 ```bash
+# 默认：生成 Skill（SKILL.md + tool.js + workflow.json + package.json）
 node tool.js generate '{"id":"wf-xxx","skillName":"deploy-staging","target":"~/.cursor/skills/deploy-staging"}'
+
+# 同时生成 Playwright 脚本（Skill 产物 + deploy-staging.js）
+node tool.js generate '{"id":"wf-xxx","skillName":"deploy-staging","target":"~/.cursor/skills/deploy-staging","includePlaywright":true}'
+
+# 仅生成 Playwright 脚本（不生成 Skill 产物）
+node tool.js generate '{"id":"wf-xxx","skillName":"deploy-staging","target":"./scripts","format":"playwright"}'
 ```
 
-### 导出 Playwright 脚本
+### 导出 Playwright 脚本（单文件）
 
 ```bash
 node tool.js export '{"id":"wf-xxx","output":"./my-automation.js"}'
@@ -275,7 +282,17 @@ USERNAME=admin PASSWORD=secret node deploy-staging.js
 |------|------|----------|
 | JSON 工作流 | `save` | 临时或低频操作 |
 | 独立 Skill | `generate` | 高频复用、跨项目 |
-| Playwright 脚本 | `export` | 脱离 Cursor 使用 |
+| Skill + Playwright 脚本 | `generate` + `includePlaywright` | 两种方式都需要 |
+| 仅 Playwright 脚本 | `generate` + `format:"playwright"` | 只需脚本，不需要 Skill |
+| 单文件 Playwright 脚本 | `export` | 快速导出到指定路径 |
+
+Playwright 脚本特性：
+- 可直接 `node script.js` 运行，不依赖 Cursor 或 Playwright Skill
+- 与 replayer.js 一致的 locator 链（testId > ariaLabel > placeholder > text > role > id > css）
+- 支持 context 作用域（modal/dropdown）
+- 支持 waitAfter 条件
+- 每步 try-catch + 失败截图
+- 参数通过环境变量注入
 
 ## 数据存储
 

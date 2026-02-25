@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { toPlaywrightScript } = require('./exporter');
 
 const TEMPLATES_DIR = path.join(__dirname, '..', 'templates');
 
@@ -62,21 +63,37 @@ function generateSkillMd(workflow, skillName) {
   return tpl;
 }
 
-function generate(workflow, skillName, targetDir) {
+function generate(workflow, skillName, targetDir, options = {}) {
   const dest = path.resolve(targetDir.replace(/^~/, process.env.HOME || ''));
   fs.mkdirSync(dest, { recursive: true });
+
+  const files = [];
+
+  if (options.format === 'playwright') {
+    const scriptName = `${skillName}.js`;
+    fs.writeFileSync(path.join(dest, scriptName), toPlaywrightScript(workflow));
+    files.push(scriptName);
+    return { dest, files };
+  }
 
   fs.writeFileSync(path.join(dest, 'tool.js'), generateToolJs(workflow));
   fs.writeFileSync(path.join(dest, 'package.json'), generatePackageJson(skillName, workflow.description));
   fs.writeFileSync(path.join(dest, 'workflow.json'), JSON.stringify(workflow, null, 2));
   fs.writeFileSync(path.join(dest, 'SKILL.md'), generateSkillMd(workflow, skillName));
+  files.push('SKILL.md', 'tool.js', 'workflow.json', 'package.json');
 
   const historyFile = path.join(dest, 'replay-history.jsonl');
   const logFile = path.join(dest, 'optimization-log.jsonl');
   if (!fs.existsSync(historyFile)) fs.writeFileSync(historyFile, '');
   if (!fs.existsSync(logFile)) fs.writeFileSync(logFile, '');
 
-  return dest;
+  if (options.includePlaywright) {
+    const scriptName = `${skillName}.js`;
+    fs.writeFileSync(path.join(dest, scriptName), toPlaywrightScript(workflow));
+    files.push(scriptName);
+  }
+
+  return { dest, files };
 }
 
 module.exports = { generate };

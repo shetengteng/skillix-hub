@@ -223,12 +223,18 @@ const COMMANDS = {
     if (!wf) return error(`Workflow not found: ${params.id}`);
 
     const target = params.target || `~/.cursor/skills/${params.skillName}`;
+    const options = {
+      format: params.format || 'skill',
+      includePlaywright: params.includePlaywright === true,
+    };
+
     try {
-      const dest = generate(wf, params.skillName, target);
+      const { dest, files } = generate(wf, params.skillName, target, options);
+      const label = options.format === 'playwright' ? 'Playwright script' : 'Skill';
       return success({
-        message: `Skill generated: ${params.skillName}`,
+        message: `${label} generated: ${params.skillName}`,
         path: dest,
-        files: ['SKILL.md', 'tool.js', 'workflow.json', 'package.json'],
+        files,
       });
     } catch (e) {
       return error(`Generate failed: ${e.message}`);
