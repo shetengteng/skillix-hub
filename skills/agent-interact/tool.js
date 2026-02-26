@@ -268,7 +268,8 @@ const COMMANDS = {
       : __dirname;
     const uiDir = path.join(ROOT_DIR, 'ui');
 
-    if (target) {
+    // When target differs from __dirname, copy source files first
+    if (target && path.resolve(ROOT_DIR) !== path.resolve(__dirname)) {
       const srcDir = __dirname;
       const COPY_ITEMS = ['SKILL.md', 'tool.js', 'demo.js', 'package.json', 'package-lock.json', 'lib', 'pywebview'];
       try {
@@ -294,17 +295,20 @@ const COMMANDS = {
       }
     }
 
-    const rootNm = path.join(ROOT_DIR, 'node_modules');
-    const uiNm = path.join(uiDir, 'node_modules');
+    // Install dependencies and rebuild UI
     const uiDist = path.join(uiDir, 'dist');
     try {
-      if (fs.existsSync(rootNm)) fs.rmSync(rootNm, { recursive: true });
-      if (fs.existsSync(uiNm)) fs.rmSync(uiNm, { recursive: true });
-      if (fs.existsSync(uiDist)) fs.rmSync(uiDist, { recursive: true });
-      execSync('npm install', { cwd: ROOT_DIR, stdio: 'inherit' });
-      execSync('npm install', { cwd: uiDir, stdio: 'inherit' });
-      execSync('npm run build', { cwd: uiDir, stdio: 'inherit' });
-      return success({ message: `Update completed${target ? ` at ${ROOT_DIR}` : ''} (clean reinstall + UI rebuild)` });
+      if (!fs.existsSync(path.join(ROOT_DIR, 'node_modules'))) {
+        execSync('npm install', { cwd: ROOT_DIR, stdio: 'inherit' });
+      }
+      if (fs.existsSync(path.join(uiDir, 'package.json'))) {
+        if (!fs.existsSync(path.join(uiDir, 'node_modules'))) {
+          execSync('npm install', { cwd: uiDir, stdio: 'inherit' });
+        }
+        if (fs.existsSync(uiDist)) fs.rmSync(uiDist, { recursive: true });
+        execSync('npm run build', { cwd: uiDir, stdio: 'inherit' });
+      }
+      return success({ message: `Update completed at ${ROOT_DIR} (dependencies + UI rebuild)` });
     } catch (e) {
       return error(`Update failed: ${e.message}`);
     }
