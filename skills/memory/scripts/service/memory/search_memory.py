@@ -14,7 +14,7 @@ import argparse
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
 from service.config import get_memory_dir
-from service.config import INDEX_DB
+from service.config import INDEX_DB, Config
 from storage.sqlite_store import SQLiteStore
 from service.logger import get_logger, redirect_to_project
 
@@ -42,6 +42,9 @@ def main():
 
     redirect_to_project(args.project_path)
 
+    cfg = Config(args.project_path)
+    emb_model = cfg.get("embedding.model")
+
     memory_dir = get_memory_dir(args.project_path)
     db_path = os.path.join(memory_dir, INDEX_DB)
 
@@ -61,8 +64,8 @@ def main():
     if args.method in ("hybrid", "vector"):
         try:
             from core.embedding import embed_text, is_available
-            if is_available():
-                query_embedding = embed_text(args.query)
+            if is_available(emb_model):
+                query_embedding = embed_text(args.query, emb_model)
                 log.info("使用嵌入模型生成查询向量")
             elif args.method == "vector":
                 log.warning("嵌入模型不可用，回退到 FTS 搜索")

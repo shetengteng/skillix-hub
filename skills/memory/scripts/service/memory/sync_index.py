@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../
 import argparse
 
 from service.config import MEMORY_MD, FACTS_FILE, SESSIONS_FILE, INDEX_DB, DAILY_DIR_NAME, _DEFAULTS
-from service.config import get_memory_dir
+from service.config import get_memory_dir, Config
 from storage.sqlite_store import SQLiteStore
 from storage.chunker import chunk_markdown
 from storage.jsonl import read_jsonl
@@ -34,7 +34,7 @@ def get_file_mtime(path):
         return 0
 
 
-def sync_file(store, memory_dir, rel_path, full_path):
+def sync_file(store, memory_dir, rel_path, full_path, model_name=None):
     """
     增量同步单个 JSONL 文件到 SQLite。根据 mtime 和 last_line 跳过已同步内容。
 
@@ -55,7 +55,7 @@ def sync_file(store, memory_dir, rel_path, full_path):
         store.update_sync_state(rel_path, len(entries), "", mtime)
         return 0
 
-    emb_func = _get_embed_func()
+    emb_func = _get_embed_func(model_name)
     count = 0
     for entry in new_entries:
         # session_start 无实质内容，跳过
@@ -85,7 +85,7 @@ def sync_file(store, memory_dir, rel_path, full_path):
     return count
 
 
-def sync_memory_md(store, memory_dir):
+def sync_memory_md(store, memory_dir, model_name=None):
     """
     将 MEMORY.md 切块后同步到 SQLite，chunk_type 为 core。
     根据 mtime 判断是否需要重新同步。
@@ -105,7 +105,7 @@ def sync_memory_md(store, memory_dir):
         return 0
 
     chunks = chunk_markdown(text)
-    emb_func = _get_embed_func()
+    emb_func = _get_embed_func(model_name)
     count = 0
     for i, chunk in enumerate(chunks):
         embedding = emb_func(chunk) if emb_func else None
@@ -123,13 +123,13 @@ def sync_memory_md(store, memory_dir):
     return count
 
 
-def _get_embed_func():
+def _get_embed_func(model_name=None):
     """获取嵌入函数，若 sentence-transformers 不可用则返回 None。"""
     try:
         from core.embedding import embed_text, is_available
-        if is_available():
+        if is_available(model_name):
             log.info("嵌入模型可用，将生成向量索引")
-            return embed_text
+            return lambda text: embed_text(text, model_name)
         else:
             log.warning("嵌入模型不可用，仅建立 FTS 索引")
     except Exception as e:
@@ -137,16 +137,20 @@ def _get_embed_func():
     return None
 
 
-def sync_all(memory_dir, rebuild=False):
+def sync_all(memory_dir, rebuild=False, project_path=None):
     """
     同步所有记忆源到 SQLite：facts、sessions、daily/*.jsonl、MEMORY.md。
 
     Args:
         memory_dir: 记忆数据根目录
         rebuild: 若为 True，先删除旧索引再全量重建
+        project_path: 项目根目录，用于读取项目级 config（embedding.model 等）
     Returns:
         本次新增的 chunk 总数
     """
+    cfg = Config(project_path)
+    emb_model = cfg.get("embedding.model")
+
     db_path = os.path.join(memory_dir, INDEX_DB)
 
     if rebuild and os.path.exists(db_path):
@@ -159,26 +163,26 @@ def sync_all(memory_dir, rebuild=False):
 
     facts_path = os.path.join(memory_dir, FACTS_FILE)
     if os.path.exists(facts_path):
-        total += sync_file(store, memory_dir, FACTS_FILE, facts_path)
+        total += sync_file(store, memory_dir, FACTS_FILE, facts_path, emb_model)
 
     sessions_path = os.path.join(memory_dir, SESSIONS_FILE)
     if os.path.exists(sessions_path):
-        total += sync_file(store, memory_dir, SESSIONS_FILE, sessions_path)
+        total += sync_file(store, memory_dir, SESSIONS_FILE, sessions_path, emb_model)
 
     daily_dir = os.path.join(memory_dir, DAILY_DIR_NAME)
     if os.path.isdir(daily_dir):
         # 按文件名排序，保证日期顺序
         for fpath in sorted(glob.glob(os.path.join(daily_dir, "*.jsonl"))):
             rel = os.path.join(DAILY_DIR_NAME, os.path.basename(fpath))
-            total += sync_file(store, memory_dir, rel, fpath)
+            total += sync_file(store, memory_dir, rel, fpath, emb_model)
 
-    total += sync_memory_md(store, memory_dir)
+    total += sync_memory_md(store, memory_dir, emb_model)
 
     total_chunks = store.count_chunks()
     store.set_meta("total_chunks", total_chunks)
     store.set_meta("last_sync", iso_now())
-    if embedding_is_available():
-        store.set_meta("embedding_model", _DEFAULTS["embedding"]["model"])
+    if embedding_is_available(emb_model):
+        store.set_meta("embedding_model", emb_model)
 
     store.close()
     log.info("同步完成: 本次新增 %d 条, 总计 %d 条 chunk", total, total_chunks)
@@ -199,7 +203,7 @@ def main():
         print(f"Memory directory not found: {memory_dir}", file=sys.stderr)
         sys.exit(1)
 
-    total = sync_all(memory_dir, rebuild=args.rebuild)
+    total = sync_all(memory_dir, rebuild=args.rebuild, project_path=args.project_path)
     print(f"Sync complete: {total} entries processed, "
           f"DB: {os.path.join(memory_dir, INDEX_DB)}")
 
