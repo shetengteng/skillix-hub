@@ -5,6 +5,7 @@ Config 类实现：分层配置加载器
 """
 import os
 import copy
+from typing import Optional
 from .defaults import (
     _DEFAULTS,
     _SCHEMA,
@@ -30,7 +31,7 @@ class Config:
       4. 环境变量 (MEMORY_*)
     """
 
-    def __init__(self, project_path: str = None):
+    def __init__(self, project_path: Optional[str] = None):
         self._project_path = project_path
         self._sources = {}
         self._config = copy.deepcopy(_DEFAULTS)
