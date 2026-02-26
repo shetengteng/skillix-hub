@@ -7,7 +7,6 @@
   "main": "tool.js",
   "dependencies": {
     "ajv": "^8.18.0",
-    "electron": "^40.6.0",
     "express": "^4.21.0",
     "ws": "^8.18.0"
   }

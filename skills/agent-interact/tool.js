@@ -13,10 +13,10 @@ const os = require('os');
 
 const UI_DIR = path.join(__dirname, 'ui');
 const UI_DIST = path.join(UI_DIR, 'dist');
-const ELECTRON_MAIN = path.join(__dirname, 'electron', 'main.js');
+const PYWEBVIEW_SCRIPT = path.join(__dirname, 'pywebview', 'window.py');
 
-function electronPidFile(port) {
-  return path.join(os.tmpdir(), `agent-interact-electron-${port}.pid`);
+function pywebviewPidFile(port) {
+  return path.join(os.tmpdir(), `agent-interact-pywebview-${port}.pid`);
 }
 
 function getPort(params) {
@@ -50,16 +50,18 @@ function ensureUiBuild() {
   execSync('npm run build', { cwd: UI_DIR, stdio: 'ignore' });
 }
 
-function getElectronBin() {
-  try {
-    return require('electron');
-  } catch {
-    return null;
+function getPython3() {
+  for (const bin of ['python3', '/usr/bin/python3']) {
+    try {
+      execSync(`${bin} -c "import webview"`, { stdio: 'ignore' });
+      return bin;
+    } catch { /* try next */ }
   }
+  return null;
 }
 
-function isElectronRunning(port) {
-  const pidFile = electronPidFile(port);
+function isPywebviewRunning(port) {
+  const pidFile = pywebviewPidFile(port);
   if (!fs.existsSync(pidFile)) return false;
   const pid = parseInt(fs.readFileSync(pidFile, 'utf-8').trim(), 10);
   try {
@@ -71,45 +73,30 @@ function isElectronRunning(port) {
   }
 }
 
-function startElectron(port) {
-  const electronBin = getElectronBin();
-  if (!electronBin || !fs.existsSync(ELECTRON_MAIN)) return null;
+function startPywebview(port) {
+  if (!fs.existsSync(PYWEBVIEW_SCRIPT)) return null;
+  const python = getPython3();
+  if (!python) return null;
 
-  const child = spawn(electronBin, [ELECTRON_MAIN, String(port)], {
+  const child = spawn(python, [PYWEBVIEW_SCRIPT, String(port)], {
     detached: true,
     stdio: 'ignore',
-    env: { ...process.env, ELECTRON_DISABLE_SECURITY_WARNINGS: 'true' },
   });
   child.unref();
 
   try {
-    fs.writeFileSync(electronPidFile(port), String(child.pid));
+    fs.writeFileSync(pywebviewPidFile(port), String(child.pid));
   } catch { /* ok */ }
 
   return child.pid;
 }
 
-function stopElectron(port) {
-  const pidFile = electronPidFile(port);
+function stopPywebview(port) {
+  const pidFile = pywebviewPidFile(port);
   if (!fs.existsSync(pidFile)) return;
   const pid = parseInt(fs.readFileSync(pidFile, 'utf-8').trim(), 10);
   try { process.kill(pid, 'SIGTERM'); } catch { /* already dead */ }
   try { fs.unlinkSync(pidFile); } catch { /* ok */ }
-}
-
-function openBrowserFallback(url) {
-  if (process.platform === 'darwin') {
-    try {
-      execSync(
-        `osascript -e 'tell application "Google Chrome" to make new window' -e 'tell application "Google Chrome" to set URL of active tab of front window to "${url}"' -e 'tell application "Google Chrome" to activate'`,
-        { stdio: 'ignore' }
-      );
-      return;
-    } catch { /* fallback */ }
-    try { execSync(`open -n "${url}"`, { stdio: 'ignore' }); return; } catch { /* ok */ }
-  }
-  const cmd = process.platform === 'win32' ? 'start' : 'xdg-open';
-  try { execSync(`${cmd} "${url}"`, { stdio: 'ignore' }); } catch { /* ok */ }
 }
 
 function httpRequest(method, urlPath, port, body) {
@@ -134,19 +121,18 @@ function isRunning(port) {
     .catch(() => false);
 }
 
-function ensureElectron(port) {
-  if (isElectronRunning(port)) return 'running';
-  const pid = startElectron(port);
+function ensurePywebview(port) {
+  if (isPywebviewRunning(port)) return 'running';
+  const pid = startPywebview(port);
   if (pid) return 'started';
-  openBrowserFallback(`http://127.0.0.1:${port}`);
-  return 'browser_fallback';
+  return 'unavailable';
 }
 
 const COMMANDS = {
   async start(params) {
     const requestedPort = getPort(params);
     if (await isRunning(requestedPort)) {
-      ensureElectron(requestedPort);
+      ensurePywebview(requestedPort);
       return success({ message: `Server already running on port ${requestedPort}` });
     }
 
@@ -173,8 +159,8 @@ const COMMANDS = {
           ? `Port ${requestedPort} occupied, started on ${url}`
           : `Server started on ${url}`;
 
-        const electronStatus = ensureElectron(port);
-        return success({ message: msg, url, pid: child.pid, electron: electronStatus });
+        const pywebviewStatus = ensurePywebview(port);
+        return success({ message: msg, url, pid: child.pid, pywebview: pywebviewStatus });
       }
     }
     return error('Server failed to start within timeout');
@@ -182,7 +168,7 @@ const COMMANDS = {
 
   async stop(params) {
     const port = getPort(params);
-    stopElectron(port);
+    stopPywebview(port);
     if (!(await isRunning(port))) {
       return success({ message: 'Server is not running' });
     }
@@ -198,9 +184,9 @@ const COMMANDS = {
     const port = getPort(params);
     try {
       const data = await httpRequest('GET', '/api/status', port);
-      return success({ ...data, electron: isElectronRunning(port) ? 'running' : 'stopped' });
+      return success({ ...data, pywebview: isPywebviewRunning(port) ? 'running' : 'stopped' });
     } catch {
-      return success({ status: 'stopped', electron: isElectronRunning(port) ? 'running' : 'stopped' });
+      return success({ status: 'stopped', pywebview: isPywebviewRunning(port) ? 'running' : 'stopped' });
     }
   },
 
@@ -211,7 +197,7 @@ const COMMANDS = {
       const startResult = await COMMANDS.start({ port });
       if (startResult.error) return startResult;
     } else {
-      ensureElectron(port);
+      ensurePywebview(port);
     }
 
     const { type, port: _p, ...rest } = params;
@@ -234,7 +220,7 @@ const COMMANDS = {
       const destDir = path.resolve(target.replace(/^~/, process.env.HOME || ''));
       const destUiDir = path.join(destDir, 'ui');
 
-      const COPY_ITEMS = ['SKILL.md', 'tool.js', 'demo.js', 'package.json', 'package-lock.json', 'lib', 'electron'];
+      const COPY_ITEMS = ['SKILL.md', 'tool.js', 'demo.js', 'package.json', 'package-lock.json', 'lib', 'pywebview'];
 
       try {
         fs.mkdirSync(destDir, { recursive: true });
@@ -285,7 +271,7 @@ const COMMANDS = {
 
     if (target) {
       const srcDir = __dirname;
-      const COPY_ITEMS = ['SKILL.md', 'tool.js', 'demo.js', 'package.json', 'package-lock.json', 'lib', 'electron'];
+      const COPY_ITEMS = ['SKILL.md', 'tool.js', 'demo.js', 'package.json', 'package-lock.json', 'lib', 'pywebview'];
       try {
         for (const item of COPY_ITEMS) {
           const src = path.join(srcDir, item);
