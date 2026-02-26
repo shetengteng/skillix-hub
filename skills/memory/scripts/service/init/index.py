@@ -108,7 +108,12 @@ def main():
             print(f"  ⚠ 依赖安装失败: {e}")
             print("  （可稍后手动安装: pip install sentence-transformers）")
         try:
-            download_model(_DEFAULTS["embedding"]["model"])
+            model_name = _DEFAULTS["embedding"]["model"]
+            if os.path.exists(config_json):
+                with open(config_json, "r", encoding="utf-8") as f:
+                    project_cfg = json.load(f)
+                model_name = project_cfg.get("embedding", {}).get("model", model_name)
+            download_model(model_name)
         except Exception as e:
             print(f"  ⚠ 模型下载失败: {e}")
 
