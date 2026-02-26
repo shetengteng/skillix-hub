@@ -104,10 +104,13 @@ def main():
     if not args.skip_model:
         try:
             install_dependencies()
+        except Exception as e:
+            print(f"  ⚠ 依赖安装失败: {e}")
+            print("  （可稍后手动安装: pip install sentence-transformers）")
+        try:
             download_model(_DEFAULTS["embedding"]["model"])
         except Exception as e:
             print(f"  ⚠ 模型下载失败: {e}")
-            print("  （可稍后手动安装: pip install sentence-transformers）")
 
     print()
     print("=" * 50)

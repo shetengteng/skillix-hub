@@ -41,9 +41,10 @@ def _load_model(model_name=None):
         os.makedirs(_MODEL_CACHE, exist_ok=True)
         if os.path.isdir(local_path):
             log.info("从本地缓存加载模型 %s", local_path)
+            _model = SentenceTransformer(name, cache_folder=_MODEL_CACHE, local_files_only=True)
         else:
             log.info("本地缓存未命中，首次下载 %s 到 %s", name, _MODEL_CACHE)
-        _model = SentenceTransformer(name, cache_folder=_MODEL_CACHE)
+            _model = SentenceTransformer(name, cache_folder=_MODEL_CACHE)
         elapsed = time.time() - t0
         dim = _model.get_sentence_embedding_dimension()
         log.info("模型加载完成 dim=%d (耗时 %.1fs)", dim, elapsed)

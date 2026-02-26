@@ -156,26 +156,68 @@ def install_skill_code(source_dir, target_dir, replacements):
     return target_dir
 
 
+def _get_python_candidates():
+    """
+    返回需要安装依赖的 Python 解释器列表。
+
+    Cursor hooks 使用系统 python3（/usr/bin/python3），而当前进程可能是 pyenv/conda
+    等虚拟环境中的 python3。两者都需要安装 sentence-transformers 才能正常工作。
+    """
+    candidates = [sys.executable]
+    system_python = "/usr/bin/python3"
+    if os.path.isfile(system_python) and os.path.realpath(system_python) != os.path.realpath(sys.executable):
+        candidates.append(system_python)
+    return candidates
+
+
 def install_dependencies():
-    """通过 pip 安装 sentence-transformers。"""
+    """在所有相关 Python 环境中安装 sentence-transformers。
+
+    Cursor hooks 使用系统 /usr/bin/python3，当前进程可能是不同的 Python 环境，
+    因此需要在两个环境中都安装，确保 hooks 运行时能正常导入。
+    """
     print("  Installing dependencies (sentence-transformers)...")
-    proc = subprocess.run(
-        [sys.executable, "-m", "pip", "install", "sentence-transformers", "--progress-bar", "on"],
-        capture_output=False,
-    )
-    if proc.returncode == 0:
-        print("  ✓ sentence-transformers installed")
-    else:
-        raise RuntimeError("pip install failed")
+    candidates = _get_python_candidates()
+    failed = []
+    for python in candidates:
+        label = python if python != sys.executable else f"{python} (current)"
+        print(f"  → {label}")
+        proc = subprocess.run(
+            [python, "-m", "pip", "install", "sentence-transformers", "--progress-bar", "off", "-q"],
+            capture_output=False,
+        )
+        if proc.returncode == 0:
+            print(f"    ✓ installed")
+        else:
+            print(f"    ✗ failed (exit={proc.returncode})")
+            failed.append(python)
+    if failed and len(failed) == len(candidates):
+        raise RuntimeError(f"pip install failed for all Python environments: {failed}")
 
 
 def download_model(model_name):
-    """下载嵌入模型到全局缓存目录，首次加载会预下载。"""
+    """下载嵌入模型到全局缓存目录，首次加载会预下载。
+
+    如果本地缓存已存在，跳过下载。网络不可用时给出明确提示而非静默失败。
+    """
     os.makedirs(_MODEL_CACHE, exist_ok=True)
+    cache_dir_name = "models--" + model_name.replace("/", "--")
+    local_path = os.path.join(_MODEL_CACHE, cache_dir_name)
+
+    if os.path.isdir(local_path):
+        print(f"\n  ✓ 模型已缓存，跳过下载: {local_path}")
+        return
+
     print(f"\n  Downloading embedding model: {model_name}")
     print(f"  Cache dir: {_MODEL_CACHE}")
     print(f"  (Progress will be shown below)\n")
     os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"
-    from sentence_transformers import SentenceTransformer
-    SentenceTransformer(model_name, cache_folder=_MODEL_CACHE)
-    print(f"\n  ✓ {model_name} downloaded successfully")
+    try:
+        from sentence_transformers import SentenceTransformer
+        SentenceTransformer(model_name, cache_folder=_MODEL_CACHE)
+        print(f"\n  ✓ {model_name} downloaded successfully")
+    except Exception as e:
+        print(f"\n  ⚠ 模型下载失败: {e}")
+        print(f"  提示：如果网络受限，可通过以下方式手动下载后放入 {_MODEL_CACHE}：")
+        print(f"    huggingface-cli download {model_name} --cache-dir {_MODEL_CACHE}")
+        print(f"  或使用镜像站：HF_ENDPOINT=https://hf-mirror.com python3 init.py")
