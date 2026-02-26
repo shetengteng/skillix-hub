@@ -215,11 +215,14 @@ const COMMANDS = {
 
   async install(params) {
     const target = params.target;
-    if (target) {
-      const srcDir = __dirname;
-      const destDir = path.resolve(target.replace(/^~/, process.env.HOME || ''));
-      const destUiDir = path.join(destDir, 'ui');
+    const destDir = target
+      ? path.resolve(target.replace(/^~/, process.env.HOME || ''))
+      : __dirname;
+    const destUiDir = path.join(destDir, 'ui');
 
+    // When target differs from __dirname, copy source files first
+    if (target && path.resolve(destDir) !== path.resolve(__dirname)) {
+      const srcDir = __dirname;
       const COPY_ITEMS = ['SKILL.md', 'tool.js', 'demo.js', 'package.json', 'package-lock.json', 'lib', 'pywebview'];
 
       try {
@@ -240,23 +243,19 @@ const COMMANDS = {
           if (UI_SKIP.has(entry)) continue;
           fs.cpSync(path.join(uiSrcDir, entry), path.join(destUiDir, entry), { recursive: true, force: true });
         }
-
-        execSync('npm install', { cwd: destDir, stdio: 'inherit' });
-        execSync('npm install', { cwd: destUiDir, stdio: 'inherit' });
-        execSync('npm run build', { cwd: destUiDir, stdio: 'inherit' });
-
-        return success({ message: `Installed to ${destDir} (copy + dependencies + UI build)`, path: destDir });
       } catch (e) {
-        return error(`Install to ${destDir} failed: ${e.message}`);
+        return error(`Copy to ${destDir} failed: ${e.message}`);
       }
     }
 
-    const ROOT_DIR = __dirname;
+    // Install dependencies and build UI (always)
     try {
-      execSync('npm install', { cwd: ROOT_DIR, stdio: 'inherit' });
-      execSync('npm install', { cwd: UI_DIR, stdio: 'inherit' });
-      execSync('npm run build', { cwd: UI_DIR, stdio: 'inherit' });
-      return success({ message: 'Install completed (dependencies + UI build)' });
+      execSync('npm install', { cwd: destDir, stdio: 'inherit' });
+      if (fs.existsSync(path.join(destUiDir, 'package.json'))) {
+        execSync('npm install', { cwd: destUiDir, stdio: 'inherit' });
+        execSync('npm run build', { cwd: destUiDir, stdio: 'inherit' });
+      }
+      return success({ message: `Install completed at ${destDir} (dependencies + UI build)`, path: destDir });
     } catch (e) {
       return error(`Install failed: ${e.message}`);
     }
