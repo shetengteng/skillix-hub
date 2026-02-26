@@ -64,22 +64,45 @@ def _install_dependencies(dst: Path):
                        capture_output=True, timeout=120)
 
 
-def _run_skill_install(dst: Path, target: str):
+def _run_skill_command(dst: Path, target: str, command: str = "install"):
     tool_js = dst / "tool.js"
     if tool_js.exists():
         import json
         subprocess.run(
-            ["node", str(tool_js), "install", json.dumps({"target": target})],
+            ["node", str(tool_js), command, json.dumps({"target": target})],
             cwd=str(dst), capture_output=True, timeout=120
         )
-        return
+        return True
 
     main_py = dst / "main.py"
     if main_py.exists():
         subprocess.run(
-            [sys.executable, str(main_py), "install", "--target", target],
+            [sys.executable, str(main_py), command, "--target", target],
             cwd=str(dst), capture_output=True, timeout=120
         )
+        return True
+
+    return False
+
+
+def _has_update_command(dst: Path) -> bool:
+    tool_js = dst / "tool.js"
+    if tool_js.exists():
+        try:
+            content = tool_js.read_text(encoding="utf-8")
+            return "update" in content and ("async update" in content or "'update'" in content or '"update"' in content)
+        except OSError:
+            pass
+
+    main_py = dst / "main.py"
+    if main_py.exists():
+        try:
+            content = main_py.read_text(encoding="utf-8")
+            return '"update"' in content or "'update'" in content
+        except OSError:
+            pass
+
+    return False
 
 
 def _resolve_target(name: str, scope: str, project_path: str | None = None) -> Path:
@@ -108,6 +131,27 @@ def install_skill(name: str, registry_alias: str | None = None,
         output_result(error=f"Source directory not found: {src}")
         return
 
+    target = _resolve_target(name, scope, project_path)
+    installed = load_installed()
+    existing = next(
+        (i for i in installed["installations"]
+         if i["name"] == name and i.get("scope", "global") == scope),
+        None
+    )
+    if existing or target.exists():
+        old_commit = (existing.get("source_commit", "?")[:7]) if existing else "?"
+        new_commit = (skill_info.get("commit_hash", "?")[:7])
+        output_result({
+            "action": "already_installed",
+            "name": name,
+            "target": str(target),
+            "scope": scope,
+            "installed_commit": old_commit,
+            "latest_commit": new_commit,
+            "hint": f"Use 'install.py update --name {name}' to update."
+        })
+        return
+
     dep_results = []
     if not skip_deps:
         deps, warnings = resolve_dependencies(name, reg_alias)
@@ -125,10 +169,9 @@ def install_skill(name: str, registry_alias: str | None = None,
         if warnings:
             dep_results.append({"warnings": warnings})
 
-    target = _resolve_target(name, scope, project_path)
     _copy_skill(src, target)
     _install_dependencies(target)
-    _run_skill_install(target, str(target))
+    _run_skill_command(target, str(target), "install")
     _record_installation(skill_info, target, scope)
 
     output_result({
@@ -182,28 +225,37 @@ def update_skill(name: str):
 
     src = REPOS_DIR / reg_alias / skill_info["relative_path"]
     target = Path(inst["target_path"]).expanduser()
+    update_method = "native_update"
 
-    data_dir = target / "data"
-    data_backup = None
-    if data_dir.exists():
-        data_backup = target.parent / f".{target.name}-data-backup"
-        if data_backup.exists():
+    if _has_update_command(src):
+        _copy_skill(src, target)
+        _install_dependencies(target)
+        _run_skill_command(target, str(target), "update")
+    else:
+        update_method = "replace"
+        data_dir = target / "data"
+        data_backup = None
+        if data_dir.exists():
+            data_backup = target.parent / f".{target.name}-data-backup"
+            if data_backup.exists():
+                shutil.rmtree(data_backup)
+            shutil.copytree(data_dir, data_backup)
+
+        _copy_skill(src, target)
+
+        if data_backup and data_backup.exists():
+            shutil.copytree(data_backup, data_dir)
             shutil.rmtree(data_backup)
-        shutil.copytree(data_dir, data_backup)
 
-    _copy_skill(src, target)
+        _install_dependencies(target)
+        _run_skill_command(target, str(target), "install")
 
-    if data_backup and data_backup.exists():
-        shutil.copytree(data_backup, data_dir)
-        shutil.rmtree(data_backup)
-
-    _install_dependencies(target)
-    _run_skill_install(target, str(target))
     _record_installation(skill_info, target, inst["scope"])
 
     output_result({
         "action": "updated",
         "name": name,
+        "method": update_method,
         "old_commit": inst.get("source_commit"),
         "new_commit": skill_info.get("commit_hash"),
         "target": str(target)

@@ -11,9 +11,41 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from lib.config import (
-    load_config, save_config, ensure_data_dir, output_result, REPOS_DIR
+    load_config, save_config, load_index, save_index,
+    ensure_data_dir, output_result, REPOS_DIR
 )
-from lib.git_ops import clone, is_git_repo
+from lib.git_ops import clone, is_git_repo, pull
+
+
+def _auto_sync(config: dict) -> dict:
+    results = []
+    for reg in config.get("registries", []):
+        repo_dir = REPOS_DIR / reg["alias"]
+        if repo_dir.exists():
+            success, msg = pull(repo_dir)
+        else:
+            success, msg = clone(reg["url"], repo_dir,
+                                 depth=config.get("settings", {}).get("clone_depth", 1),
+                                 branch=reg.get("branch", "main"))
+        if success:
+            reg["last_synced"] = datetime.now(timezone.utc).isoformat()
+        results.append({"alias": reg["alias"], "success": success})
+    save_config(config)
+    return {"synced": sum(1 for r in results if r["success"]), "total": len(results)}
+
+
+def _auto_rebuild_index() -> dict:
+    from scripts.index import scan_registry
+    config = load_config()
+    all_skills = []
+    for reg in config.get("registries", []):
+        skills = scan_registry(reg["alias"], reg.get("skill_paths", ["skills/"]))
+        all_skills.extend(skills)
+    save_index({
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "skills": all_skills
+    })
+    return {"total_skills": len(all_skills)}
 
 
 def add_registry(url: str, alias: str | None = None, branch: str = "main",
@@ -53,11 +85,16 @@ def add_registry(url: str, alias: str | None = None, branch: str = "main",
     config["registries"].append(registry)
     save_config(config)
 
+    sync_result = _auto_sync(config)
+    index_result = _auto_rebuild_index()
+
     output_result({
         "action": "added",
         "alias": alias,
         "url": url,
-        "repo_dir": str(repo_dir)
+        "repo_dir": str(repo_dir),
+        "sync": sync_result,
+        "index": index_result
     })
 
 

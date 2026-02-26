@@ -102,7 +102,7 @@ python3 scripts/status.py updates
 
 | 用户说 | 执行 |
 |--------|------|
-| "添加仓库 URL" | `registry.py add` → `sync.py all` → `index.py rebuild` |
+| "添加仓库 URL" | `registry.py add`（自动执行 sync + index rebuild） |
 | "同步仓库" / "检查更新" | `sync.py all` → `index.py rebuild` → `status.py updates` |
 | "我需要一个处理 PDF 的 Skill" | `index.py search --query "pdf"` → 展示结果推荐 |
 | "安装 xxx" | `install.py install --name xxx` |
