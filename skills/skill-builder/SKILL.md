@@ -20,7 +20,7 @@ node skills/skill-builder/scaffold.js init '{"name":"my-skill","tech":"node","de
 
 参数：
 - `name`（必填）：小写字母+数字+连字符，如 `web-content-reader`
-- `tech`：`node`（默认）或 `python`
+- `tech`：`node`（默认）、`python` 或其他（根据 Skill 需求选择最合适的技术栈）
 - `description`：简短描述
 
 生成的目录结构：
@@ -57,7 +57,7 @@ tests/<name>/           # 测试
 
 2. **命名讨论（必须）**：使用 AskQuestion 工具让用户从推荐中选择或自定义，同时确认：
    - Skill 名称
-   - 技术栈（Node.js 或 Python）
+   - 技术栈（Node.js、Python 或其他，根据需求选择）
    - 核心功能描述
    - 使用场景（Agent 内部 / 用户手动 / 两者）
 
@@ -152,17 +152,24 @@ tests/<name>/           # 测试
 ```
 skills/<name>/
 ├── SKILL.md          # Skill 文档（Phase 完成后编写）
-├── tool.js           # CLI 入口（Node.js）或 main.py（Python）
-├── package.json      # Node.js 依赖
+├── tool.js           # CLI 入口（Node.js）
+├── main.py           # CLI 入口（Python）
+├── package.json      # Node.js 依赖（Node.js 项目）
+├── requirements.txt  # Python 依赖（Python 项目）
 └── lib/              # 核心模块
-    ├── config.js
     └── ...
 ```
 
-**CLI 入口规范**（Node.js）：
+> 根据选择的技术栈保留对应的入口文件和依赖文件。
+
+**CLI 入口规范**：
 
 ```bash
+# Node.js
 node skills/<name>/tool.js <command> '<json_params>'
+
+# Python
+python3 skills/<name>/main.py <command> [--param value]
 ```
 
 **输出格式规范**：所有命令返回 JSON 到 stdout：
@@ -184,22 +191,27 @@ node skills/<name>/tool.js <command> '<json_params>'
 ```
 
 **编码规范**：
-- 使用 `'use strict'`
 - 模块化：每个功能一个文件放在 `lib/` 下
 - 不添加无意义注释
 - 错误处理：所有命令 catch 异常返回 JSON error
-- **长文本模板**：代码中的长文本字符串（如生成的脚本、注入的 JS、Markdown 模板）必须提取到 `templates/` 目录下，以 `.tpl` 为后缀，通过 `fs.readFileSync` 读取后替换占位符。不要在 JS 代码中内联大段模板字符串
+- **长文本模板**：代码中的长文本字符串（如生成的脚本、注入的 JS、Markdown 模板）必须提取到 `templates/` 目录下，通过文件读取后替换占位符。不要在代码中内联大段模板字符串
+- Node.js 项目使用 `'use strict'`
+- Python 项目遵循 PEP 8 规范
 
-**install / update 命令（强制）**：
+**install / update / uninstall 命令（强制）**：
 
-每个 Skill 的 tool.js **必须实现** `install` 和 `update` 命令，支持用户通过自然语言安装和更新：
+每个 Skill **必须实现** `install`、`update` 和 `uninstall` 命令，支持用户通过自然语言管理：
 
 ```bash
-# 安装到全局（复制源码到目标目录 + 安装依赖）
+# Node.js
 node skills/<name>/tool.js install '{"target":"~/.cursor/skills/<name>"}'
-
-# 更新（删除旧版源码 → 重新复制 + 安装依赖，保留用户数据）
 node skills/<name>/tool.js update '{"target":"~/.cursor/skills/<name>"}'
+node skills/<name>/tool.js uninstall '{"target":"~/.cursor/skills/<name>"}'
+
+# Python
+python3 skills/<name>/main.py install --target ~/.cursor/skills/<name>
+python3 skills/<name>/main.py update --target ~/.cursor/skills/<name>
+python3 skills/<name>/main.py uninstall --target ~/.cursor/skills/<name>
 ```
 
 **install 命令要求**：
@@ -208,7 +220,8 @@ node skills/<name>/tool.js update '{"target":"~/.cursor/skills/<name>"}'
 3. 在目标目录执行依赖安装（如 `npm install`、`pip install` 等）
 4. 如有前端构建（如 UI 目录），执行构建
 5. 检查前置依赖是否存在，给出提示
-6. 返回安装路径和依赖状态
+6. 如有 rules/ 目录，安装规则文件到 `~/.cursor/rules/`
+7. 返回安装路径和依赖状态
 
 **update 命令要求**：
 1. 接受 `target` 参数
@@ -218,25 +231,40 @@ node skills/<name>/tool.js update '{"target":"~/.cursor/skills/<name>"}'
 5. 恢复用户数据
 6. 返回更新结果
 
-**SKILL.md 中必须包含安装/更新说明**：
+**uninstall 命令要求**：
+1. 接受 `target` 参数
+2. 删除已安装的规则文件（如 `~/.cursor/rules/` 下的 `.mdc` 文件）
+3. 询问是否保留用户数据（data 目录）
+4. 删除安装目录
+5. 返回卸载结果
+
+**SKILL.md 中必须包含安装/更新/卸载说明**（根据技术栈选择对应命令）：
 
 ```markdown
-## 安装 / 更新
+## 安装 / 更新 / 卸载
 
 \`\`\`bash
+# Node.js Skill
 node skills/<name>/tool.js install '{"target":"~/.cursor/skills/<name>"}'
 node skills/<name>/tool.js update '{"target":"~/.cursor/skills/<name>"}'
+node skills/<name>/tool.js uninstall '{"target":"~/.cursor/skills/<name>"}'
+
+# Python Skill
+python3 skills/<name>/main.py install --target ~/.cursor/skills/<name>
+python3 skills/<name>/main.py update --target ~/.cursor/skills/<name>
+python3 skills/<name>/main.py uninstall --target ~/.cursor/skills/<name>
 \`\`\`
 ```
 
-**自然语言安装示例**（用户只需说）：
+**自然语言管理示例**（用户只需说）：
 
 ```
 帮我从 https://github.com/shetengteng/skillix-hub 安装 <name> skill
 帮我更新 <name> skill
+帮我卸载 <name> skill
 ```
 
-Agent 会自动克隆仓库并执行 install/update 命令。
+Agent 会自动克隆仓库并执行 install/update/uninstall 命令。
 
 ---
 

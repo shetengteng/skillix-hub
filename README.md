@@ -27,6 +27,7 @@ AI Skill 是一种可复用的 AI 指令集，帮助 AI 编程助手更好地完
 | [web-automation-builder](./skills/web-automation-builder/) | 被动录制用户浏览器操作（CDP + DOM 事件注入 + 网络监听），生成可重放的参数化工作流，支持生成独立 Skill 和导出 Playwright 脚本 |
 | [skill-builder](./skills/skill-builder/) | skillix-hub 项目标准化 Skill 开发流程指南和脚手架工具，提供 8 阶段完整生命周期和模板自动生成 |
 | [doc-skill-generator](./skills/doc-skill-generator/) | 从文档（网页、PDF、本地文件）中提取内容，自动生成 Cursor Skill。支持 Playwright BFS 深度采集 SPA 页面，两阶段生成流程（暂存 + 安装） |
+| [skill-store](./skills/skill-store/) | Cursor Skill 包管理器，配置 Git 仓库源、同步索引、自然语言搜索推荐，支持项目级和全局安装与版本更新，含依赖解析和会话 Hook 自动检查更新 |
 
 ## 安装使用
 
@@ -772,6 +773,77 @@ node tool.js install-skill '{"skillName":"my-api","target":"~/.cursor/skills/my-
 - **采集文档**：读取文档、采集网页、抓取页面内容
 - **生成 Skill**：从文档生成 Skill、生成 API 客户端
 - **更新 Skill**：更新 Skill、重新读取文档
+
+## Skill Store 使用说明
+
+Skill Store 是 Cursor Skill 的包管理器，类似 npm 之于 Node.js。从 Git 仓库发现、安装和更新 Skill，支持自然语言搜索、依赖解析和会话 Hook 自动检查更新。
+
+### 安装 / 更新 / 卸载
+
+```bash
+python3 skills/skill-store/main.py install --target ~/.cursor/skills/skill-store
+python3 skills/skill-store/main.py update --target ~/.cursor/skills/skill-store
+python3 skills/skill-store/main.py uninstall --target ~/.cursor/skills/skill-store
+```
+
+### 核心工作流
+
+```bash
+# 1. 添加 Git 仓库源
+python3 scripts/registry.py add --url "https://github.com/user/repo" --alias "my-skills"
+
+# 2. 同步仓库
+python3 scripts/sync.py all
+
+# 3. 构建本地索引
+python3 scripts/index.py rebuild
+
+# 4. 搜索可用 Skill
+python3 scripts/index.py search --query "pdf processing"
+
+# 5. 安装 Skill（全局 / 项目级）
+python3 scripts/install.py install --name "pdf-processor" --scope global
+python3 scripts/install.py install --name "pdf-processor" --scope project
+
+# 6. 更新 / 卸载
+python3 scripts/install.py update --name "pdf-processor"
+python3 scripts/install.py update-all
+python3 scripts/install.py uninstall --name "pdf-processor"
+```
+
+### 命令参考
+
+| 命令 | 说明 |
+|------|------|
+| `registry add/list/remove` | 管理 Git 仓库源 |
+| `sync all/one` | 同步仓库（Clone/Pull） |
+| `index rebuild/search/list` | 构建索引、搜索、列出可用 Skill |
+| `install install/update/uninstall/list` | 安装、更新、卸载、查看已安装 |
+| `status` | 查看状态和可用更新 |
+
+### 依赖解析
+
+Skill 在 SKILL.md frontmatter 中声明依赖，安装时自动递归解析并安装，支持循环依赖检测：
+
+```yaml
+---
+name: web-automation-builder
+dependencies:
+  - playwright
+  - agent-interact
+---
+```
+
+### 会话 Hook
+
+安装后自动注册 Hook，每次会话启动时检查更新并展示提示，必要时异步启动后台同步。
+
+### 触发词
+
+- **安装**：安装 skill、添加 skill
+- **搜索**：搜索 skill、找一个处理 PDF 的 skill
+- **管理**：更新 skill、卸载 skill、查看已安装
+- **仓库**：添加仓库、配置仓库源、同步仓库
 
 ## 贡献
 
