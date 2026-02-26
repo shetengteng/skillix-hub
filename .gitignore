@@ -36,3 +36,6 @@ Thumbs.db
 tests/**/testdata/
 tests/**/reports/
 .test_tmp/
+
+# Extracted archives
+prompt-skills-extracted/
