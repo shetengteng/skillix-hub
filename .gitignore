@@ -22,6 +22,7 @@ node_modules/
 skills/agent-interact/ui/dist/
 skills/agent-interact/.server.pid
 skills/agent-interact/.electron.pid
+skills/agent-interact/.pywebview-ready-*
 
 # Skill runtime data (all *-data directories under skills/)
 skills/*-data/

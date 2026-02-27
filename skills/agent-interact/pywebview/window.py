@@ -30,6 +30,8 @@ port = int(sys.argv[1]) if len(sys.argv) > 1 else 7890
 server_url = f"http://127.0.0.1:{port}"
 ws_url = f"ws://127.0.0.1:{port}/ws"
 
+READY_FILE = os.path.join(os.path.dirname(__file__), '..', f'.pywebview-ready-{port}')
+
 BASE_SIZES = {
     "confirm":      (500, 440),
     "wait":         (440, 400),
@@ -116,6 +118,7 @@ _windows_lock = threading.Lock()
 _open_queue: list = []
 _close_queue: list = []
 _queue_lock = threading.Lock()
+_queue_event = threading.Event()
 _running = True
 
 
@@ -174,11 +177,18 @@ def _close_dialog_window(dialog_id):
 def _gui_loop():
     """
     Runs as the func passed to webview.start().
-    Polls the open/close queues and processes window operations.
-    This runs in a background thread but webview.create_window() is thread-safe.
+    Waits for queue events instead of busy-polling, to avoid CPU usage.
     """
     global _running
+    try:
+        open(READY_FILE, 'w').close()
+    except Exception:
+        pass
+
     while _running:
+        _queue_event.wait(timeout=1.0)
+        _queue_event.clear()
+
         with _queue_lock:
             opens = list(_open_queue)
             closes = list(_close_queue)
@@ -190,8 +200,6 @@ def _gui_loop():
 
         for dialog in opens:
             _open_dialog_window(dialog)
-
-        time.sleep(0.05)
 
 
 def _ws_thread():
@@ -225,11 +233,13 @@ def _on_ws_message(ws, raw):
         if event == "dialog:open":
             with _queue_lock:
                 _open_queue.append(data)
+            _queue_event.set()
         elif event == "dialog:close":
             dialog_id = data.get("id")
             if dialog_id:
                 with _queue_lock:
                     _close_queue.append(dialog_id)
+                _queue_event.set()
     except Exception:
         pass
 
@@ -250,6 +260,10 @@ def main():
         webview.start(_gui_loop, debug=False)
     finally:
         _running = False
+        try:
+            os.unlink(READY_FILE)
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
