@@ -57,9 +57,30 @@ def cmd_install(args):
     sys.exit(subprocess.call(forward_args))
 
 
+def _resolve_project_path(args):
+    """从 --project-path 或 --target 推导项目路径。
+
+    skill-store 调用时传 --target（安装目录），需要从中推导 project_path。
+    """
+    if args.project_path:
+        return args.project_path
+
+    if args.target:
+        target = os.path.abspath(args.target)
+        home_prefix = os.path.join(os.path.expanduser("~"), ".cursor", "skills", "memory")
+        if target == home_prefix:
+            args.global_mode = True
+            return os.getcwd()
+        suffix = os.path.join(".cursor", "skills", "memory")
+        if target.endswith(suffix):
+            return target[:-len(suffix)].rstrip(os.sep)
+
+    return os.getcwd()
+
+
 def cmd_update(args):
     """更新代码、hooks、rules，保留数据目录和已下载模型。"""
-    project_path = args.project_path or os.getcwd()
+    project_path = _resolve_project_path(args)
     skill_root = os.path.abspath(SKILL_ROOT)
 
     if args.global_mode:
@@ -109,6 +130,8 @@ def main():
     parser.add_argument("--global", dest="global_mode", action="store_true")
     parser.add_argument("--skip-model", action="store_true")
     parser.add_argument("--project-path", default=None)
+    parser.add_argument("--target", default=None,
+                        help="skill-store compatibility: install dir path")
     args = parser.parse_args()
 
     if args.command == "install":
