@@ -131,6 +131,10 @@ def _open_dialog_window(dialog):
     dialog_id = dialog.get("id")
     dtype = dialog.get("type")
 
+    if dtype == "notification":
+        show_notification(dialog)
+        return
+
     with _windows_lock:
         if dialog_id in _windows:
             return
@@ -150,22 +154,6 @@ def _open_dialog_window(dialog):
 
     with _windows_lock:
         _windows[dialog_id] = win
-
-    if dtype == "notification":
-        show_notification(dialog)
-        auto_close = dialog.get("autoClose", 8)
-
-        def _auto_close():
-            time.sleep(auto_close)
-            with _windows_lock:
-                w = _windows.pop(dialog_id, None)
-            if w:
-                try:
-                    w.destroy()
-                except Exception:
-                    pass
-
-        threading.Thread(target=_auto_close, daemon=True).start()
 
 
 def _close_dialog_window(dialog_id):
