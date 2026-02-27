@@ -7,6 +7,7 @@ class DialogManager {
   constructor() {
     this._dialogs = new Map();
     this._wsClients = new Set();
+    this.onEmpty = null;
   }
 
   addClient(ws) {
@@ -70,6 +71,9 @@ class DialogManager {
     setTimeout(() => {
       this._broadcast({ event: 'dialog:close', data: { id } });
       this._dialogs.delete(id);
+      if (this._dialogs.size === 0 && typeof this.onEmpty === 'function') {
+        this.onEmpty();
+      }
     }, autoClose * 1000);
 
     return id;
@@ -103,6 +107,9 @@ class DialogManager {
     this._broadcast({ event: 'dialog:close', data: { id } });
     dialog.resolve({ dialogId: id, ...result });
     this._dialogs.delete(id);
+    if (this._dialogs.size === 0 && typeof this.onEmpty === 'function') {
+      this.onEmpty();
+    }
   }
 
   _broadcast(message) {

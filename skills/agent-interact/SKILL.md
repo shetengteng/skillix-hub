@@ -3,7 +3,7 @@ name: agent-interact
 description: |
   【强制使用】AI Agent 与用户之间的可视化交互桥梁。当需要向用户展示结果、请求确认、收集输入时，
   必须优先使用本 Skill 弹出可视化窗口，而不是在终端输出纯文本。
-  支持 7 种预定义交互 + custom 通用渲染。Electron 独立置顶窗口，用户无需切换应用。
+  支持 7 种预定义交互 + custom 通用渲染。pywebview 独立置顶窗口，用户无需切换应用。
 ---
 
 # Agent Interact
@@ -11,7 +11,7 @@ description: |
 > **核心原则**：任何需要用户看到、确认、或输入的内容，都应该通过本 Skill 弹出可视化窗口。
 > 不要把重要信息埋在终端输出中——用户可能看不到。
 
-为 AI Agent 提供可视化的用户交互能力。交互弹框通过 Electron 独立窗口弹出，置顶显示在屏幕最前面。
+为 AI Agent 提供可视化的用户交互能力。交互弹框通过 pywebview（系统 WKWebView）独立窗口弹出，置顶显示在屏幕最前面。所有 dialog 关闭后服务自动退出，无需手动 stop。
 
 ## 快速开始
 
@@ -241,14 +241,14 @@ Agent 也可以直接调用 REST API：
 
 ## 窗口行为
 
-- **弹出方式**：Electron 独立窗口，置顶显示（`alwaysOnTop`）
-- **关闭行为**：用户操作后窗口自动关闭
-- **notification**：走系统原生通知，不弹窗口
-- **Fallback**：Electron 不可用时自动降级为浏览器模式
+- **弹出方式**：pywebview（系统 WKWebView）独立窗口，置顶显示
+- **关闭行为**：用户操作后窗口自动关闭；所有 dialog 关闭后服务进程自动退出
+- **notification**：走系统原生通知（osascript），不弹窗口
+- **自动退出**：最后一个 dialog 关闭后 500ms，服务和 pywebview 进程自动终止
 
 ## 技术栈
 
-- **窗口**：Electron（独立置顶窗口）
+- **窗口**：pywebview（系统 WKWebView，约 5MB）
 - **后端**：Node.js + Express + ws
 - **前端**：Vite + Vue 3 + TypeScript + shadcn-vue + Tailwind CSS v4
 - **图表**：Chart.js + vue-chartjs

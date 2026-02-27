@@ -322,6 +322,13 @@ async function main() {
     const params = argsJson ? JSON.parse(argsJson) : {};
     const { createServer } = require('./lib/server');
     const srv = createServer(params.port || DEFAULT_PORT);
+    srv.dm.onEmpty = () => {
+      setTimeout(() => {
+        stopPywebview(params.port || DEFAULT_PORT);
+        srv.stop();
+        process.exit(0);
+      }, 500);
+    };
     srv.start((port) => {
       process.stdout.write(`agent-interact server listening on http://127.0.0.1:${port}\n`);
     });
