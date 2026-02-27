@@ -13,7 +13,7 @@ import argparse
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
 from service.config import get_memory_dir
-from service.config import SESSIONS_FILE
+from service.config import SESSIONS_FILE, CURRENT_SESSION_FILE
 from service.config import require_memory_enabled
 from core.utils import iso_now, ts_id
 from core.file_lock import FileLock
@@ -48,6 +48,18 @@ def main():
 
     memory_dir = get_memory_dir(args.project_path)
     os.makedirs(memory_dir, exist_ok=True)
+
+    if not args.session:
+        cs_path = os.path.join(memory_dir, CURRENT_SESSION_FILE)
+        try:
+            if os.path.isfile(cs_path):
+                with open(cs_path, "r", encoding="utf-8") as f:
+                    fallback_id = f.read().strip()
+                if fallback_id:
+                    args.session = fallback_id
+                    log.info("--session 未传，从 current_session.txt 回退读取 session=%s", fallback_id[:12])
+        except OSError:
+            pass
 
     # 解析逗号分隔的决策和待办列表
     decisions = [d.strip() for d in args.decisions.split(",") if d.strip()]

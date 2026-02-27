@@ -13,7 +13,7 @@ import argparse
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
-from service.config import MEMORY_MD, NOTES_MD, SESSIONS_FILE, DAILY_DIR_NAME
+from service.config import MEMORY_MD, NOTES_MD, SESSIONS_FILE, DAILY_DIR_NAME, CURRENT_SESSION_FILE
 from service.config import get_memory_dir, is_memory_enabled, init_hook_context, ensure_memory_dir
 from storage.jsonl import read_recent_facts_from_daily, read_last_entry
 from core.utils import iso_now, today_str, ts_id
@@ -140,7 +140,15 @@ def main():
     try:
         memory_dir = get_memory_dir(project_path)
         context = load_context(project_path)
-        log_session_start(memory_dir, project_path, event.get("conversation_id", ""))
+        conv_id_for_log = event.get("conversation_id", "")
+        log_session_start(memory_dir, project_path, conv_id_for_log)
+        if conv_id_for_log and conv_id_for_log != "unknown":
+            cs_path = os.path.join(memory_dir, CURRENT_SESSION_FILE)
+            try:
+                with open(cs_path, "w", encoding="utf-8") as f:
+                    f.write(conv_id_for_log)
+            except OSError:
+                pass
         log.info("上下文输出 %d 字符", len(context))
     except Exception as e:
         log.error("记忆加载失败: %s", e, exc_info=True)

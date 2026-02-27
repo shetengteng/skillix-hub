@@ -143,6 +143,7 @@ NOTES_MD = "NOTES.md"
 FACTS_FILE = "facts.jsonl"
 SESSIONS_FILE = "sessions.jsonl"
 INDEX_DB = "index.sqlite"
+CURRENT_SESSION_FILE = "current_session.txt"
 
 
 def get_project_path(event: dict) -> str:

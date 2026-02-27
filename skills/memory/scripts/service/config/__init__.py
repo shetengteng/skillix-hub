@@ -10,6 +10,7 @@ from typing import Any, Callable
 from .defaults import (
     _DEFAULTS, _get_dotpath,
     DAILY_DIR_NAME, MEMORY_MD, NOTES_MD, SESSIONS_FILE, INDEX_DB, FACTS_FILE,
+    CURRENT_SESSION_FILE,
     get_project_path,
 )
 from .manager import Config
