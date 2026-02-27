@@ -19,10 +19,6 @@ function pywebviewPidFile(port) {
   return path.join(os.tmpdir(), `agent-interact-pywebview-${port}.pid`);
 }
 
-function pywebviewReadyFile(port) {
-  return path.join(__dirname, `.pywebview-ready-${port}`);
-}
-
 function getPort(params) {
   return params.port || DEFAULT_PORT;
 }
@@ -132,17 +128,6 @@ function ensurePywebview(port) {
   return 'unavailable';
 }
 
-async function waitForPywebviewReady(port, timeoutMs = 15000) {
-  const readyFile = pywebviewReadyFile(port);
-  const interval = 200;
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (fs.existsSync(readyFile)) return true;
-    await new Promise((r) => setTimeout(r, interval));
-  }
-  return false;
-}
-
 const COMMANDS = {
   async start(params) {
     const requestedPort = getPort(params);
@@ -175,9 +160,6 @@ const COMMANDS = {
           : `Server started on ${url}`;
 
         const pywebviewStatus = ensurePywebview(port);
-        if (pywebviewStatus === 'started') {
-          await waitForPywebviewReady(port, 15000);
-        }
         return success({ message: msg, url, pid: child.pid, pywebview: pywebviewStatus });
       }
     }
@@ -215,10 +197,7 @@ const COMMANDS = {
       const startResult = await COMMANDS.start({ port });
       if (startResult.error) return startResult;
     } else {
-      const status = ensurePywebview(port);
-      if (status === 'started') {
-        await waitForPywebviewReady(port, 15000);
-      }
+      ensurePywebview(port);
     }
 
     const { type, port: _p, ...rest } = params;

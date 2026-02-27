@@ -30,8 +30,6 @@ port = int(sys.argv[1]) if len(sys.argv) > 1 else 7890
 server_url = f"http://127.0.0.1:{port}"
 ws_url = f"ws://127.0.0.1:{port}/ws"
 
-READY_FILE = os.path.join(os.path.dirname(__file__), '..', f'.pywebview-ready-{port}')
-
 BASE_SIZES = {
     "confirm":      (500, 440),
     "wait":         (440, 400),
@@ -122,6 +120,12 @@ _queue_event = threading.Event()
 _running = True
 
 
+def _on_window_closed(dialog_id):
+    """Called when a window is closed by any means (user or programmatic)."""
+    with _windows_lock:
+        _windows.pop(dialog_id, None)
+
+
 def _open_dialog_window(dialog):
     """Create and show a pywebview window for the given dialog. Called on GUI thread."""
     dialog_id = dialog.get("id")
@@ -142,6 +146,7 @@ def _open_dialog_window(dialog):
         on_top=True,
         resizable=True,
     )
+    win.events.closed += lambda: _on_window_closed(dialog_id)
 
     with _windows_lock:
         _windows[dialog_id] = win
@@ -180,11 +185,6 @@ def _gui_loop():
     Waits for queue events instead of busy-polling, to avoid CPU usage.
     """
     global _running
-    try:
-        open(READY_FILE, 'w').close()
-    except Exception:
-        pass
-
     while _running:
         _queue_event.wait(timeout=1.0)
         _queue_event.clear()
@@ -260,10 +260,6 @@ def main():
         webview.start(_gui_loop, debug=False)
     finally:
         _running = False
-        try:
-            os.unlink(READY_FILE)
-        except Exception:
-            pass
 
 
 if __name__ == "__main__":
