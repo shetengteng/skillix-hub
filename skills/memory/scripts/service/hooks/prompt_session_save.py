@@ -9,7 +9,6 @@ save_summary.py 和 save_fact.py。
 import sys
 import json
 import os
-import glob
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 
@@ -35,32 +34,14 @@ def _load_template(name: str) -> str:
 
 def has_session_data(memory_dir: str, conv_id: str) -> bool:
     """
-    检查本会话是否已有摘要或 fact 数据。
-    优先查 session_state 文件，回退时按 session_id 全量检索 daily。
+    检查本会话是否已保存摘要。
+    只检查 summary_saved 状态，fact_count 不作为跳过条件。
+    这样当用户手动说"结束"触发 Session Save 后，stop Hook 会跳过；
+    而仅有 facts 未保存 summary 时，stop Hook 仍作为兜底触发。
     """
     state = read_session_state(memory_dir, conv_id)
-    if state:
-        if state.get("summary_saved"):
-            return True
-        if state.get("fact_count", 0) > 0 or state.get("stage_summary_count", 0) > 0:
-            return True
-
-    daily_dir = os.path.join(memory_dir, "daily")
-    if not os.path.isdir(daily_dir):
-        return False
-
-    MAX_SCAN_FILES = 30
-    for f in sorted(glob.glob(os.path.join(daily_dir, "*.jsonl")), reverse=True)[:MAX_SCAN_FILES]:
-        with open(f, "r", encoding="utf-8") as fh:
-            for line in fh:
-                try:
-                    entry = json.loads(line.strip())
-                    source = entry.get("source", {})
-                    if isinstance(source, dict) and source.get("session") == conv_id and entry.get("type") == "fact":
-                        return True
-                except json.JSONDecodeError:
-                    continue
-
+    if state and state.get("summary_saved"):
+        return True
     return False
 
 

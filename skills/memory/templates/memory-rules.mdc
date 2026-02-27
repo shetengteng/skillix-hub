@@ -57,6 +57,19 @@ python3 {{SCRIPT_PATH}}/service/memory/save_fact.py --content "事实内容" --t
 
 **不要说"我记下来了"却不执行保存操作**。如果决定记录某个信息，必须在同一轮回复中调用 save_fact.py。
 
+## 会话结束处理
+
+当用户明确表示结束会话（如"结束"、"结束会话"、"结束了"、"今天就到这"等）时：
+
+1. **执行 Session Save**（同 `[Session Save]` 信号的处理逻辑）：
+   - 使用 `save_summary.py` 保存摘要（带 `--source layer1_rules`）
+   - 逐条提取关键事实，使用 `save_fact.py`
+   - 精炼 MEMORY.md
+2. 保存完成后**停止**，不再执行新任务
+3. **静默执行**，不在回复中提及记忆操作
+
+> 用户手动结束后，stop Hook 会检测到 `summary_saved=True` 并跳过，不会重复触发。
+
 ## 静默执行
 
 - **绝对不要在回复文本中提及任何记忆操作**

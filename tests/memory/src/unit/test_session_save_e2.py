@@ -168,14 +168,16 @@ class TestHasSessionData(IsolatedWorkspaceCase):
         mark_summary_saved(str(self.memory_dir), "has-summary-conv", "layer1_rules")
         self.assertTrue(has_session_data(str(self.memory_dir), "has-summary-conv"))
 
-    def test_returns_true_when_facts_exist_in_state(self):
+    def test_returns_false_when_only_facts_exist_in_state(self):
+        """facts alone should not prevent stop Hook from firing"""
         from service.hooks.prompt_session_save import has_session_data
         from service.memory.session_state import update_fact_count
 
         update_fact_count(str(self.memory_dir), "has-fact-conv", "W")
-        self.assertTrue(has_session_data(str(self.memory_dir), "has-fact-conv"))
+        self.assertFalse(has_session_data(str(self.memory_dir), "has-fact-conv"))
 
-    def test_returns_true_when_facts_in_daily(self):
+    def test_returns_false_when_only_facts_in_daily(self):
+        """daily facts without summary should not prevent stop Hook from firing"""
         from service.hooks.prompt_session_save import has_session_data
 
         daily_dir = self.memory_dir / "daily"
@@ -190,24 +192,15 @@ class TestHasSessionData(IsolatedWorkspaceCase):
         }
         daily_file.write_text(json.dumps(entry, ensure_ascii=False) + "\n", encoding="utf-8")
 
-        self.assertTrue(has_session_data(str(self.memory_dir), "daily-fact-conv"))
+        self.assertFalse(has_session_data(str(self.memory_dir), "daily-fact-conv"))
 
-    def test_returns_false_for_different_session_facts(self):
+    def test_returns_false_when_only_stage_summaries_exist(self):
+        """stage summaries alone should not prevent stop Hook from firing"""
         from service.hooks.prompt_session_save import has_session_data
+        from service.memory.session_state import update_fact_count
 
-        daily_dir = self.memory_dir / "daily"
-        daily_dir.mkdir(parents=True, exist_ok=True)
-        daily_file = daily_dir / f"{today_str()}.jsonl"
-        entry = {
-            "id": "log-other",
-            "type": "fact",
-            "content": "其他会话事实",
-            "source": {"session": "other-conv"},
-            "timestamp": iso_now(),
-        }
-        daily_file.write_text(json.dumps(entry, ensure_ascii=False) + "\n", encoding="utf-8")
-
-        self.assertFalse(has_session_data(str(self.memory_dir), "my-conv"))
+        update_fact_count(str(self.memory_dir), "stage-only-conv", "S")
+        self.assertFalse(has_session_data(str(self.memory_dir), "stage-only-conv"))
 
 
 class TestFlushMemoryStageTemplate(IsolatedWorkspaceCase):
