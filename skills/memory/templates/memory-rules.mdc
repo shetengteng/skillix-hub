@@ -74,7 +74,14 @@ python3 {{SCRIPT_PATH}}/service/memory/save_summary.py --topic "主题" --summar
 python3 {{SCRIPT_PATH}}/service/memory/save_fact.py --content "事实内容" --type W --entities "标签" --session "<conversation_id>"
 ```
 
-3. **精炼 MEMORY.md**
+3. **精炼 MEMORY.md**（读取当前 MEMORY.md，综合本次会话新事实，生成精炼后的完整内容）：
+
+```bash
+python3 {{SCRIPT_PATH}}/service/memory/distill_refined.py --project-path "<project_path>" --session "<conversation_id>" --content '{"用户偏好":["条目1","条目2"],"项目背景":["条目1"],"项目规范":["条目1"],"重要决策":["条目1"],"常用工具":["条目1"]}'
+```
+
+> 精炼规则：每条不超过 80 字结论性表述，合并语义重复条目，过滤临时性信息，总条目不超过 50 条。如本次会话无新重要事实且 MEMORY.md 仍准确，可跳过。
+
 4. 保存完成后**停止**，不再执行新任务
 5. **静默执行**，不在回复中提及记忆操作
 
