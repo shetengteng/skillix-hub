@@ -17,10 +17,25 @@ from service.config import SESSIONS_FILE, CURRENT_SESSION_FILE
 from service.config import require_memory_enabled
 from core.utils import iso_now, ts_id
 from core.file_lock import FileLock
-from service.memory.session_state import save_summary_atomic, SaveResult, _sessions_lock_path
+from service.memory.session_state import save_summary_atomic, SaveResult, _sessions_lock_path, mark_summary_saved
 from service.logger import get_logger, redirect_to_project
 
 log = get_logger("save_summary")
+
+
+def _mark_real_conv_id(memory_dir: str, custom_session: str, source: str):
+    """当 Agent 传入自定义 session_id 时，同时标记 current_session.txt 中的真实 conv_id。"""
+    cs_path = os.path.join(memory_dir, CURRENT_SESSION_FILE)
+    if not os.path.isfile(cs_path):
+        return
+    try:
+        with open(cs_path, "r", encoding="utf-8") as f:
+            real_conv_id = f.read().strip()
+        if real_conv_id and real_conv_id != custom_session:
+            mark_summary_saved(memory_dir, real_conv_id, source)
+            log.info("同时标记真实 conv_id=%s 的 summary_saved", real_conv_id[:12])
+    except OSError:
+        pass
 
 
 @require_memory_enabled
@@ -86,6 +101,7 @@ def main():
         result = save_summary_atomic(memory_dir, args.session, args.source, do_write)
         if result.status == SaveResult.EXISTS:
             log.info("摘要已存在，跳过 session=%s", args.session[:12])
+            _mark_real_conv_id(memory_dir, args.session, args.source)
             print(json.dumps({"status": "skipped", "reason": "already_saved"}))
             return
         elif result.status == SaveResult.ERROR:
@@ -95,6 +111,9 @@ def main():
     else:
         with FileLock(_sessions_lock_path(memory_dir), timeout=5):
             do_write()
+
+    if args.session:
+        _mark_real_conv_id(memory_dir, args.session, args.source)
 
     log.info("[Layer1] 摘要保存 id=%s topic='%s' → %s", entry["id"], args.topic[:30], sessions_file)
     print(json.dumps({"status": "ok", "id": entry["id"]}, ensure_ascii=False))
