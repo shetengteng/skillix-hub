@@ -29,7 +29,7 @@ skills/**/.*-data/
 # OS
 .DS_Store
 Thumbs.db
-/refer/
+**/refer/
 
 # Test runtime data
 tests/**/testdata/
