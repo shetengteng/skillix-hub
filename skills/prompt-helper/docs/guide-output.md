@@ -213,7 +213,7 @@
 
 当自然语言和 JSON 交替出现时，需要在 prompt 中说明两者的关系：
 
-```
+````
 **输出方式**：
 - 自然语言部分负责"给人看"——简洁、口语化
 - JSON 部分负责"给系统用"——完整、结构化
@@ -222,7 +222,6 @@
 **示例**：
 正在分析字段"用户邮箱"...描述填得不太规范，建议改成...
 
-````
 ```json async_cui_callback
 {"id": "字段ID", "logicalTableId": "表ID", "fieldName": "user_email",
  "result": {"description": "建议的描述"}}
