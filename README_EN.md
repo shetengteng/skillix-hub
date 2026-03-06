@@ -26,6 +26,8 @@ AI Skill is a reusable AI instruction set that helps AI programming assistants b
 | [agent-interact](./skills/agent-interact/) | Visual interaction bridge between AI Agent and user via Electron standalone windows, supporting 8 interaction types (confirm, wait, chart, notification, form, approval, progress, custom rendering) — all initiated autonomously by LLM |
 | [web-automation-builder](./skills/web-automation-builder/) | Record browser action sequences as replayable parameterized workflows, generate standalone Skills or export Playwright scripts |
 | [skill-builder](./skills/skill-builder/) | Standardized Skill development workflow guide and scaffold tool for skillix-hub, with 8-phase lifecycle and template auto-generation |
+| [doc-skill-generator](./skills/doc-skill-generator/) | Extract content from documents (web pages, PDF, local files) to auto-generate Cursor Skills. Supports Playwright BFS deep crawling for SPA pages, two-phase generation flow (staging + install) |
+| [prompt-helper](./skills/prompt-helper/) | Prompt writing assistant based on the PRISM framework (Facet-driven design methodology), providing writing, editing, 8-dimension quality auditing, and behavior diagnosis with 27 error-to-Facet mapping types |
 
 ## Installation
 

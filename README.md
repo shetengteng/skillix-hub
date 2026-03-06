@@ -28,6 +28,7 @@ AI Skill 是一种可复用的 AI 指令集，帮助 AI 编程助手更好地完
 | [web-automation-builder](./skills/web-automation-builder/) | 被动录制用户浏览器操作（CDP + DOM 事件注入 + 网络监听），生成可重放的参数化工作流，支持生成独立 Skill 和导出 Playwright 脚本 |
 | [skill-builder](./skills/skill-builder/) | skillix-hub 项目标准化 Skill 开发流程指南和脚手架工具，提供 8 阶段完整生命周期和模板自动生成 |
 | [doc-skill-generator](./skills/doc-skill-generator/) | 从文档（网页、PDF、本地文件）中提取内容，自动生成 Cursor Skill。支持 Playwright BFS 深度采集 SPA 页面，两阶段生成流程（暂存 + 安装） |
+| [prompt-helper](./skills/prompt-helper/) | Prompt 编写辅助工具，基于 PRISM 框架（Facet 驱动设计方法论），提供编写、编辑、8 维度质量检测、行为诊断四大功能，含 27 种错误→Facet 映射表 |
 
 ## 安装使用
 
