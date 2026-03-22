@@ -38,3 +38,4 @@ tests/**/reports/
 
 # Extracted archives
 prompt-skills-extracted/
+userinput.py
