@@ -28,6 +28,7 @@ AI Skill is a reusable AI instruction set that helps AI programming assistants b
 | [skill-builder](./skills/skill-builder/) | Standardized Skill development workflow guide and scaffold tool for skillix-hub, with 8-phase lifecycle and template auto-generation |
 | [doc-skill-generator](./skills/doc-skill-generator/) | Extract content from documents (web pages, PDF, local files) to auto-generate Cursor Skills. Supports Playwright BFS deep crawling for SPA pages, two-phase generation flow (staging + install) |
 | [prompt-helper](./skills/prompt-helper/) | Prompt writing assistant based on the PRISM framework (Facet-driven design methodology), providing writing, editing, 8-dimension quality auditing, and behavior diagnosis with 27 error-to-Facet mapping types |
+| [socratic](./skills/socratic/) | Socratic critical thinking analysis that auto-detects requirements, design review, tech research, and data analysis scenarios, intelligently choosing fast-track (≤1 question) or deep exploration (≤5 questions), with 4-dimension questioning framework and 5 output templates |
 
 ## Installation
 
@@ -646,6 +647,54 @@ tests/<name>/           # Tests (run_tests.js, src/unit/, reports/)
 - **Create Skill**: create a new skill, help me write a skill
 - **Init Directory**: initialize skill directory
 - **View Standards**: skill development workflow, design doc template, how to write tests
+
+## Socratic Analysis Skill
+
+Socratic Analysis is a critical thinking tool that auto-detects scenario types and uses structured questioning to help users discover blind spots, preventing both over-questioning and hasty conclusions.
+
+### Core Capabilities
+
+- **Auto Scene Detection**: 🔬 Tech Research / 📋 Requirements / 🏗️ Design Review / 📊 Data Analysis
+- **3 Analysis Paths**: Fast Track (≤1 question), Review Mode (skip questions, direct review), Deep Exploration (≤5 questions)
+- **4-Dimension Questioning**: Define(A) → Challenge(B) → Expand(C) → Stress-test(D)
+- **5 Output Templates**: Research Framework / Requirements Summary / Design Review / Analysis Framework / Review Output
+
+### Usage Examples
+
+**Example 1: Tech Selection**
+```
+User: We want to use Redis as a message queue, what do you think?
+
+AI (detected as 🔬 Research):
+  Core decision: Whether to choose Redis as the MQ solution
+  → Asks: Is message loss acceptable? Expected QPS?
+  → Outputs Research Framework (Redis vs RabbitMQ vs Kafka comparison + risk assessment)
+```
+
+**Example 2: Requirements Review**
+```
+User: We want to build a points system where users earn points and redeem coupons
+
+AI (detected as 📋 Requirements):
+  → Asks: Do points expire? Is anti-fraud needed?
+  → Outputs Requirements Summary (real problem, acceptance criteria, assumptions to verify)
+```
+
+**Example 3: Design Proposal Review**
+```
+User: Here is my microservice decomposition proposal, please review [document attached]
+
+AI (enters Review Mode):
+  → Skips questioning, reviews across 4 dimensions
+  → Outputs Review Output (Top 3 improvements + next steps)
+```
+
+### Trigger Words
+
+- **Analysis**: help me analyze, evaluate this approach
+- **Review**: review this, give me feedback
+- **Selection**: tech selection, compare options
+- **Requirements**: requirements analysis, what about this requirement
 
 ## Contributing
 

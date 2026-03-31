@@ -29,6 +29,7 @@ AI Skill 是一种可复用的 AI 指令集，帮助 AI 编程助手更好地完
 | [skill-builder](./skills/skill-builder/) | skillix-hub 项目标准化 Skill 开发流程指南和脚手架工具，提供 8 阶段完整生命周期和模板自动生成 |
 | [doc-skill-generator](./skills/doc-skill-generator/) | 从文档（网页、PDF、本地文件）中提取内容，自动生成 Cursor Skill。支持 Playwright BFS 深度采集 SPA 页面，两阶段生成流程（暂存 + 安装） |
 | [prompt-helper](./skills/prompt-helper/) | Prompt 编写辅助工具，基于 PRISM 框架（Facet 驱动设计方法论），提供编写、编辑、8 维度质量检测、行为诊断四大功能，含 27 种错误→Facet 映射表 |
+| [socratic](./skills/socratic/) | 苏格拉底式批判性思维分析，自动识别需求分析、系统设计、技术选型、数据分析四类场景，智能决定快速结论（≤1问）或深度探索（≤5问），含 4 维度提问框架和 5 种输出模板 |
 
 ## 安装使用
 
@@ -845,6 +846,54 @@ node tool.js install-skill '{"skillName":"my-api","target":"~/.cursor/skills/my-
 - **采集文档**：读取文档、采集网页、抓取页面内容
 - **生成 Skill**：从文档生成 Skill、生成 API 客户端
 - **更新 Skill**：更新 Skill、重新读取文档
+
+## Socratic Analysis Skill 使用说明
+
+Socratic Analysis 是苏格拉底式批判性思维分析工具。自动识别场景类型，通过结构化提问帮助用户发现盲点，防止过度追问与草率结论。
+
+### 核心能力
+
+- **场景自动识别**：🔬 技术选型 / 📋 需求分析 / 🏗️ 系统设计 / 📊 数据分析
+- **3 种分析路径**：快速结论（≤1问）、评审模式（跳过提问直接评审）、深度探索（≤5问）
+- **4 维度提问框架**：定义问题(A) → 挑战假设(B) → 扩展视角(C) → 压力测试(D)
+- **5 种输出模板**：Research Framework / Requirements Summary / Design Review / Analysis Framework / Review Output
+
+### 使用示例
+
+**示例 1：技术选型**
+```
+用户: 我们想用 Redis 做消息队列，你觉得怎么样？
+
+AI (识别为 🔬 Research):
+  核心决策问题：是否选择 Redis 作为消息队列方案
+  → 追问：消息丢失是否可接受？预期 QPS 是多少？
+  → 输出 Research Framework（Redis vs RabbitMQ vs Kafka 对比 + 风险评估）
+```
+
+**示例 2：需求评审**
+```
+用户: 我们要做一个用户积分系统，消费获得积分，积分兑换优惠券
+
+AI (识别为 📋 Requirements):
+  → 追问：积分是否会过期？是否需要防刷机制？
+  → 输出 Requirements Summary（真实问题、验收标准、待验证假设）
+```
+
+**示例 3：设计方案评审**
+```
+用户: 这是我的微服务拆分方案，帮我评审一下 [附文档]
+
+AI (进入 Review Mode):
+  → 跳过提问，直接从 4 维度评审
+  → 输出 Review Output（Top 3 改进项 + 推荐下一步）
+```
+
+### 触发词
+
+- **分析**：帮我分析一下、评估一下这个方案
+- **评审**：帮我评审、review 一下
+- **选型**：技术选型、方案对比
+- **需求**：需求分析、这个需求怎么样
 
 ## 贡献
 
