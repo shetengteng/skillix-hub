@@ -153,15 +153,20 @@ class TestE2EIndexFlow:
         index_file = RUNTIME_DIR / "raw" / "index.jsonl"
         assert index_file.exists()
         lines = index_file.read_text().strip().split("\n")
+        assert len(lines) == 3
+
+        required_fields = {"id", "title", "type", "path", "tags", "category",
+                           "summary", "content_hash", "created_at", "updated_at", "compiled"}
         for line in lines:
             entry = json.loads(line)
-            assert "id" in entry
-            assert "title" in entry
-            assert "type" in entry
-            assert "path" in entry
-            assert "content_hash" in entry
-            assert "compiled" in entry
+            assert required_fields.issubset(entry.keys()), f"缺少字段: {required_fields - entry.keys()}"
+            assert entry["id"].startswith("kb-"), f"ID 格式错误: {entry['id']}"
+            assert entry["title"], "标题不能为空"
+            assert entry["type"] in {"markdown", "config", "code", "text", "image", "dataset", "binary", "link", "repo", "directory"}
+            assert entry["content_hash"], f"content_hash 不能为空: {entry['id']}"
+            assert len(entry["content_hash"]) == 8, f"content_hash 应为 8 字符: {entry['content_hash']}"
             assert entry["compiled"] is False
+            assert isinstance(entry["tags"], list)
 
 
 class TestE2EScanFlow:
@@ -226,37 +231,60 @@ class TestE2ECompileFlow:
         assert len(concept_nodes) == 2
         assert len(source_nodes) >= 1
 
+        concept_ids = {n["id"] for n in concept_nodes}
+        assert "sample-architecture" in concept_ids
+        assert "sample-testing" in concept_ids
+
+        for cn in concept_nodes:
+            assert cn["label"], f"概念节点 label 不能为空: {cn['id']}"
+            assert cn["category"], f"概念节点 category 不能为空: {cn['id']}"
+
         describes_edges = [e for e in graph["edges"] if e["relation"] == "describes"]
         related_edges = [e for e in graph["edges"] if e["relation"] == "related_to"]
-        assert len(describes_edges) >= 2
-        assert len(related_edges) >= 2
+        assert len(describes_edges) == 2
+        assert len(related_edges) == 2
 
-        for node in graph["nodes"]:
-            assert "id" in node
-            assert "label" in node
-            assert "type" in node
+        node_ids = {n["id"] for n in graph["nodes"]}
         for edge in graph["edges"]:
-            assert "from" in edge
-            assert "to" in edge
-            assert "relation" in edge
+            assert "from" in edge and "to" in edge and "relation" in edge
+            assert edge["from"] in node_ids, f"边 from '{edge['from']}' 引用了不存在的节点"
+            assert edge["to"] in node_ids, f"边 to '{edge['to']}' 引用了不存在的节点"
+
+        arch_related = [e for e in related_edges if e["from"] == "sample-architecture"]
+        assert any(e["to"] == "sample-testing" for e in arch_related), "architecture → testing 关联缺失"
+        test_related = [e for e in related_edges if e["from"] == "sample-testing"]
+        assert any(e["to"] == "sample-architecture" for e in test_related), "testing → architecture 关联缺失"
 
     def test_index_md_format(self):
         content = (RUNTIME_DIR / "wiki" / "index.md").read_text()
-        assert "# 知识地图" in content
-        assert "示例架构设计" in content
-        assert "示例测试策略" in content
-        assert "concepts/" in content
+        assert content.startswith("# 知识地图"), "必须以 '# 知识地图' 开头"
+        assert "2 个概念" in content, "概念数统计错误"
+        assert "2 个分类" in content, "分类数统计错误"
+
+        assert "## 分类导航" in content, "缺少分类导航区域"
+        assert "[architecture](categories/architecture.md)" in content, "缺少 architecture 分类链接"
+        assert "[testing](categories/testing.md)" in content, "缺少 testing 分类链接"
+
+        assert "[示例架构设计](concepts/sample-architecture.md)" in content
+        assert "[示例测试策略](concepts/sample-testing.md)" in content
+
+        assert "## architecture" in content
+        assert "## testing" in content
 
     def test_category_indexes(self):
         cats_dir = RUNTIME_DIR / "wiki" / "categories"
         assert cats_dir.exists()
-        cat_files = list(cats_dir.glob("*.md"))
-        assert len(cat_files) >= 2
+        cat_files = {f.stem: f for f in cats_dir.glob("*.md")}
+        assert "architecture" in cat_files, "缺少 architecture 分类索引"
+        assert "testing" in cat_files, "缺少 testing 分类索引"
 
-        for f in cat_files:
-            content = f.read_text()
-            assert content.startswith("# ")
-            assert "../concepts/" in content
+        arch_content = cat_files["architecture"].read_text()
+        assert arch_content.startswith("# architecture"), "分类索引标题错误"
+        assert "[示例架构设计](../concepts/sample-architecture.md)" in arch_content
+
+        test_content = cat_files["testing"].read_text()
+        assert test_content.startswith("# testing"), "分类索引标题错误"
+        assert "[示例测试策略](../concepts/sample-testing.md)" in test_content
 
     def test_history_jsonl_format(self):
         history_file = RUNTIME_DIR / "compile" / "history.jsonl"
@@ -271,8 +299,49 @@ class TestE2ECompileFlow:
     def test_compiled_flag_updated(self):
         entries = read_index(RUNTIME_DIR)
         md_entries = [e for e in entries if e["type"] == "markdown"]
-        compiled_count = sum(1 for e in md_entries if e.get("compiled"))
-        assert compiled_count >= 1
+        assert len(md_entries) == 2
+
+        compiled_md = [e for e in md_entries if e.get("compiled")]
+        assert len(compiled_md) == 2, "两个 markdown 条目都应被标记为已编译"
+        for e in compiled_md:
+            assert e["updated_at"] != "2026-04-08T00:00:00Z", f"{e['id']} updated_at 应被更新"
+
+        config_entries = [e for e in entries if e["type"] == "config"]
+        assert len(config_entries) == 1
+        assert config_entries[0].get("compiled") is False, "config 条目不应被标记为已编译"
+
+
+    def test_concept_files_content(self):
+        """验证 concept 文件的 frontmatter 和内容完整性。"""
+        import re
+        concepts_dir = RUNTIME_DIR / "wiki" / "concepts"
+
+        for concept_file in concepts_dir.glob("*.md"):
+            text = concept_file.read_text()
+            match = re.match(r"^---\n(.*?)\n---", text, re.DOTALL)
+            assert match, f"{concept_file.name} 缺少 frontmatter"
+
+            frontmatter = match.group(1)
+            assert "id:" in frontmatter, f"{concept_file.name} frontmatter 缺少 id"
+            assert "title:" in frontmatter, f"{concept_file.name} frontmatter 缺少 title"
+            assert "category:" in frontmatter, f"{concept_file.name} frontmatter 缺少 category"
+            assert "tags:" in frontmatter, f"{concept_file.name} frontmatter 缺少 tags"
+            assert "sources:" in frontmatter, f"{concept_file.name} frontmatter 缺少 sources"
+
+            body = text[match.end():]
+            assert "# " in body, f"{concept_file.name} 缺少正文标题"
+            assert len(body.strip()) > 50, f"{concept_file.name} 正文过短"
+
+    def test_graph_edge_completeness(self):
+        """验证图谱边覆盖所有 concept 的 sources 和 related 关系。"""
+        graph = json.loads((RUNTIME_DIR / "wiki" / "graph.json").read_text())
+        edges = graph["edges"]
+
+        arch_described = [e for e in edges if e["to"] == "sample-architecture" and e["relation"] == "describes"]
+        assert len(arch_described) == 1, "sample-architecture 应有 1 条 describes 边"
+
+        test_described = [e for e in edges if e["to"] == "sample-testing" and e["relation"] == "describes"]
+        assert len(test_described) == 1, "sample-testing 应有 1 条 describes 边"
 
 
 class TestE2EDataStructure:
