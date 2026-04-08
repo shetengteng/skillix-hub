@@ -9,15 +9,20 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 UNIT_DIR = ROOT / "src" / "unit"
+E2E_DIR = ROOT / "src" / "e2e"
 REPORTS_DIR = ROOT / "reports"
 
 
 def run_tests():
     REPORTS_DIR.mkdir(exist_ok=True)
 
+    test_dirs = [str(UNIT_DIR)]
+    if E2E_DIR.exists():
+        test_dirs.append(str(E2E_DIR))
+
     result = subprocess.run(
-        [sys.executable, "-m", "pytest", "-v", "--tb=short"],
-        cwd=str(UNIT_DIR),
+        [sys.executable, "-m", "pytest", "-v", "--tb=short"] + test_dirs,
+        cwd=str(ROOT),
         capture_output=True,
         text=True,
     )
