@@ -11,7 +11,7 @@ from src.commands import (
     admin, add, list, remove, edit, import_project,
     compile, browse, read, source,
     search, status, check, graph,
-    concept, category,
+    concept, category, migrate,
 )
 
 app = typer.Typer(help="Knowledge Base Skill — 本地知识资料索引与 Wiki 编译")
@@ -20,7 +20,7 @@ for mod in [
     admin, add, list, remove, edit, import_project,
     compile, browse, read, source,
     search, status, check, graph,
-    concept, category,
+    concept, category, migrate,
 ]:
     mod.register(app)
 

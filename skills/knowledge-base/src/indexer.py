@@ -8,6 +8,36 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
+_project_root: Path | None = None
+
+
+def set_project_root(root: Path):
+    global _project_root
+    _project_root = root
+
+
+def get_project_root() -> Path:
+    if _project_root:
+        return _project_root
+    return Path(__file__).resolve().parent.parent.parent.parent
+
+
+def to_relative_path(abs_path: str) -> str:
+    """将绝对路径转为项目根目录的相对路径。"""
+    root = str(get_project_root())
+    if abs_path.startswith(root):
+        rel = os.path.relpath(abs_path, root)
+        return rel
+    return abs_path
+
+
+def resolve_path(stored_path: str) -> str:
+    """将存储的路径解析为可访问的绝对路径（兼容绝对/相对）。"""
+    if os.path.isabs(stored_path):
+        return stored_path
+    return str(get_project_root() / stored_path)
+
+
 def read_index(data_dir: Path) -> list:
     index_file = data_dir / "raw" / "index.jsonl"
     entries = []
@@ -133,12 +163,15 @@ def extract_title(path: str, entry_type: str) -> str:
     return p.stem
 
 
+_CATEGORY_DIRS = {"design", "skills", "docs", "tests", "src", "packages", "modules"}
+
+
 def infer_category(path: str) -> str:
     parts = Path(path).parts
     for i, part in enumerate(parts):
-        if part == "design" and i + 1 < len(parts):
+        if part in _CATEGORY_DIRS and i + 1 < len(parts):
             next_part = parts[i + 1]
-            if not next_part.endswith(".md"):
+            if not next_part.endswith((".md", ".py", ".js", ".ts")):
                 return next_part
     return "uncategorized"
 
@@ -147,34 +180,35 @@ def infer_category(path: str) -> str:
 
 
 def cmd_add(args, data_dir: Path):
-    path = os.path.abspath(args.path)
+    abs_path = os.path.abspath(args.path)
 
-    entry_type = args.entry_type or detect_type(path)
+    entry_type = args.entry_type or detect_type(abs_path)
 
-    if not os.path.exists(path) and entry_type != "link":
-        print(f"❌ 路径不存在: {path}")
+    if not os.path.exists(abs_path) and entry_type != "link":
+        print(f"❌ 路径不存在: {abs_path}")
         return
 
     if entry_type == "directory":
-        _add_directory(args, data_dir, path)
+        _add_directory(args, data_dir, abs_path)
         return
 
+    stored_path = to_relative_path(abs_path)
     entries = read_index(data_dir)
 
     for e in entries:
-        if e["path"] == path:
+        if resolve_path(e["path"]) == abs_path:
             print(f"⚠ 已存在相同路径的索引: {e['id']} ({e['title']})")
             return
 
     entry = {
         "id": generate_id(),
-        "title": args.title or extract_title(path, entry_type),
+        "title": args.title or extract_title(abs_path, entry_type),
         "type": entry_type,
-        "path": path,
+        "path": stored_path,
         "tags": [t.strip() for t in args.tags.split(",")] if args.tags else [],
-        "category": args.category or infer_category(path),
+        "category": args.category or infer_category(abs_path),
         "summary": "",
-        "content_hash": compute_hash(path, entry_type),
+        "content_hash": compute_hash(abs_path, entry_type),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "compiled": False,
@@ -201,13 +235,13 @@ def _add_directory(args, data_dir: Path, dir_path: str):
         return
 
     entries = read_index(data_dir)
-    existing_paths = {e["path"] for e in entries}
+    existing_resolved = {resolve_path(e["path"]) for e in entries}
     added = 0
     skipped = 0
 
     for f in sorted(files):
         abs_path = str(f.resolve())
-        if abs_path in existing_paths:
+        if abs_path in existing_resolved:
             skipped += 1
             continue
 
@@ -216,7 +250,7 @@ def _add_directory(args, data_dir: Path, dir_path: str):
             "id": generate_id(),
             "title": extract_title(abs_path, entry_type),
             "type": entry_type,
-            "path": abs_path,
+            "path": to_relative_path(abs_path),
             "tags": [t.strip() for t in args.tags.split(",")] if args.tags else [],
             "category": args.category or infer_category(abs_path),
             "summary": "",
@@ -332,17 +366,16 @@ def cmd_import_project(args, data_dir: Path, skill_dir: Path):
         print(f"⚠ 目录中没有匹配 {pattern} 的文件: {target_dir}")
         return
 
-    # 排除 refer/ 目录下的文件
     files = [f for f in files if "refer" not in f.parts]
 
     entries = read_index(data_dir)
-    existing_paths = {e["path"] for e in entries}
+    existing_resolved = {resolve_path(e["path"]) for e in entries}
     added = 0
     skipped = 0
 
     for f in sorted(files):
         abs_path = str(f.resolve())
-        if abs_path in existing_paths:
+        if abs_path in existing_resolved:
             skipped += 1
             continue
 
@@ -351,7 +384,7 @@ def cmd_import_project(args, data_dir: Path, skill_dir: Path):
             "id": generate_id(),
             "title": extract_title(abs_path, entry_type),
             "type": entry_type,
-            "path": abs_path,
+            "path": to_relative_path(abs_path),
             "tags": [],
             "category": infer_category(abs_path),
             "summary": "",
@@ -367,3 +400,51 @@ def cmd_import_project(args, data_dir: Path, skill_dir: Path):
     print(f"✅ 项目导入完成: {added} 个新条目, {skipped} 个已存在跳过")
     print(f"   来源目录: {target_dir}")
     print(f"   匹配模式: {pattern}")
+
+
+def cmd_migrate(args, data_dir: Path):
+    """批量修复索引中的路径。"""
+    old_base = getattr(args, "old_base", None)
+    new_base = getattr(args, "new_base", None)
+    do_relative = getattr(args, "to_relative", False)
+    dry_run = getattr(args, "dry_run", False)
+
+    entries = read_index(data_dir)
+    if not entries:
+        print("📭 索引为空")
+        return
+
+    changes = []
+
+    for e in entries:
+        old_path = e["path"]
+        new_path = old_path
+
+        if old_base and new_base and old_path.startswith(old_base):
+            new_path = new_base + old_path[len(old_base):]
+
+        if do_relative and os.path.isabs(new_path):
+            new_path = to_relative_path(new_path)
+
+        if new_path != old_path:
+            changes.append((e["id"], old_path, new_path))
+            if not dry_run:
+                e["path"] = new_path
+
+    if not changes:
+        print("✅ 所有路径无需修改")
+        return
+
+    if dry_run:
+        print(f"=== 路径迁移预览（{len(changes)} 个变更）===\n")
+    else:
+        write_index(data_dir, entries)
+        print(f"=== 路径迁移完成（{len(changes)} 个变更）===\n")
+
+    for eid, old_p, new_p in changes[:20]:
+        print(f"  {eid}")
+        print(f"    旧: {old_p}")
+        print(f"    新: {new_p}\n")
+
+    if len(changes) > 20:
+        print(f"  ... 共 {len(changes)} 个变更")

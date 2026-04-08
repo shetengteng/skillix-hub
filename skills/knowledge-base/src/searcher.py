@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 
-from .indexer import read_index, compute_hash
+from .indexer import read_index, compute_hash, resolve_path
 
 
 def cmd_search(args, data_dir: Path):
@@ -145,13 +145,15 @@ def cmd_status(args, data_dir: Path):
     valid = 0
     invalid = 0
     for e in entries:
-        if e["type"] == "link" or os.path.exists(e["path"]):
+        if e["type"] == "link" or os.path.exists(resolve_path(e["path"])):
             valid += 1
         else:
             invalid += 1
 
     concepts_dir = data_dir / "wiki" / "concepts"
     concept_count = len(list(concepts_dir.glob("*.md"))) if concepts_dir.exists() else 0
+
+    stale_count = _count_stale_sources(entries)
 
     graph_file = data_dir / "wiki" / "graph.json"
     has_graph = graph_file.exists()
@@ -175,6 +177,7 @@ def cmd_status(args, data_dir: Path):
     print(f"   待编译:     {pending}")
     print(f"   路径有效:   {valid}")
     print(f"   路径失效:   {invalid}")
+    print(f"   来源已变更: {stale_count}")
     print()
     print(f"📚 Wiki 统计")
     print(f"   概念条目:   {concept_count}")
@@ -184,8 +187,26 @@ def cmd_status(args, data_dir: Path):
 
     if invalid > 0:
         print("⚠ 存在失效路径，建议执行 `kb check` 检查详情")
+    if stale_count > 0:
+        print(f"🔄 有 {stale_count} 个已编译条目的来源已变更，概念可能过期")
+        print(f"   执行 `kb compile` 重新编译以更新知识")
     if pending > 0:
         print(f"💡 有 {pending} 个待编译条目，执行 `kb compile` 开始编译")
+
+
+def _count_stale_sources(entries: list) -> int:
+    """统计已编译但来源内容已变更的条目数。"""
+    count = 0
+    for e in entries:
+        if not e.get("compiled"):
+            continue
+        abs_path = resolve_path(e["path"])
+        if e["type"] == "link" or not os.path.exists(abs_path):
+            continue
+        current_hash = compute_hash(abs_path, e["type"])
+        if current_hash and current_hash != e.get("content_hash", ""):
+            count += 1
+    return count
 
 
 def cmd_check(args, data_dir: Path):
@@ -196,16 +217,16 @@ def cmd_check(args, data_dir: Path):
     changed = []
 
     for e in entries:
-        path = e["path"]
+        abs_path = resolve_path(e["path"])
         if e["type"] == "link":
             valid.append(e)
             continue
 
-        if not os.path.exists(path):
+        if not os.path.exists(abs_path):
             invalid.append(e)
             continue
 
-        new_hash = compute_hash(path, e["type"])
+        new_hash = compute_hash(abs_path, e["type"])
         if new_hash and new_hash != e.get("content_hash", ""):
             changed.append(e)
         else:

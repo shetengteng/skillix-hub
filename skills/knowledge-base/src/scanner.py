@@ -5,12 +5,13 @@ import json
 import os
 from pathlib import Path
 
-from .indexer import read_index, write_index, compute_hash, TEXT_READABLE_TYPES
+from .indexer import read_index, write_index, compute_hash, resolve_path, TEXT_READABLE_TYPES
 
 
 def scan_entry(entry: dict) -> dict:
     """扫描单个索引条目，提取内容预览。"""
-    path = entry["path"]
+    stored_path = entry["path"]
+    abs_path = resolve_path(stored_path)
     entry_type = entry["type"]
     result = {
         "id": entry["id"],
@@ -18,16 +19,16 @@ def scan_entry(entry: dict) -> dict:
         "type": entry_type,
         "category": entry.get("category", "uncategorized"),
         "tags": entry.get("tags", []),
-        "path": path,
+        "path": stored_path,
     }
 
-    if not os.path.exists(path) and entry_type != "link":
-        result["content_preview"] = f"[路径不存在: {path}]"
+    if not os.path.exists(abs_path) and entry_type != "link":
+        result["content_preview"] = f"[路径不存在: {abs_path}]"
         result["status"] = "invalid"
         return result
 
     result["status"] = "ok"
-    result["content_preview"] = _extract_content(path, entry_type)
+    result["content_preview"] = _extract_content(abs_path, entry_type)
     return result
 
 
@@ -128,10 +129,10 @@ def detect_changes(data_dir: Path) -> dict:
     result = {"new": [], "changed": [], "invalid": [], "unchanged": []}
 
     for entry in entries:
-        path = entry["path"]
+        abs_path = resolve_path(entry["path"])
         entry_type = entry["type"]
 
-        if not os.path.exists(path) and entry_type != "link":
+        if not os.path.exists(abs_path) and entry_type != "link":
             result["invalid"].append(entry)
             continue
 
@@ -139,7 +140,7 @@ def detect_changes(data_dir: Path) -> dict:
             result["new"].append(entry)
             continue
 
-        new_hash = compute_hash(path, entry_type)
+        new_hash = compute_hash(abs_path, entry_type)
         if new_hash and new_hash != entry.get("content_hash", ""):
             result["changed"].append(entry)
         else:
@@ -158,7 +159,7 @@ def build_pending_list(data_dir: Path, full: bool = False) -> list:
         entries = read_index(data_dir)
         pending = []
         for entry in entries:
-            if not os.path.exists(entry["path"]) and entry["type"] != "link":
+            if not os.path.exists(resolve_path(entry["path"])) and entry["type"] != "link":
                 continue
             scanned = scan_entry(entry)
             if scanned["status"] == "ok":
@@ -174,16 +175,16 @@ def build_pending_list(data_dir: Path, full: bool = False) -> list:
     return pending
 
 
-def update_hashes(data_dir: Path, entry_ids: list = None):
+def update_hashes(data_dir: Path, entry_ids: list | None = None):
     """更新指定条目的 content_hash。如果 entry_ids 为 None 则更新所有。"""
     entries = read_index(data_dir)
     updated = 0
     for entry in entries:
         if entry_ids and entry["id"] not in entry_ids:
             continue
-        path = entry["path"]
-        if os.path.exists(path) or entry["type"] == "link":
-            new_hash = compute_hash(path, entry["type"])
+        abs_path = resolve_path(entry["path"])
+        if os.path.exists(abs_path) or entry["type"] == "link":
+            new_hash = compute_hash(abs_path, entry["type"])
             if new_hash != entry.get("content_hash", ""):
                 entry["content_hash"] = new_hash
                 updated += 1

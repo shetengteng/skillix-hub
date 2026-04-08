@@ -5,7 +5,7 @@ import os
 import re
 from pathlib import Path
 
-from .indexer import read_index
+from .indexer import read_index, resolve_path, compute_hash
 
 
 def cmd_browse(args, data_dir: Path):
@@ -104,6 +104,13 @@ def cmd_read(args, data_dir: Path):
 
     print(concept_file.read_text(encoding="utf-8"))
 
+    stale_sources = _check_stale_sources(data_dir, concept_file)
+    if stale_sources:
+        print(f"\n⚠ 来源已变更，概念可能过期:")
+        for sid in stale_sources:
+            print(f"   🔄 {sid}")
+        print(f"   建议执行 `kb compile` 重新编译")
+
     backlinks = _load_backlinks(data_dir)
     if concept_id in backlinks:
         refs = backlinks[concept_id].get("referenced_by", [])
@@ -131,16 +138,17 @@ def cmd_source(args, data_dir: Path):
     print(f"类型:     {entry['type']}")
     print(f"分类:     {entry['category']}")
     print(f"标签:     {', '.join(entry.get('tags', [])) or '无'}")
+    abs_path = resolve_path(entry["path"])
     print(f"路径:     {entry['path']}")
     print(f"已编译:   {'是' if entry.get('compiled') else '否'}")
     print(f"创建时间: {entry.get('created_at', '未知')}")
 
-    path_exists = os.path.exists(entry["path"])
+    path_exists = os.path.exists(abs_path)
     print(f"路径有效: {'✅ 是' if path_exists else '❌ 否'}")
 
     if path_exists and entry["type"] == "markdown":
         try:
-            content = Path(entry["path"]).read_text(encoding="utf-8", errors="replace")
+            content = Path(abs_path).read_text(encoding="utf-8", errors="replace")
             preview = content[:500]
             print(f"\n--- 内容预览 ---\n{preview}")
             if len(content) > 500:
@@ -149,7 +157,44 @@ def cmd_source(args, data_dir: Path):
             pass
 
     print(f"\n💡 下一步:")
-    print(f"  - 直接读取原始文件: Read {entry['path']}")
+    print(f"  - 直接读取原始文件: Read {abs_path}")
+
+
+def _check_stale_sources(data_dir: Path, concept_file: Path) -> list[str]:
+    """检查概念关联的 sources 是否有内容变更。"""
+    import re
+    try:
+        text = concept_file.read_text(encoding="utf-8")
+    except Exception:
+        return []
+
+    match = re.match(r"^---\n(.*?)\n---", text, re.DOTALL)
+    if not match:
+        return []
+
+    source_ids = []
+    for line in match.group(1).split("\n"):
+        if line.strip().startswith("sources:"):
+            val = line.split(":", 1)[1].strip().strip("[]")
+            source_ids = [s.strip().strip("'\"") for s in val.split(",") if s.strip()]
+
+    if not source_ids:
+        return []
+
+    entries = read_index(data_dir)
+    entry_map = {e["id"]: e for e in entries}
+    stale = []
+    for sid in source_ids:
+        e = entry_map.get(sid)
+        if not e:
+            continue
+        abs_path = resolve_path(e["path"])
+        if not os.path.exists(abs_path):
+            continue
+        current_hash = compute_hash(abs_path, e["type"])
+        if current_hash and current_hash != e.get("content_hash", ""):
+            stale.append(sid)
+    return stale
 
 
 def _load_backlinks(data_dir: Path) -> dict:

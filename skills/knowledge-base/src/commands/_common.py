@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 
 SKILL_DIR = Path(__file__).resolve().parent.parent.parent
+PROJECT_ROOT = SKILL_DIR.parent.parent
 EXCLUDE_COPY = {"__pycache__", ".pyc", "node_modules", ".git", ".DS_Store"}
 
 

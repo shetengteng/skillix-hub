@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -55,8 +56,19 @@ def _compile_dry_run(args, data_dir: Path):
     print("  - `kb compile` — 开始编译（生成 prompt 供 Agent 执行）")
 
 
+def _backup_wiki(data_dir: Path):
+    """编译前备份 wiki/ 到 wiki.bak/。"""
+    wiki_dir = data_dir / "wiki"
+    backup_dir = data_dir / "wiki.bak"
+    if wiki_dir.exists() and any(wiki_dir.iterdir()):
+        if backup_dir.exists():
+            shutil.rmtree(backup_dir)
+        shutil.copytree(wiki_dir, backup_dir)
+
+
 def _compile_prepare(args, data_dir: Path):
     """准备编译：扫描内容、生成 pending.json、输出编译 prompt。"""
+    _backup_wiki(data_dir)
     full = getattr(args, "full", False)
     target_id = getattr(args, "target_id", None)
 
@@ -238,6 +250,22 @@ def _compile_finalize(data_dir: Path):
             meta["_file"] = str(md_file)
             concepts.append(meta)
 
+    # 质量验证
+    warnings = _validate_concepts(data_dir, concepts)
+    if warnings:
+        print(f"⚠ 概念质量检查发现 {len(warnings)} 个问题:\n")
+        for w in warnings:
+            print(f"   {w}")
+        print()
+
+    # 检测孤立概念
+    orphans = _detect_orphan_concepts(data_dir, concepts)
+    if orphans:
+        print(f"⚠ 发现 {len(orphans)} 个孤立概念（来源已不存在）:\n")
+        for o in orphans:
+            print(f"   {o}")
+        print()
+
     # 构建反向链接
     backlinks = {}
     for c in concepts:
@@ -386,3 +414,55 @@ def _record_history(data_dir: Path, concept_count: int):
     }
     with open(history_file, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def _validate_concepts(data_dir: Path, concepts: list) -> list[str]:
+    """验证概念条目的 frontmatter 质量。"""
+    entries = read_index(data_dir)
+    index_ids = {e["id"] for e in entries}
+    concept_ids = {c.get("id", "") for c in concepts}
+    warnings = []
+
+    for c in concepts:
+        cid = c.get("id", "")
+        fname = Path(c.get("_file", "")).name
+
+        if not cid:
+            warnings.append(f"❌ {fname}: 缺少 id 字段")
+        if not c.get("title"):
+            warnings.append(f"❌ {fname}: 缺少 title 字段")
+        if not c.get("category"):
+            warnings.append(f"⚠ {cid or fname}: 缺少 category 字段")
+
+        sources = c.get("sources", [])
+        if isinstance(sources, str):
+            sources = [sources]
+        for sid in sources:
+            if sid and sid not in index_ids:
+                warnings.append(f"⚠ {cid}: source '{sid}' 不存在于索引中")
+
+        related = c.get("related", [])
+        if isinstance(related, str):
+            related = [related]
+        for rid in related:
+            if rid and rid not in concept_ids:
+                warnings.append(f"⚠ {cid}: related '{rid}' 引用的概念不存在")
+
+    return warnings
+
+
+def _detect_orphan_concepts(data_dir: Path, concepts: list) -> list[str]:
+    """检测所有 sources 均不存在于索引中的孤立概念。"""
+    entries = read_index(data_dir)
+    index_ids = {e["id"] for e in entries}
+    orphans = []
+
+    for c in concepts:
+        cid = c.get("id", "")
+        sources = c.get("sources", [])
+        if isinstance(sources, str):
+            sources = [sources]
+        if sources and all(sid not in index_ids for sid in sources if sid):
+            orphans.append(f"{cid} (sources: {', '.join(sources)})")
+
+    return orphans
