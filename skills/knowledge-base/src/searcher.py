@@ -1,102 +1,138 @@
-"""搜索与状态管理模块：关键词搜索、标签筛选、健康检查。"""
+"""搜索与状态管理模块：Agent-native 知识导航、健康检查。"""
 
+import json
 import os
-import re
 from pathlib import Path
 
 from .indexer import read_index, compute_hash
 
 
 def cmd_search(args, data_dir: Path):
+    """输出完整 Wiki 知识结构，供 Agent LLM 自主语义导航。"""
     query = args.query
     tag = getattr(args, "search_tag", None)
     category = getattr(args, "search_category", None)
 
-    results = []
-
-    entries = read_index(data_dir)
-    for e in entries:
-        if tag and tag not in e.get("tags", []):
-            continue
-        if category and e.get("category") != category:
-            continue
-        if query:
-            score = _match_score(query, e)
-            if score > 0:
-                results.append((score, "source", e))
-
     concepts_dir = data_dir / "wiki" / "concepts"
-    if concepts_dir.exists() and query:
-        for md_file in concepts_dir.glob("*.md"):
-            try:
-                content = md_file.read_text(encoding="utf-8")
-                score = _text_match_score(query, content)
-                if score > 0:
-                    title = md_file.stem
-                    for line in content.split("\n"):
-                        if line.startswith("# "):
-                            title = line[2:].strip()
-                            break
-                    results.append((score, "concept", {"id": md_file.stem, "title": title}))
-            except Exception:
-                continue
+    concepts = _load_concepts(concepts_dir) if concepts_dir.exists() else []
 
-    results.sort(key=lambda x: x[0], reverse=True)
+    if tag:
+        concepts = [c for c in concepts if tag in c.get("tags", [])]
+    if category:
+        concepts = [c for c in concepts if c.get("category") == category]
 
-    if not results:
-        print(f"📭 没有找到匹配「{query or tag or category}」的结果")
+    if not concepts:
+        entries = read_index(data_dir)
+        if not entries:
+            print("📭 知识库为空，请先添加资料并编译")
+            print("\n💡 下一步:")
+            print("  - `kb add <path>` — 添加资料")
+            print("  - `kb import-project` — 导入项目 design/ 目录")
+            return
+        _show_raw_fallback(entries, query, tag, category)
         return
 
-    print(f"=== Knowledge Base: 搜索结果 ===\n")
-    print(f"查询: {query or ''} {f'标签:{tag}' if tag else ''} {f'分类:{category}' if category else ''}\n")
+    by_cat: dict[str, list] = {}
+    for c in concepts:
+        cat = c.get("category", "uncategorized")
+        by_cat.setdefault(cat, []).append(c)
 
-    for score, rtype, item in results[:20]:
-        if rtype == "source":
-            status = "✅" if item.get("compiled") else "⏳"
-            print(f"  📄 {status} {item['id']} | {item['title']}")
-            print(f"      分类: {item.get('category', '')} | 路径: {item['path']}")
-        else:
-            print(f"  💡 {item['id']} | {item['title']}")
+    print("=== Knowledge Base: 知识导航 ===\n")
+    if query:
+        print(f"🔍 查询: {query}\n")
+
+    for cat, items in sorted(by_cat.items()):
+        print(f"📂 {cat} ({len(items)} 个概念)")
+        for c in items:
+            print(f"   💡 {c['id']} | {c['title']}")
         print()
 
-    print(f"共 {len(results)} 个结果（显示前 {min(len(results), 20)} 个）\n")
+    print(f"共 {len(concepts)} 个概念 | {len(by_cat)} 个分类\n")
+    print("💡 根据查询意图，选择相关概念深入阅读:")
+    print("  - `kb read <concept-id>` — 读取概念全文")
+    print("  - `kb browse <category>` — 查看分类详情和资料列表")
+    print("  - `kb graph --center <id> --depth 2` — 查看概念关联")
+
+
+def _load_concepts(concepts_dir: Path) -> list:
+    """从 wiki/concepts/*.md 的 frontmatter 中加载概念元数据。"""
+    concepts = []
+    for md_file in sorted(concepts_dir.glob("*.md")):
+        try:
+            text = md_file.read_text(encoding="utf-8")
+            meta = _parse_frontmatter(text, md_file.stem)
+            concepts.append(meta)
+        except Exception:
+            continue
+    return concepts
+
+
+def _parse_frontmatter(text: str, fallback_id: str) -> dict:
+    """解析 Markdown frontmatter（--- ... ---）。"""
+    meta: dict = {"id": fallback_id, "title": fallback_id, "category": "uncategorized", "tags": []}
+    lines = text.split("\n")
+    if not lines or lines[0].strip() != "---":
+        for line in lines:
+            if line.startswith("# "):
+                meta["title"] = line[2:].strip()
+                break
+        return meta
+
+    in_fm = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped == "---":
+            if in_fm:
+                break
+            in_fm = True
+            continue
+        if in_fm and ":" in stripped:
+            key, val = stripped.split(":", 1)
+            key, val = key.strip(), val.strip()
+            if key == "id":
+                meta["id"] = val
+            elif key == "title":
+                meta["title"] = val
+            elif key == "category":
+                meta["category"] = val
+            elif key == "tags":
+                val = val.strip("[]")
+                meta["tags"] = [t.strip().strip("'\"") for t in val.split(",") if t.strip()]
+    return meta
+
+
+def _show_raw_fallback(entries: list, query: str, tag: str | None, category: str | None):
+    """Wiki 未编译时，输出原始索引结构作为导航依据。"""
+    if tag:
+        entries = [e for e in entries if tag in e.get("tags", [])]
+    if category:
+        entries = [e for e in entries if e.get("category") == category]
+
+    if not entries:
+        print(f"📭 没有匹配的索引条目")
+        return
+
+    by_cat: dict[str, list] = {}
+    for e in entries:
+        cat = e.get("category", "uncategorized")
+        by_cat.setdefault(cat, []).append(e)
+
+    print("=== Knowledge Base: 知识导航（原始索引） ===\n")
+    if query:
+        print(f"🔍 查询: {query}\n")
+    print("⚠ Wiki 尚未编译，显示原始索引结构。编译后可获得更丰富的概念导航。\n")
+
+    for cat, items in sorted(by_cat.items()):
+        print(f"📂 {cat} ({len(items)} 个资料)")
+        for e in items:
+            status = "✅" if e.get("compiled") else "⏳"
+            print(f"   {status} {e['id']} | {e['title']}")
+        print()
+
+    print(f"共 {len(entries)} 个资料 | {len(by_cat)} 个分类\n")
     print("💡 下一步:")
-    print("  - `kb read <concept-id>` — 查看概念")
     print("  - `kb source <source-id>` — 查看资料详情")
-
-
-def _match_score(query: str, entry: dict) -> int:
-    score = 0
-    q = query.lower()
-    title = entry.get("title", "").lower()
-    tags = [t.lower() for t in entry.get("tags", [])]
-    category = entry.get("category", "").lower()
-    path = entry.get("path", "").lower()
-
-    if q in title:
-        score += 10
-    for word in q.split():
-        if word in title:
-            score += 5
-        if word in tags:
-            score += 3
-        if word in category:
-            score += 2
-        if word in path:
-            score += 1
-    return score
-
-
-def _text_match_score(query: str, text: str) -> int:
-    score = 0
-    q = query.lower()
-    t = text.lower()
-    if q in t:
-        score += 5
-    for word in q.split():
-        count = t.count(word)
-        score += min(count, 5)
-    return score
+    print("  - `kb compile` — 编译生成概念索引后可获得更好的导航")
 
 
 def cmd_status(args, data_dir: Path):

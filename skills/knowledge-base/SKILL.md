@@ -66,9 +66,11 @@ python3 $SKILL_PATH/main.py search "记忆架构"
 | `browse <category>` | 查看分类下的概念 |
 | `read <concept-id>` | 读取概念条目全文 |
 | `source <source-id>` | 查看原始资料信息 |
-| `search <query>` | 搜索知识库（索引 + 概念） |
+| `search <query>` | 知识导航（输出 Wiki 结构供 Agent 语义定位） |
 | `status` | 知识库状态总览（条目统计、编译状态） |
 | `check` | 路径有效性检查 |
+
+**搜索策略**：`search` 输出完整知识结构（分类 + 概念列表），由你（Agent）根据查询意图自主判断哪些概念相关，然后用 `read <concept-id>` 读取全文。这比关键词匹配更准确。
 
 ### 知识图谱
 
