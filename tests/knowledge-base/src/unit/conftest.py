@@ -16,7 +16,7 @@ sys.path.insert(0, str(SKILL_DIR))
 def data_dir(tmp_path):
     """Create an isolated data directory with proper structure."""
     d = tmp_path / "knowledge-base-data"
-    (d / "raw" / "cache").mkdir(parents=True)
+    (d / "raw").mkdir(parents=True)
     (d / "wiki" / "concepts").mkdir(parents=True)
     (d / "wiki" / "categories").mkdir(parents=True)
     (d / "compile").mkdir(parents=True)
