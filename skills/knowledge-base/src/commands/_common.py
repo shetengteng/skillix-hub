@@ -18,7 +18,7 @@ def get_data_dir() -> Path:
     config_path = SKILL_DIR / "config.json"
     with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
-    return SKILL_DIR.parent / config["data_dir_name"]
+    return PROJECT_ROOT / config["data_dir_path"]
 
 
 def ensure_data_dirs(data_dir: Path):

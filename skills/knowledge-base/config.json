@@ -1,5 +1,5 @@
 {
-  "data_dir_name": "knowledge-base-data",
+  "data_dir_path": "tests/knowledge-base/testdata/runtime",
   "default_category": "uncategorized",
   "auto_detect_type": true,
   "content_preview_length": 2000
