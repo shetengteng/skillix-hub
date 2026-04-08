@@ -29,6 +29,7 @@ AI Skill is a reusable AI instruction set that helps AI programming assistants b
 | [doc-skill-generator](./skills/doc-skill-generator/) | Extract content from documents (web pages, PDF, local files) to auto-generate Cursor Skills. Supports Playwright BFS deep crawling for SPA pages, two-phase generation flow (staging + install) |
 | [prompt-helper](./skills/prompt-helper/) | Prompt writing assistant based on the PRISM framework (Facet-driven design methodology), providing writing, editing, 8-dimension quality auditing, and behavior diagnosis with 27 error-to-Facet mapping types |
 | [socratic](./skills/socratic/) | Socratic critical thinking analysis that auto-detects requirements, design review, tech research, and data analysis scenarios, intelligently choosing fast-track (≤1 question) or deep exploration (≤5 questions), with 4-dimension questioning framework and 5 output templates |
+| [knowledge-base](./skills/knowledge-base/) | Local knowledge asset index and Wiki compilation, managing design docs, code, datasets and any file type, compiling into structured Wiki with backlinks, concept categorization, and knowledge graph, supporting progressive browsing and incremental compilation |
 
 ## Installation
 

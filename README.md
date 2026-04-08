@@ -30,6 +30,7 @@ AI Skill 是一种可复用的 AI 指令集，帮助 AI 编程助手更好地完
 | [doc-skill-generator](./skills/doc-skill-generator/) | 从文档（网页、PDF、本地文件）中提取内容，自动生成 Cursor Skill。支持 Playwright BFS 深度采集 SPA 页面，两阶段生成流程（暂存 + 安装） |
 | [prompt-helper](./skills/prompt-helper/) | Prompt 编写辅助工具，基于 PRISM 框架（Facet 驱动设计方法论），提供编写、编辑、8 维度质量检测、行为诊断四大功能，含 27 种错误→Facet 映射表 |
 | [socratic](./skills/socratic/) | 苏格拉底式批判性思维分析，自动识别需求分析、系统设计、技术选型、数据分析四类场景，智能决定快速结论（≤1问）或深度探索（≤5问），含 4 维度提问框架和 5 种输出模板 |
+| [knowledge-base](./skills/knowledge-base/) | 本地知识资料索引与 Wiki 编译，管理设计文档、代码、数据集等任意文件，通过 LLM 编译成结构化 Wiki（含反向链接、概念归类、知识图谱），支持渐进式浏览和增量编译 |
 
 ## 安装使用
 

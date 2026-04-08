@@ -1,0 +1,14 @@
+[project]
+name = "knowledge-base"
+version = "0.1.0"
+description = "本地知识资料索引与 Wiki 编译 Skill"
+requires-python = ">=3.10"
+
+dependencies = [
+    "typer[all]>=0.12",
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+kb = "main:app"

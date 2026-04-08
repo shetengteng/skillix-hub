@@ -1,0 +1,6 @@
+{
+  "data_dir_name": "knowledge-base-data",
+  "default_category": "uncategorized",
+  "auto_detect_type": true,
+  "content_preview_length": 2000
+}
