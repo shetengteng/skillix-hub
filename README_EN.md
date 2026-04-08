@@ -15,6 +15,7 @@ AI Skill is a reusable AI instruction set that helps AI programming assistants b
 
 | Skill | Description |
 |-------|-------------|
+| [skill-store](./skills/skill-store/) | Cursor Skill package manager with Git repo sources, async index sync, natural language search, project/global install with dependency resolution and session Hook auto-update checks |
 | [memory](./skills/memory/) | Long-term memory for AI assistants, auto-record conversations and retrieve relevant history |
 | [behavior-prediction](./skills/behavior-prediction/) | Learn user behavior patterns, record sessions, predict next actions and provide smart suggestions |
 | [continuous-learning](./skills/continuous-learning/) | Continuously learn from user-AI interactions, extract reusable knowledge, generate new skills |
@@ -30,6 +31,7 @@ AI Skill is a reusable AI instruction set that helps AI programming assistants b
 | [prompt-helper](./skills/prompt-helper/) | Prompt writing assistant based on the PRISM framework (Facet-driven design methodology), providing writing, editing, 8-dimension quality auditing, and behavior diagnosis with 27 error-to-Facet mapping types |
 | [socratic](./skills/socratic/) | Socratic critical thinking analysis that auto-detects requirements, design review, tech research, and data analysis scenarios, intelligently choosing fast-track (≤1 question) or deep exploration (≤5 questions), with 4-dimension questioning framework and 5 output templates |
 | [knowledge-base](./skills/knowledge-base/) | Local knowledge asset index and Wiki compilation, managing design docs, code, datasets and any file type, compiling into structured Wiki with backlinks, concept categorization, and knowledge graph, supporting progressive browsing and incremental compilation |
+| [first-principles](./skills/first-principles/) | First principles analysis that decomposes problems to bedrock facts, systematically challenges every assumption, and rebuilds solutions from the ground up, with 6 domain mental models (architecture, cost, engineering, product, tech selection, strategy) and T1-T4 complexity routing |
 
 ## Installation
 
@@ -696,6 +698,91 @@ AI (enters Review Mode):
 - **Review**: review this, give me feedback
 - **Selection**: tech selection, compare options
 - **Requirements**: requirements analysis, what about this requirement
+
+## Knowledge Base Skill
+
+Knowledge Base manages local knowledge assets — design docs, code, datasets, or any file type — by indexing sources and compiling them into a structured Wiki with backlinks, concept categorization, and a knowledge graph. Supports progressive browsing and incremental compilation.
+
+### Core Commands
+
+| Command | Description |
+|---------|-------------|
+| `kb add <path>` | Add a file or directory to the knowledge base |
+| `kb import-project` | Import all design/ documents from current project |
+| `kb list` | List all indexed sources |
+| `kb compile` | Compile indexed sources into Wiki concepts |
+| `kb browse` | View the knowledge map (categories and concepts) |
+| `kb read <concept-id>` | Read a concept's full content |
+| `kb search <query>` | Knowledge navigation (outputs Wiki structure for Agent semantic matching) |
+| `kb status` | Knowledge base statistics (total/compiled/stale counts) |
+| `kb graph` | Visualize the knowledge graph |
+| `kb migrate` | Batch fix paths in the index |
+
+### Trigger Words
+
+- **Add**: add to knowledge base, index this document
+- **Browse**: show knowledge map, what concepts are available
+- **Search**: search knowledge base, find information about X
+- **Compile**: compile wiki, update knowledge base
+
+## First Principles Skill
+
+First Principles decomposes problems to bedrock facts (physical laws / logical necessities / empirical data), systematically challenges every assumption, and rebuilds solutions from the ground up — instead of relying on convention or analogy.
+
+### Core Capabilities
+
+- **Assumption Decomposition**: Separate explicit and implicit assumptions
+- **Bedrock Verification**: Test each assumption against "physics / logic / evidence vs convention"
+- **False Constraint Identification**: Eliminate inherited constraints, opening new design space
+- **Iterative Rebuilding**: Construct solutions only from verified bedrock facts
+- **Complexity Routing**: T1 direct answer → T4 full analysis with alternatives
+
+### Applicable Scenarios
+
+| Scenario | Trigger Signals |
+|----------|----------------|
+| Architecture | "why use this architecture", "redesign the system" |
+| Cost | "why so expensive", "can we reduce cost" |
+| Root Cause | "why does this keep happening", "what's the root cause" |
+| Product | "what do users really need" |
+| Tech Selection | "use A or B", "why this framework" |
+| Strategy | "should we do this", "Build vs Buy" |
+
+### Analysis Flow
+
+```
+Phase 1 Decompose → Phase 2 Bedrock Test → Phase 3 Rebuild
+                                                 │
+              ← backtrack on new assumptions ←───┘
+```
+
+### Usage Example
+
+```
+User: We plan to refactor our monolith into microservices
+
+AI (T3 Architecture Decision):
+  Phase 1: Decompose assumptions (team DevOps capability, service boundaries, data consistency)
+  Phase 2: Mark "monolith is the bottleneck" as false constraint
+  Phase 3: Recommend Modular Monolith → validate boundaries before splitting
+```
+
+### Relationship with Socratic Skill
+
+| Skill | Role | Output |
+|-------|------|--------|
+| **socratic** | Clean the ground — question and challenge | Clearer definitions |
+| **first-principles** | Rebuild from ground — decompose to bedrock | Concrete solutions |
+
+Recommended sequence: `/socratic` → `/first-principles`
+
+### Trigger Words
+
+- **Analysis**: use first principles, rethink from basics
+- **Assumptions**: why must we use X, challenge this assumption
+- **Cost**: why so expensive, can we reduce cost
+- **Root Cause**: why does this keep happening, what's the root cause
+- **Redesign**: break convention, start from scratch
 
 ## Contributing
 

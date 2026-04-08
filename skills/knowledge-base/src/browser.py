@@ -198,11 +198,21 @@ def _check_stale_sources(data_dir: Path, concept_file: Path) -> list[str]:
 
 
 def _load_backlinks(data_dir: Path) -> dict:
-    bl_file = data_dir / "wiki" / "backlinks.json"
-    if bl_file.exists():
-        try:
-            with open(bl_file, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {}
+    """从 graph.json 运行时计算反向引用关系。"""
+    graph_file = data_dir / "wiki" / "graph.json"
+    if not graph_file.exists():
+        return {}
+    try:
+        with open(graph_file, "r", encoding="utf-8") as f:
+            graph = json.load(f)
+    except Exception:
+        return {}
+    backlinks: dict[str, dict] = {}
+    for edge in graph.get("edges", []):
+        target = edge.get("to", "")
+        source = edge.get("from", "")
+        rel = edge.get("relation", "")
+        if rel == "related_to" and target:
+            backlinks.setdefault(target, {"referenced_by": []})
+            backlinks[target]["referenced_by"].append(source)
+    return backlinks

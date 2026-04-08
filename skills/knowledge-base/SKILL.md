@@ -128,21 +128,19 @@ python3 $SKILL_PATH/main.py search "记忆架构"
 ```
 knowledge-base-data/
 ├── raw/
-│   ├── index.jsonl       ← 索引清单
-│   └── cache/            ← 内容缓存
+│   └── index.jsonl       ← 索引清单
 ├── wiki/
 │   ├── index.md          ← 知识地图
 │   ├── concepts/         ← 概念条目（Markdown + frontmatter）
 │   ├── categories/       ← 分类索引
-│   ├── backlinks.json    ← 反向链接
-│   └── graph.json        ← 知识图谱
+│   └── graph.json        ← 知识图谱（含反向链接关系）
+├── wiki.bak/             ← 编译前自动备份
 └── compile/
-    ├── pending.json      ← 待编译清单
-    └── history.jsonl     ← 编译历史
+    └── history.jsonl     ← 编译历史（保留最近 50 条）
 ```
 
 ## 编译流程
 
 1. `kb compile --dry-run` — 预览待编译清单
 2. `kb compile` — 生成 prompt，Agent 分析内容、提取概念、写入 wiki/concepts/
-3. `kb compile --finalize` — 构建反向链接、知识图谱、知识地图、分类索引
+3. `kb compile --finalize` — 构建知识图谱、知识地图、分类索引

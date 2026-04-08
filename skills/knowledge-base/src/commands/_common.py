@@ -22,7 +22,7 @@ def get_data_dir() -> Path:
 
 
 def ensure_data_dirs(data_dir: Path):
-    (data_dir / "raw" / "cache").mkdir(parents=True, exist_ok=True)
+    (data_dir / "raw").mkdir(parents=True, exist_ok=True)
     (data_dir / "wiki" / "concepts").mkdir(parents=True, exist_ok=True)
     (data_dir / "wiki" / "categories").mkdir(parents=True, exist_ok=True)
     (data_dir / "compile").mkdir(parents=True, exist_ok=True)

@@ -85,12 +85,6 @@ class TestCompileFinalize:
             pass
         _compile_finalize(data_dir)
 
-        backlinks_file = data_dir / "wiki" / "backlinks.json"
-        assert backlinks_file.exists()
-        bl = json.loads(backlinks_file.read_text())
-        assert "concept-a" in bl
-        assert "concept-b" in bl["concept-a"]["referenced_by"]
-
         graph_file = data_dir / "wiki" / "graph.json"
         assert graph_file.exists()
         graph = json.loads(graph_file.read_text())

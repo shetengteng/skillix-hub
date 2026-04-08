@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .indexer import read_index, write_index
-from .scanner import build_pending_list, detect_changes, cache_content
+from .scanner import build_pending_list, detect_changes
 
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
@@ -92,10 +92,6 @@ def _compile_prepare(args, data_dir: Path):
     pending_file.parent.mkdir(parents=True, exist_ok=True)
     with open(pending_file, "w", encoding="utf-8") as f:
         json.dump(pending, f, ensure_ascii=False, indent=2)
-
-    # 缓存内容
-    for item in pending:
-        cache_content(data_dir, item["id"], item.get("content_preview", ""))
 
     # 读取已有概念
     existing_concepts = _load_existing_concepts(data_dir)
@@ -266,35 +262,6 @@ def _compile_finalize(data_dir: Path):
             print(f"   {o}")
         print()
 
-    # 构建反向链接
-    backlinks = {}
-    for c in concepts:
-        cid = c.get("id", "")
-        sources = c.get("sources", [])
-        related = c.get("related", [])
-        if isinstance(sources, str):
-            sources = [sources]
-        if isinstance(related, str):
-            related = [related]
-
-        backlinks[cid] = {
-            "referenced_by": [],
-            "sourced_from": sources,
-        }
-
-    for c in concepts:
-        cid = c.get("id", "")
-        related = c.get("related", [])
-        if isinstance(related, str):
-            related = [related]
-        for r in related:
-            if r in backlinks:
-                backlinks[r]["referenced_by"].append(cid)
-
-    backlinks_file = data_dir / "wiki" / "backlinks.json"
-    with open(backlinks_file, "w", encoding="utf-8") as f:
-        json.dump(backlinks, f, ensure_ascii=False, indent=2)
-
     # 构建知识图谱
     graph = {"nodes": [], "edges": []}
     for c in concepts:
@@ -342,9 +309,13 @@ def _compile_finalize(data_dir: Path):
     # 记录编译历史
     _record_history(data_dir, len(concepts))
 
+    # 清理编译临时产物
+    pending_file = data_dir / "compile" / "pending.json"
+    if pending_file.exists():
+        pending_file.unlink()
+
     print(f"=== Knowledge Base: 编译后处理完成 ===\n")
     print(f"概念条目: {len(concepts)} 个")
-    print(f"反向链接: {backlinks_file}")
     print(f"知识图谱: {graph_file}")
     print(f"知识地图: {data_dir / 'wiki' / 'index.md'}")
 
@@ -405,15 +376,20 @@ def _mark_compiled(data_dir: Path, concepts: list):
         write_index(data_dir, entries)
 
 
-def _record_history(data_dir: Path, concept_count: int):
+def _record_history(data_dir: Path, concept_count: int, max_records: int = 50):
     history_file = data_dir / "compile" / "history.jsonl"
     record = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "concepts_count": concept_count,
         "action": "finalize",
     }
-    with open(history_file, "a", encoding="utf-8") as f:
-        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    lines = []
+    if history_file.exists():
+        lines = [l for l in history_file.read_text(encoding="utf-8").strip().split("\n") if l]
+    lines.append(json.dumps(record, ensure_ascii=False))
+    if len(lines) > max_records:
+        lines = lines[-max_records:]
+    history_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def _validate_concepts(data_dir: Path, concepts: list) -> list[str]:

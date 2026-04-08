@@ -9,7 +9,7 @@ sys.path.insert(0, str(SKILL_DIR))
 
 from src.scanner import (
     scan_entry, detect_changes, build_pending_list,
-    cache_content, get_cached_content, update_hashes,
+    update_hashes,
 )
 from src.indexer import read_index, write_index
 
@@ -97,16 +97,6 @@ class TestBuildPendingList:
     def test_empty_index(self, data_dir):
         pending = build_pending_list(data_dir, full=False)
         assert pending == []
-
-
-class TestCache:
-    def test_write_and_read(self, data_dir):
-        cache_content(data_dir, "kb-001", "cached text here")
-        got = get_cached_content(data_dir, "kb-001")
-        assert got == "cached text here"
-
-    def test_miss_returns_none(self, data_dir):
-        assert get_cached_content(data_dir, "nonexistent") is None
 
 
 class TestUpdateHashes:

@@ -193,16 +193,3 @@ def update_hashes(data_dir: Path, entry_ids: list | None = None):
     return updated
 
 
-def cache_content(data_dir: Path, entry_id: str, content: str):
-    """缓存条目的内容摘要。"""
-    cache_dir = data_dir / "raw" / "cache"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_file = cache_dir / f"{entry_id}.txt"
-    cache_file.write_text(content, encoding="utf-8")
-
-
-def get_cached_content(data_dir: Path, entry_id: str) -> str | None:
-    cache_file = data_dir / "raw" / "cache" / f"{entry_id}.txt"
-    if cache_file.exists():
-        return cache_file.read_text(encoding="utf-8")
-    return None
