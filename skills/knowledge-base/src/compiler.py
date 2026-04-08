@@ -327,7 +327,11 @@ def _rebuild_index_md(data_dir: Path, concepts: list):
         by_cat.setdefault(cat, []).append(c)
 
     lines = ["# 知识地图\n"]
-    lines.append(f"> 共 {len(concepts)} 个概念 | 最近更新: {datetime.now().strftime('%Y-%m-%d')}\n")
+    lines.append(f"> 共 {len(concepts)} 个概念 | {len(by_cat)} 个分类 | 最近更新: {datetime.now().strftime('%Y-%m-%d')}\n")
+
+    lines.append("\n## 分类导航\n")
+    for cat in sorted(by_cat.keys()):
+        lines.append(f"- [{cat}](categories/{cat}.md) ({len(by_cat[cat])} 个概念)")
 
     for cat, items in sorted(by_cat.items()):
         lines.append(f"\n## {cat} ({len(items)} 个概念)\n")

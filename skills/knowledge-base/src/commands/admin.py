@@ -5,7 +5,7 @@ from typing import Optional
 
 import typer
 
-from ._common import SKILL_DIR, ensure_data_dirs, copy_source
+from ._common import SKILL_DIR, get_data_dir, ensure_data_dirs, copy_source
 
 
 def register(app: typer.Typer):
@@ -13,7 +13,7 @@ def register(app: typer.Typer):
     def install(target: Optional[str] = typer.Option(None, help="安装目标路径")):
         """安装初始化。"""
         t = Path(target).resolve() if target else SKILL_DIR
-        dd = t.parent / "knowledge-base-data"
+        dd = get_data_dir()
         ensure_data_dirs(dd)
         if target and t.resolve() != SKILL_DIR.resolve():
             copy_source(SKILL_DIR, t)
@@ -27,7 +27,7 @@ def register(app: typer.Typer):
         t = Path(target).resolve() if target else SKILL_DIR
         if target and t.resolve() != SKILL_DIR.resolve():
             copy_source(SKILL_DIR, t)
-        dd = t.parent / "knowledge-base-data"
+        dd = get_data_dir()
         ensure_data_dirs(dd)
         typer.echo(f"✅ Knowledge Base Skill 更新完成")
         typer.echo(f"   Skill 路径: {t}")
@@ -35,5 +35,6 @@ def register(app: typer.Typer):
     @app.command()
     def uninstall():
         """卸载。"""
+        dd = get_data_dir()
         typer.echo("⚠ Knowledge Base Skill 已标记为卸载")
-        typer.echo("  数据目录需手动删除: knowledge-base-data/")
+        typer.echo(f"  数据目录需手动删除: {dd}")
