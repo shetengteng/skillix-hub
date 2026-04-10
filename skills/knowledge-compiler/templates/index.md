@@ -1,10 +1,29 @@
 # Wiki Index
 
-> 由 Knowledge Compiler 自动维护。上次编译: {{YYYY-MM-DD}}
-> 编译: `kc compile` | 健康检查: `kc lint` | 查询: `kc query <question>`
+> Auto-maintained by knowledge-compiler. Last compiled: {{YYYY-MM-DD}}
+> Compile: `kc compile` | Health check: `kc lint` | Query: `kc query <question>`
+
+## {{Category Name}}
+
+| Topic | Summary | Coverage | Updated |
+|-------|---------|----------|---------|
+| [[concepts/{{topic-slug}}]] | One-line description | high/medium/low | YYYY-MM-DD |
+
+## Uncategorized
+
+| Topic | Summary | Coverage | Updated |
+|-------|---------|----------|---------|
+
+## Analyses
+
+Saved answers and syntheses from `kc query --save`.
+
+| Page | Question | Date |
+|------|----------|------|
+| [[analyses/{{slug}}]] | Summary of question | YYYY-MM-DD |
 
 ## Stats
 
-- Total concepts: 0
-- High coverage: 0 | Medium: 0 | Low: 0
-- Sources indexed: 0 files
+- Total topics: {{N}}
+- High coverage: {{N}} | Medium: {{N}} | Low: {{N}}
+- Sources indexed: {{N}} files

@@ -1,8 +1,9 @@
 ---
 id: "{{topic-slug}}"
 title: "{{Topic Title}}"
-tags: []
-sources: []
+tags: [{{tag1}}, {{tag2}}]
+sources:
+  - {{raw/path/to/source.md}}
 relations:
   related: []
   depends_on: []
@@ -13,33 +14,44 @@ compile_count: 1
 
 # {{Topic Title}}
 
-> 一句话定义或摘要。
+> One-sentence definition or summary of this topic.
+
+<!-- coverage: high | medium | low -->
+<!-- Assign a coverage tag to each section below. -->
+<!-- high = multiple consistent sources; medium = single source; low = inferred/sparse -->
 
 ## Summary
-<!-- coverage: low -->
+<!-- coverage: ? -->
 
-概述（3-6 句）。这是什么？为什么重要？
+A concise overview (3-6 sentences). What is this? Why does it matter? Where does it fit?
 
 ## Key Decisions
-<!-- coverage: low -->
+<!-- coverage: ? -->
 
-重要的设计决策和取舍。
+Important design decisions, trade-offs, or architectural choices.
+
+- **Decision:** Why this approach was chosen over alternatives.
+  [source: raw/path/to/source.md]
 
 ## Current State
-<!-- coverage: low -->
+<!-- coverage: ? -->
 
-当前状态。生产中在用什么方案？
+What is the current status? What is in production today?
 
 ## Gotchas
-<!-- coverage: low -->
+<!-- coverage: ? -->
 
-常见陷阱和非直觉行为。
+Common pitfalls, non-obvious behaviors, or things that surprised practitioners.
 
 ## Open Questions
-<!-- coverage: low -->
+<!-- coverage: ? -->
 
-未解决的问题和活跃的讨论方向。
+Unresolved debates, active discussion areas, or things the compiler couldn't determine from sources.
 
 ## Related
+- [[related-concept-slug]]
 
 ## Sources
+{{#each sources}}
+- [source: {{this}}]
+{{/each}}
