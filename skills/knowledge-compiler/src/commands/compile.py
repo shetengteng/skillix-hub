@@ -16,6 +16,49 @@ from ..verifier import verify
 from ..state import update_compile_state, append_log
 
 
+def _auto_fill_relations(root: Path, concepts_dir: Path) -> None:
+    """扫描所有概念文章，自动检测正文中出现的其他 slug 并填充 relations.related。"""
+    if not concepts_dir.exists():
+        return
+
+    all_slugs = {f.stem for f in concepts_dir.glob("*.md")}
+    if not all_slugs:
+        return
+
+    updated_count = 0
+    for f in sorted(concepts_dir.glob("*.md")):
+        slug = f.stem
+        content = f.read_text(encoding="utf-8")
+        meta, body = _parse_frontmatter(content)
+
+        body_lower = body.lower()
+        detected = set()
+        for other in all_slugs:
+            if other == slug:
+                continue
+            if other in body_lower or f"[[{other}]]" in body_lower:
+                detected.add(other)
+
+        relations = meta.get("relations", {})
+        if isinstance(relations, str):
+            relations = {}
+        existing_related = set(relations.get("related", []))
+        depends_on = relations.get("depends_on", [])
+
+        merged = existing_related | detected
+        if merged != existing_related:
+            relations["related"] = sorted(merged)
+            relations["depends_on"] = depends_on
+            meta["relations"] = relations
+            new_content = _render_frontmatter(meta) + "\n" + body
+            f.write_text(new_content, encoding="utf-8")
+            added = merged - existing_related
+            typer.echo(f"  [{slug}] +relations: {sorted(added)}")
+            updated_count += 1
+
+    typer.echo(f"  {updated_count} 篇概念文章的 relations 已更新")
+
+
 def register(app: typer.Typer) -> None:
     app.command("compile")(compile_cmd)
 
@@ -100,6 +143,10 @@ def compile_cmd(
             topics_new += 1
         typer.echo(f"  [{status}] wiki/concepts/{slug}.md")
 
+    # Phase 3+: Auto-detect relations
+    typer.echo("\nPhase 3+: 自动检测 relations...")
+    _auto_fill_relations(root, concepts_dir)
+
     # Phase 3.5: Schema
     typer.echo("\nPhase 3.5: 更新 Schema...")
     schema = load_schema(root)
@@ -123,6 +170,17 @@ def compile_cmd(
         typer.echo("\n  💡 Soft Gate warnings:")
         for r in report.soft_warnings:
             typer.echo(f"    [{r.article}] {r.check_name}: {r.message}")
+
+    critical_failures = [
+        r for r in report.hard_failures
+        if r.check_name in ("frontmatter_complete", "source_refs_valid")
+    ]
+    if critical_failures:
+        typer.echo("\n  ❌ 编译因 Hard Gate 关键失败而中止:")
+        for r in critical_failures:
+            typer.echo(f"    [{r.article}] {r.check_name}: {r.message}")
+        typer.echo("  请修复上述问题后重新编译。")
+        raise typer.Exit(1)
 
     # Phase 5: State + Log
     typer.echo("\nPhase 5: 更新状态...")

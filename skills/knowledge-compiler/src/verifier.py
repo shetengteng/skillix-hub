@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
 
+from .common import load_state
 from .compiler import _parse_frontmatter
 from .schema import load_schema
 
@@ -77,13 +78,17 @@ def verify(root: Path) -> VerifyReport:
         return report
 
     schema = load_schema(root)
+    state = load_state(root)
     known_slugs = {f.stem for f in concepts_dir.glob("*.md")}
     articles = sorted(concepts_dir.glob("*.md"))
+
+    all_article_bodies: dict[str, str] = {}
 
     for article_path in articles:
         slug = article_path.stem
         content = article_path.read_text(encoding="utf-8")
         meta, body = _parse_frontmatter(content)
+        all_article_bodies[slug] = body
 
         _check_hard_frontmatter(report, slug, meta)
         _check_hard_coverage(report, slug, body)
@@ -95,6 +100,8 @@ def verify(root: Path) -> VerifyReport:
         _check_soft_low_coverage(report, slug, body)
         _check_soft_broken_links(report, slug, body, known_slugs)
         _check_soft_aging(report, slug, meta)
+        _check_soft_stale_source(report, slug, meta, root, state)
+        _check_soft_missing_cross_refs(report, slug, body, known_slugs)
 
     return report
 
@@ -180,6 +187,45 @@ def _check_soft_broken_links(report: VerifyReport, slug: str, body: str, known_s
     passed = len(broken) == 0
     msg = "OK" if passed else f"broken: {', '.join(broken)}"
     report.soft_results.append(GateResult("soft", "broken_links", slug, msg, passed))
+
+
+def _check_soft_stale_source(report: VerifyReport, slug: str, meta: dict, root: Path, state: dict) -> None:
+    """检查来源文件是否在上次编译后被修改（概念需要重编译）。"""
+    sources = meta.get("sources", [])
+    if not sources:
+        return
+
+    files_state = state.get("files", {})
+    stale = []
+    for src in sources:
+        recorded = files_state.get(src, {}).get("mtime", 0)
+        src_path = root / src
+        if src_path.exists() and src_path.stat().st_mtime > recorded:
+            stale.append(src)
+
+    passed = len(stale) == 0
+    msg = "OK" if passed else f"stale: {', '.join(stale)}"
+    report.soft_results.append(GateResult("soft", "stale_source", slug, msg, passed))
+
+
+def _check_soft_missing_cross_refs(report: VerifyReport, slug: str, body: str, known_slugs: set[str]) -> None:
+    """检查文章正文中提到的其他概念 slug 是否建立了 [[]] 链接。"""
+    existing_links = set(WIKI_LINK_PATTERN.findall(body))
+    body_lower = body.lower()
+
+    mentioned_but_unlinked = []
+    for other_slug in known_slugs:
+        if other_slug == slug:
+            continue
+        if other_slug in existing_links:
+            continue
+        words = other_slug.split("-")
+        if len(words) >= 2 and all(w in body_lower for w in words):
+            mentioned_but_unlinked.append(other_slug)
+
+    passed = len(mentioned_but_unlinked) == 0
+    msg = "OK" if passed else f"possibly missing: {', '.join(mentioned_but_unlinked[:5])}"
+    report.soft_results.append(GateResult("soft", "missing_cross_refs", slug, msg, passed))
 
 
 def _check_soft_aging(report: VerifyReport, slug: str, meta: dict) -> None:

@@ -2,10 +2,16 @@
 
 读取变更文件的标题和摘要，推断 topic slug，匹配已有概念。
 输出 topic_map: {slug: [file_paths]}。
+
+增强：
+- 受 schema deprecated 约束（已废弃主题自动映射到合并目标）
+- 使用 preview 辅助匹配（标题匹配不足时用内容关键词补充）
 """
 
 import re
 from pathlib import Path
+
+from .schema import load_schema, Schema
 
 
 def _extract_title(content: str, filename: str) -> str:
@@ -53,19 +59,51 @@ def _load_existing_concepts(wiki_dir: Path) -> dict[str, str]:
     return concepts
 
 
-def _find_best_match(slug: str, title: str, existing: dict[str, str]) -> str | None:
-    """尝试匹配已有概念。完全匹配或子串匹配。"""
+def _find_best_match(
+    slug: str,
+    title: str,
+    preview: str,
+    existing: dict[str, str],
+) -> str | None:
+    """尝试匹配已有概念。优先级：完全匹配 > 子串匹配 > preview 关键词匹配。"""
     if slug in existing:
         return slug
 
     slug_words = set(slug.split("-"))
-    for ex_slug in existing:
+
+    best_match = None
+    best_score = 0
+
+    for ex_slug, ex_title in existing.items():
         ex_words = set(ex_slug.split("-"))
         overlap = slug_words & ex_words
-        if len(overlap) >= max(1, len(slug_words) // 2):
-            return ex_slug
+        score = len(overlap)
+
+        if score >= max(1, len(slug_words) // 2):
+            if score > best_score:
+                best_score = score
+                best_match = ex_slug
+
+    if best_match:
+        return best_match
+
+    if preview:
+        preview_lower = preview.lower()
+        for ex_slug in existing:
+            ex_words = ex_slug.split("-")
+            if len(ex_words) >= 2 and all(w in preview_lower for w in ex_words):
+                return ex_slug
 
     return None
+
+
+def _resolve_deprecated(slug: str, schema: Schema) -> str:
+    """如果 slug 已被废弃，返回合并目标；否则返回原 slug。"""
+    if schema.is_deprecated(slug):
+        merged_into = schema.deprecated.get(slug, "")
+        if merged_into:
+            return merged_into
+    return slug
 
 
 def classify(
@@ -75,15 +113,21 @@ def classify(
     """将文件分类到主题。返回 {topic_slug: [file_paths]}。"""
     wiki_dir = root / "wiki"
     existing = _load_existing_concepts(wiki_dir)
+    schema = load_schema(root)
     topic_map: dict[str, list[Path]] = {}
 
     for f in files:
         content = f.read_text(encoding="utf-8")
         title = _extract_title(content, f.name)
+        preview = _extract_preview(content)
         slug = _title_to_slug(title)
 
-        matched = _find_best_match(slug, title, existing)
+        slug = _resolve_deprecated(slug, schema)
+
+        matched = _find_best_match(slug, title, preview, existing)
         target_slug = matched if matched else slug
+
+        target_slug = _resolve_deprecated(target_slug, schema)
 
         if target_slug not in topic_map:
             topic_map[target_slug] = []

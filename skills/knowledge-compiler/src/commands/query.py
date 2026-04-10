@@ -2,16 +2,20 @@
 
 读取 INDEX.md 定位相关概念，读取概念文章，
 low 覆盖章节自动回查 raw/ 来源，合成回答 + 引用。
+
+支持 --save 将查询结果落盘为新概念文章。
 """
 
 import re
+from datetime import date
 from pathlib import Path
 from typing import Optional
 
 import typer
 
 from ..common import find_project_root
-from ..compiler import _parse_frontmatter
+from ..compiler import _parse_frontmatter, _render_frontmatter
+from ..classifier import _title_to_slug
 
 
 def register(app: typer.Typer) -> None:
@@ -77,6 +81,73 @@ def _extract_low_coverage_sections(body: str) -> list[str]:
         elif "<!-- coverage: low -->" in line and current_section:
             sections.append(current_section)
     return sections
+
+
+def _save_query_concept(
+    question: str,
+    relevant: list[dict],
+    root: Path,
+) -> None:
+    """将查询结果落盘为新概念文章到 wiki/concepts/。"""
+    slug = _title_to_slug(question)
+    concepts_dir = root / "wiki" / "concepts"
+    concepts_dir.mkdir(parents=True, exist_ok=True)
+
+    target = concepts_dir / f"{slug}.md"
+    if target.exists():
+        typer.echo(f"概念 {slug} 已存在，跳过保存。使用 kc compile 更新已有概念。")
+        return
+
+    today = date.today().isoformat()
+    source_concepts = [c["slug"] for c in relevant]
+
+    meta = {
+        "id": slug,
+        "title": question,
+        "tags": [],
+        "sources": [],
+        "relations": {"related": source_concepts, "depends_on": []},
+        "created": today,
+        "updated": today,
+        "compile_count": 0,
+    }
+    fm = _render_frontmatter(meta)
+
+    summaries = []
+    for c in relevant:
+        preview = c["body"][:500].replace("\n", " ").strip()
+        summaries.append(f"### {c['title']}\n\n{preview}...")
+
+    body = f"""
+# {question}
+
+> 由 kc query --save 自动生成，待 AI 编译完善。
+
+## Summary
+<!-- coverage: low -->
+
+基于以下 {len(relevant)} 个相关概念汇总：
+
+{chr(10).join(summaries)}
+
+## Key Decisions
+<!-- coverage: low -->
+
+待编译。
+
+## Related
+
+{chr(10).join(f'- [[{s}]]' for s in source_concepts)}
+
+## Sources
+
+无直接来源文件。由查询结果合成。
+"""
+    content = fm + "\n" + body
+    target.write_text(content, encoding="utf-8")
+    typer.echo(f"✅ 新概念已保存: wiki/concepts/{slug}.md")
+    typer.echo(f"   关联概念: {', '.join(source_concepts)}")
+    typer.echo("   建议运行 kc compile 完善内容。")
 
 
 def _build_query_prompt(
@@ -153,7 +224,7 @@ def query_cmd(
     typer.echo(f"\n查询 prompt 已保存到 .kc-query-prompt.md")
 
     if save:
-        typer.echo("💡 使用 AI Agent 执行 prompt 后，将结果保存到 wiki/concepts/ 即可。")
+        _save_query_concept(question, relevant, root)
 
     typer.echo("\n--- 概念摘要 ---\n")
     for c in relevant:

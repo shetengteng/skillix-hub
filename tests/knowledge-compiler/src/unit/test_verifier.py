@@ -190,6 +190,160 @@ Ancient content.
         assert any(not r.passed for r in aging_results)
 
 
+    def test_stale_source_detected(self, tmp_path):
+        """来源文件比编译状态新时应触发 stale_source 警告。"""
+        import json, time
+
+        raw_path = tmp_path / "raw" / "test.md"
+        raw_path.parent.mkdir(parents=True, exist_ok=True)
+        raw_path.write_text("content", encoding="utf-8")
+
+        old_mtime = raw_path.stat().st_mtime - 100
+        state = {"files": {"raw/test.md": {"mtime": old_mtime}}}
+        (tmp_path / ".compile-state.json").write_text(
+            json.dumps(state), encoding="utf-8"
+        )
+
+        article = """---
+id: "test"
+title: "Test"
+sources:
+  - raw/test.md
+created: "2026-04-10"
+updated: "2026-04-10"
+---
+
+# Test
+
+## Summary
+<!-- coverage: high -->
+Content. [source: raw/test.md]
+"""
+        _setup_kb(tmp_path, articles={"test": article})
+
+        report = verify(tmp_path)
+        stale = [r for r in report.soft_results if r.check_name == "stale_source"]
+        assert any(not r.passed for r in stale)
+
+    def test_stale_source_ok(self, tmp_path):
+        """来源文件与编译状态一致时不应触发 stale_source 警告。"""
+        import json
+
+        raw_path = tmp_path / "raw" / "test.md"
+        raw_path.parent.mkdir(parents=True, exist_ok=True)
+        raw_path.write_text("content", encoding="utf-8")
+
+        current_mtime = raw_path.stat().st_mtime + 100
+        state = {"files": {"raw/test.md": {"mtime": current_mtime}}}
+        (tmp_path / ".compile-state.json").write_text(
+            json.dumps(state), encoding="utf-8"
+        )
+
+        _setup_kb(tmp_path,
+            articles={"test": VALID_ARTICLE},
+            schema_content=SCHEMA_WITH_TOPIC)
+
+        report = verify(tmp_path)
+        stale = [r for r in report.soft_results if r.check_name == "stale_source"]
+        assert all(r.passed for r in stale)
+
+    def test_missing_cross_refs_detected(self, tmp_path):
+        """文章正文提到其他概念但未用 [[]] 链接时应触发警告。"""
+        article_a = """---
+id: "api-design"
+title: "API Design"
+sources:
+  - raw/test.md
+created: "2026-04-10"
+updated: "2026-04-10"
+---
+
+# API Design
+
+## Summary
+<!-- coverage: high -->
+This relates to error handling patterns.
+"""
+        article_b = """---
+id: "error-handling"
+title: "Error Handling"
+sources:
+  - raw/test.md
+created: "2026-04-10"
+updated: "2026-04-10"
+---
+
+# Error Handling
+
+## Summary
+<!-- coverage: high -->
+Standard error handling content.
+"""
+        schema = """## Topic Taxonomy
+
+### Uncategorized
+- api-design
+- error-handling
+"""
+        _setup_kb(tmp_path,
+            articles={"api-design": article_a, "error-handling": article_b},
+            schema_content=schema,
+            source_files={"raw/test.md": "content"})
+
+        report = verify(tmp_path)
+        xref = [r for r in report.soft_results
+                if r.check_name == "missing_cross_refs" and r.article == "api-design"]
+        assert any(not r.passed for r in xref)
+
+    def test_missing_cross_refs_ok_when_linked(self, tmp_path):
+        """文章正文提到其他概念且已用 [[]] 链接时不应触发警告。"""
+        article = """---
+id: "api-design"
+title: "API Design"
+sources:
+  - raw/test.md
+created: "2026-04-10"
+updated: "2026-04-10"
+---
+
+# API Design
+
+## Summary
+<!-- coverage: high -->
+This relates to [[error-handling]] patterns.
+"""
+        article_b = """---
+id: "error-handling"
+title: "Error Handling"
+sources:
+  - raw/test.md
+created: "2026-04-10"
+updated: "2026-04-10"
+---
+
+# Error Handling
+
+## Summary
+<!-- coverage: high -->
+Standard content.
+"""
+        schema = """## Topic Taxonomy
+
+### Uncategorized
+- api-design
+- error-handling
+"""
+        _setup_kb(tmp_path,
+            articles={"api-design": article, "error-handling": article_b},
+            schema_content=schema,
+            source_files={"raw/test.md": "content"})
+
+        report = verify(tmp_path)
+        xref = [r for r in report.soft_results
+                if r.check_name == "missing_cross_refs" and r.article == "api-design"]
+        assert all(r.passed for r in xref)
+
+
 class TestVerifyReport:
     def test_empty_kb(self, tmp_path):
         report = verify(tmp_path)
