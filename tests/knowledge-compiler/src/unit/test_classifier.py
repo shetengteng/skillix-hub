@@ -9,6 +9,8 @@ from src.classifier import (
     _extract_preview,
     _resolve_deprecated,
     _find_best_match,
+    _normalize_slug,
+    _match_taxonomy_slug,
 )
 from src.schema import Schema
 
@@ -166,3 +168,55 @@ class TestExtractPreview:
         preview = _extract_preview(content)
         assert "Actual content" in preview
         assert "title:" not in preview
+
+
+class TestNormalizeSlug:
+    def test_removes_double_hyphens(self):
+        assert _normalize_slug("api--gateway") == "api-gateway"
+
+    def test_strips_leading_trailing(self):
+        assert _normalize_slug("-test-slug-") == "test-slug"
+
+    def test_removes_special_chars(self):
+        assert _normalize_slug("api@gateway#design") == "apigatewaydesign"
+
+    def test_empty_becomes_untitled(self):
+        assert _normalize_slug("---") == "untitled"
+
+
+class TestMatchTaxonomySlug:
+    def test_exact_match(self):
+        schema = Schema(taxonomy={"Arch": ["api-gateway-design"]})
+        assert _match_taxonomy_slug("api-gateway-design", schema) == "api-gateway-design"
+
+    def test_word_overlap_match(self):
+        schema = Schema(taxonomy={"Arch": ["api-gateway-design"]})
+        result = _match_taxonomy_slug("api-gateway", schema)
+        assert result == "api-gateway-design"
+
+    def test_no_match(self):
+        schema = Schema(taxonomy={"Arch": ["api-gateway-design"]})
+        result = _match_taxonomy_slug("database-migration", schema)
+        assert result is None
+
+    def test_empty_schema(self):
+        schema = Schema()
+        result = _match_taxonomy_slug("anything", schema)
+        assert result is None
+
+    def test_classify_uses_taxonomy(self, kc_root):
+        """classifier 应优先匹配 taxonomy 中的已有 slug。"""
+        schema_content = """## Topic Taxonomy
+
+### Architecture
+- api-gateway-design
+
+### Uncategorized
+"""
+        (kc_root / "wiki" / "schema.md").write_text(schema_content, encoding="utf-8")
+
+        doc = kc_root / "raw" / "research" / "api-gateway-notes.md"
+        doc.write_text("# Api Gateway\n\nNew notes about api gateway.\n")
+
+        topic_map = classify([doc], kc_root)
+        assert "api-gateway-design" in topic_map

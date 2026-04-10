@@ -10,6 +10,7 @@ from ..common import find_project_root
 from ..scanner import scan
 from ..classifier import classify
 from ..compiler import generate_compile_prompt, create_stub_article, _parse_frontmatter, _render_frontmatter
+from ..merger import parse_sections, merge_sections, render_sections, generate_related_section
 from ..schema import load_schema, update_schema
 from ..indexer import update_index
 from ..verifier import verify
@@ -59,8 +60,99 @@ def _auto_fill_relations(root: Path, concepts_dir: Path) -> None:
     typer.echo(f"  {updated_count} 篇概念文章的 relations 已更新")
 
 
+def _auto_generate_related_sections(concepts_dir: Path) -> None:
+    """基于 frontmatter relations.related 自动填充 ## Related 正文章节。"""
+    if not concepts_dir.exists():
+        return
+
+    updated_count = 0
+    for f in sorted(concepts_dir.glob("*.md")):
+        content = f.read_text(encoding="utf-8")
+        meta, body = _parse_frontmatter(content)
+
+        relations = meta.get("relations", {})
+        if isinstance(relations, str):
+            relations = {}
+        related = relations.get("related", [])
+
+        new_related_body = generate_related_section(related)
+
+        sections = parse_sections(body)
+        changed = False
+        for s in sections:
+            if s.heading == "## Related":
+                old_body = s.body.strip()
+                new_body = new_related_body.strip()
+                if old_body != new_body:
+                    s.body = new_related_body
+                    changed = True
+                break
+
+        if changed:
+            new_body_text = render_sections(sections)
+            f.write_text(_render_frontmatter(meta) + "\n" + new_body_text, encoding="utf-8")
+            updated_count += 1
+
+    if updated_count:
+        typer.echo(f"  {updated_count} 篇概念文章的 ## Related 已更新")
+
+
+def apply_cmd(
+    result_path: Path = typer.Argument(..., help="AI 编译结果文件路径"),
+    slug: Optional[str] = typer.Option(None, "--slug", help="目标概念 slug（默认从文件 frontmatter 读取）"),
+) -> None:
+    """将 AI 编译结果写回概念文章（经 section merge 保留用户编辑）。"""
+    root = find_project_root()
+    if root is None:
+        typer.echo("错误: 未找到知识库。请先运行 kc init")
+        raise typer.Exit(1)
+
+    result_path = result_path.resolve()
+    if not result_path.exists():
+        typer.echo(f"错误: 文件不存在 {result_path}")
+        raise typer.Exit(1)
+
+    ai_content = result_path.read_text(encoding="utf-8")
+    ai_meta, ai_body = _parse_frontmatter(ai_content)
+
+    target_slug = slug or ai_meta.get("id")
+    if not target_slug:
+        typer.echo("错误: 无法确定目标概念。请用 --slug 指定或确保结果文件有 frontmatter id。")
+        raise typer.Exit(1)
+
+    concepts_dir = root / "wiki" / "concepts"
+    article_path = concepts_dir / f"{target_slug}.md"
+
+    if article_path.exists():
+        existing = article_path.read_text(encoding="utf-8")
+        old_meta, old_body = _parse_frontmatter(existing)
+
+        old_sections = parse_sections(old_body)
+        new_sections = parse_sections(ai_body)
+        merged = merge_sections(old_sections, new_sections)
+        merged_body = render_sections(merged)
+
+        for key in ("sources", "tags", "relations"):
+            if key in ai_meta:
+                old_meta[key] = ai_meta[key]
+        old_meta["updated"] = date.today().isoformat()
+        old_meta["compile_count"] = old_meta.get("compile_count", 0) + 1
+
+        final = _render_frontmatter(old_meta) + "\n" + merged_body
+    else:
+        concepts_dir.mkdir(parents=True, exist_ok=True)
+        final = ai_content
+
+    article_path.write_text(final, encoding="utf-8")
+    typer.echo(f"✅ AI 编译结果已写回 wiki/concepts/{target_slug}.md")
+    if article_path.exists():
+        typer.echo("   用户手工编辑已通过 section merge 保留。")
+    typer.echo("   建议运行 kc lint 检查质量。")
+
+
 def register(app: typer.Typer) -> None:
     app.command("compile")(compile_cmd)
+    app.command("apply")(apply_cmd)
 
 
 def compile_cmd(
@@ -132,7 +224,16 @@ def compile_cmd(
             old_meta["sources"] = source_paths
             old_meta["updated"] = date.today().isoformat()
             old_meta["compile_count"] = old_meta.get("compile_count", 0) + 1
-            updated = _render_frontmatter(old_meta) + "\n" + old_body
+
+            new_stub = create_stub_article(slug, files, root, existing_content)
+            _, new_body = _parse_frontmatter(new_stub)
+
+            old_sections = parse_sections(old_body)
+            new_sections = parse_sections(new_body)
+            merged = merge_sections(old_sections, new_sections)
+            merged_body = render_sections(merged)
+
+            updated = _render_frontmatter(old_meta) + "\n" + merged_body
             article_path.write_text(updated, encoding="utf-8")
         else:
             stub = create_stub_article(slug, files, root)
@@ -143,9 +244,10 @@ def compile_cmd(
             topics_new += 1
         typer.echo(f"  [{status}] wiki/concepts/{slug}.md")
 
-    # Phase 3+: Auto-detect relations
+    # Phase 3+: Auto-detect relations + Related section
     typer.echo("\nPhase 3+: 自动检测 relations...")
     _auto_fill_relations(root, concepts_dir)
+    _auto_generate_related_sections(concepts_dir)
 
     # Phase 3.5: Schema
     typer.echo("\nPhase 3.5: 更新 Schema...")
@@ -161,23 +263,14 @@ def compile_cmd(
     report = verify(root)
     typer.echo(f"  Verify: {report.summary()}")
 
-    if report.hard_failures:
-        typer.echo("\n  ⚠️ Hard Gate failures:")
-        for r in report.hard_failures:
-            typer.echo(f"    [{r.article}] {r.check_name}: {r.message}")
-
     if report.soft_warnings:
         typer.echo("\n  💡 Soft Gate warnings:")
         for r in report.soft_warnings:
             typer.echo(f"    [{r.article}] {r.check_name}: {r.message}")
 
-    critical_failures = [
-        r for r in report.hard_failures
-        if r.check_name in ("frontmatter_complete", "source_refs_valid")
-    ]
-    if critical_failures:
-        typer.echo("\n  ❌ 编译因 Hard Gate 关键失败而中止:")
-        for r in critical_failures:
+    if report.hard_failures:
+        typer.echo("\n  ❌ 编译因 Hard Gate 失败而中止:")
+        for r in report.hard_failures:
             typer.echo(f"    [{r.article}] {r.check_name}: {r.message}")
         typer.echo("  请修复上述问题后重新编译。")
         raise typer.Exit(1)

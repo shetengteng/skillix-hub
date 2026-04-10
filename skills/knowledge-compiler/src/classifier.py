@@ -106,6 +106,35 @@ def _resolve_deprecated(slug: str, schema: Schema) -> str:
     return slug
 
 
+def _normalize_slug(slug: str) -> str:
+    """按 naming conventions 标准化 slug（kebab-case，去重复连字符）。"""
+    slug = slug.lower().strip("-")
+    slug = re.sub(r"-{2,}", "-", slug)
+    slug = re.sub(r"[^\w-]", "", slug)
+    return slug or "untitled"
+
+
+def _match_taxonomy_slug(slug: str, schema: Schema) -> str | None:
+    """尝试在 taxonomy 中找到匹配的已有 slug（词集重叠匹配）。"""
+    known = schema.all_known_slugs
+    if slug in known:
+        return slug
+
+    slug_words = set(slug.split("-"))
+    best_match = None
+    best_score = 0
+
+    for known_slug in known:
+        known_words = set(known_slug.split("-"))
+        overlap = slug_words & known_words
+        score = len(overlap)
+        if score >= max(1, len(slug_words) // 2) and score > best_score:
+            best_score = score
+            best_match = known_slug
+
+    return best_match
+
+
 def classify(
     files: list[Path],
     root: Path,
@@ -121,13 +150,17 @@ def classify(
         title = _extract_title(content, f.name)
         preview = _extract_preview(content)
         slug = _title_to_slug(title)
+        slug = _normalize_slug(slug)
 
         slug = _resolve_deprecated(slug, schema)
 
         matched = _find_best_match(slug, title, preview, existing)
+        if not matched:
+            matched = _match_taxonomy_slug(slug, schema)
         target_slug = matched if matched else slug
 
         target_slug = _resolve_deprecated(target_slug, schema)
+        target_slug = _normalize_slug(target_slug)
 
         if target_slug not in topic_map:
             topic_map[target_slug] = []
