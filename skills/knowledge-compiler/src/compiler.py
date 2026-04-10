@@ -149,20 +149,32 @@ def generate_compile_prompt(
     return prompt
 
 
-def create_stub_article(slug: str, source_files: list[Path], root: Path) -> str:
-    """创建一个骨架概念文章（当 AI 编译不可用时的 fallback）。"""
+def create_stub_article(
+    slug: str,
+    source_files: list[Path],
+    root: Path,
+    existing_content: str | None = None,
+) -> str:
+    """创建一个骨架概念文章（当 AI 编译不可用时的 fallback）。
+
+    如果 existing_content 非空，保留原始 created 日期并递增 compile_count。
+    """
     today = date.today().isoformat()
     source_paths = [str(f.relative_to(root)) for f in source_files]
 
+    old_meta: dict = {}
+    if existing_content:
+        old_meta, _ = _parse_frontmatter(existing_content)
+
     meta = {
         "id": slug,
-        "title": slug.replace("-", " ").title(),
-        "tags": [],
+        "title": old_meta.get("title", slug.replace("-", " ").title()),
+        "tags": old_meta.get("tags", []),
         "sources": source_paths,
-        "relations": {"related": [], "depends_on": []},
-        "created": today,
+        "relations": old_meta.get("relations", {"related": [], "depends_on": []}),
+        "created": old_meta.get("created", today),
         "updated": today,
-        "compile_count": 1,
+        "compile_count": old_meta.get("compile_count", 0) + 1,
     }
 
     fm = _render_frontmatter(meta)
