@@ -137,6 +137,11 @@ def generate_compile_prompt(
 ### 来源引用
 在引用具体信息时标注来源：`[source: {source_paths[0] if source_paths else 'raw/path/to/file.md'}]`
 
+### 来源矛盾处理
+如果多个来源对同一主题存在矛盾描述（如不同的技术选型、不一致的架构决策），请：
+- 在对应 Section 中标注 `⚠️ 来源冲突`，并列出矛盾的各方观点和来源
+- 将该 Section 的 coverage 标记为 `medium`（而非 high），表示需要人工确认
+
 ### frontmatter 要求
 - id: "{slug}"
 - sources: {source_paths}
