@@ -1,0 +1,13 @@
+{
+  "session_mode": "recommended",
+  "sources": ["raw/designs", "raw/decisions", "raw/research", "raw/notes"],
+  "output_dir": "wiki",
+  "exclude": ["raw/assets"],
+  "compile_options": {
+    "parallel_topics": true,
+    "max_parallel": 4
+  },
+  "quality": {
+    "lint_mode": "quick"
+  }
+}
