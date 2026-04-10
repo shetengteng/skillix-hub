@@ -8,7 +8,7 @@ import typer
 
 from ..common import find_project_root
 from ..scanner import scan
-from ..classifier import classify
+from ..classifier import classify, get_classify_detail
 from ..compiler import generate_compile_prompt, create_stub_article, _parse_frontmatter, _render_frontmatter
 from ..merger import parse_sections, merge_sections, render_sections, generate_related_section
 from ..schema import load_schema, update_schema
@@ -178,11 +178,11 @@ def compile_cmd(
     # Phase 2: Classify
     changed = scan_result.new_files + scan_result.changed_files
     typer.echo(f"\nPhase 2: 分类 {len(changed)} 个文件...")
-    topic_map = classify(changed, root)
+    topic_map = classify(changed, root, verbose=dry_run)
 
     if topic and topic not in topic_map:
         all_sources = scan_result.new_files + scan_result.changed_files + scan_result.unchanged_files
-        topic_map_full = classify(all_sources, root)
+        topic_map_full = classify(all_sources, root, verbose=dry_run)
         if topic in topic_map_full:
             topic_map = {topic: topic_map_full[topic]}
         else:
@@ -197,6 +197,17 @@ def compile_cmd(
 
     if dry_run:
         typer.echo(f"\n[dry-run] 将编译 {len(topic_map)} 个概念，不写入文件。")
+        typer.echo("\n分类详情:")
+        for slug, files in topic_map.items():
+            for f in files:
+                detail = get_classify_detail(f)
+                if detail:
+                    typer.echo(f"  {f.name}:")
+                    typer.echo(f"    → {detail.slug} (方法: {detail.match_method}, 置信度: {detail.confidence})")
+                    if detail.source_slug != detail.slug:
+                        typer.echo(f"    原始 slug: {detail.source_slug}")
+                    if detail.candidates:
+                        typer.echo(f"    ⚠️ 置信度低，候选: {', '.join(detail.candidates)}")
         return
 
     # Phase 3: Compile
@@ -268,9 +279,20 @@ def compile_cmd(
         for r in report.soft_warnings:
             typer.echo(f"    [{r.article}] {r.check_name}: {r.message}")
 
-    if report.hard_failures:
-        typer.echo("\n  ❌ 编译因 Hard Gate 失败而中止:")
-        for r in report.hard_failures:
+    structural_gates = ("frontmatter_complete", "source_refs_valid", "schema_consistent")
+    structural_failures = [r for r in report.hard_failures if r.check_name in structural_gates]
+    content_failures = [r for r in report.hard_failures if r.check_name not in structural_gates]
+
+    if content_failures:
+        typer.echo(f"\n  ⚠️ 内容质量 Hard Gate 待改善 ({len(content_failures)} 项，不阻断编译):")
+        for r in content_failures[:10]:
+            typer.echo(f"    [{r.article}] {r.check_name}: {r.message}")
+        if len(content_failures) > 10:
+            typer.echo(f"    ... 还有 {len(content_failures) - 10} 项，运行 kc lint 查看完整报告")
+
+    if structural_failures:
+        typer.echo("\n  ❌ 编译因结构性 Hard Gate 失败而中止:")
+        for r in structural_failures:
             typer.echo(f"    [{r.article}] {r.check_name}: {r.message}")
         typer.echo("  请修复上述问题后重新编译。")
         raise typer.Exit(1)

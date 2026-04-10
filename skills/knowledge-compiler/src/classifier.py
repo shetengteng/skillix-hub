@@ -9,6 +9,7 @@
 """
 
 import re
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .schema import load_schema, Schema
@@ -135,11 +136,29 @@ def _match_taxonomy_slug(slug: str, schema: Schema) -> str | None:
     return best_match
 
 
+@dataclass
+class ClassifyResult:
+    slug: str
+    source_slug: str
+    match_method: str
+    confidence: str
+    candidates: list[str]
+
+
+_classify_details: dict[str, ClassifyResult] = {}
+
+
+def get_classify_detail(path: Path) -> ClassifyResult | None:
+    return _classify_details.get(str(path))
+
+
 def classify(
     files: list[Path],
     root: Path,
+    verbose: bool = False,
 ) -> dict[str, list[Path]]:
     """将文件分类到主题。返回 {topic_slug: [file_paths]}。"""
+    _classify_details.clear()
     wiki_dir = root / "wiki"
     existing = _load_existing_concepts(wiki_dir)
     schema = load_schema(root)
@@ -152,18 +171,69 @@ def classify(
         slug = _title_to_slug(title)
         slug = _normalize_slug(slug)
 
+        original_slug = slug
         slug = _resolve_deprecated(slug, schema)
 
         matched = _find_best_match(slug, title, preview, existing)
+        match_method = "existing_match" if matched else ""
         if not matched:
             matched = _match_taxonomy_slug(slug, schema)
+            if matched:
+                match_method = "taxonomy_match"
         target_slug = matched if matched else slug
+        if not match_method:
+            match_method = "new_topic"
 
         target_slug = _resolve_deprecated(target_slug, schema)
         target_slug = _normalize_slug(target_slug)
+
+        if verbose:
+            confidence = _assess_confidence(original_slug, target_slug, match_method, existing, schema)
+            candidates = _find_candidates(slug, existing, schema) if confidence == "low" else []
+            _classify_details[str(f)] = ClassifyResult(
+                slug=target_slug,
+                source_slug=original_slug,
+                match_method=match_method,
+                confidence=confidence,
+                candidates=candidates,
+            )
 
         if target_slug not in topic_map:
             topic_map[target_slug] = []
         topic_map[target_slug].append(f)
 
     return topic_map
+
+
+def _assess_confidence(
+    original: str, target: str, method: str,
+    existing: dict[str, str], schema: Schema,
+) -> str:
+    """评估分类置信度: high / medium / low。"""
+    if method == "existing_match" and original == target:
+        return "high"
+    if method == "existing_match":
+        return "medium"
+    if method == "taxonomy_match":
+        return "medium"
+    if target in existing or target in schema.all_known_slugs:
+        return "medium"
+    return "low"
+
+
+def _find_candidates(
+    slug: str, existing: dict[str, str], schema: Schema, max_results: int = 3,
+) -> list[str]:
+    """当置信度低时，返回最相似的候选 slug。"""
+    slug_words = set(slug.split("-"))
+    scores: list[tuple[str, int]] = []
+
+    all_slugs = set(existing.keys()) | schema.all_known_slugs
+    for candidate in all_slugs:
+        cand_words = set(candidate.split("-"))
+        overlap = len(slug_words & cand_words)
+        if overlap > 0:
+            scores.append((candidate, overlap))
+
+    scores.sort(key=lambda x: x[1], reverse=True)
+    return [s[0] for s in scores[:max_results]]

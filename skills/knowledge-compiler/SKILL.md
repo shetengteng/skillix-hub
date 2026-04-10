@@ -43,6 +43,48 @@ python3 $SKILL_PATH/main.py query "XXX 的设计取舍是什么？"
 python3 $SKILL_PATH/main.py lint
 ```
 
+## AI Agent 标准工作流
+
+Knowledge Compiler 是 **AI-first 工具**，设计为 AI Agent 在对话中直接调用。以下是推荐的使用模式：
+
+### 模式 1：快速编译（增量）
+
+```bash
+KC="python3 skills/knowledge-compiler/main.py"
+$KC compile                        # 扫描变更、分类、生成 prompt + stub
+# AI Agent 读取 .kc-compile-prompt.md，执行精细编译
+$KC apply result.md                # 将 AI 编译结果写回（自动 merge 保留用户编辑）
+$KC lint                           # 质量检查
+```
+
+### 模式 2：精细编译（单概念）
+
+```bash
+$KC compile --topic api-gateway --dry-run  # 预览分类
+$KC compile --topic api-gateway            # 编译单个概念
+# AI Agent 执行精细编译...
+$KC apply result.md --slug api-gateway     # 写回指定概念
+```
+
+### 模式 3：查询沉淀
+
+```bash
+$KC query "微服务间的通信方式有哪些？" --save  # 查询并保存为草稿概念
+$KC compile                                     # 下次编译时自动完善草稿
+```
+
+### 模式 4：质量巡检
+
+```bash
+$KC lint           # 查看 Hard Gate / Soft Gate 报告
+$KC lint --fix     # 自动修复 schema 同步问题
+$KC status         # 查看覆盖度分布和过期概念
+$KC browse         # 浏览知识地图
+```
+
+> **关键约定**：`compile` 生成编译 prompt，AI Agent 执行后通过 `apply` 写回。这是两段式设计，
+> 不是缺陷——AI Agent 在一次对话中可以原子化执行整个管道。
+
 ## 命令列表
 
 | 命令 | 说明 |
@@ -50,6 +92,7 @@ python3 $SKILL_PATH/main.py lint
 | `init` | 初始化知识库（创建 raw/ + wiki/ + 配置） |
 | `add <path> [--tags T] [--category C]` | 添加材料到 raw/ |
 | `compile [--full\|--dry-run\|--topic SLUG]` | 编译 Wiki（增量/全量/预览/单概念） |
+| `apply <result-path> [--slug SLUG]` | 将 AI 编译结果写回概念文章（经 section merge） |
 | `query <question> [--save]` | 基于 Wiki 回答问题 |
 | `lint [--fix]` | 健康检查 + 可选自动修复 |
 | `status` | 知识库状态总览 |

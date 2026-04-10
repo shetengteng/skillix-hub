@@ -16,6 +16,8 @@ import typer
 from ..common import find_project_root
 from ..compiler import _parse_frontmatter, _render_frontmatter
 from ..classifier import _title_to_slug
+from ..schema import load_schema, update_schema
+from ..indexer import update_index
 
 
 def register(app: typer.Typer) -> None:
@@ -225,6 +227,11 @@ def query_cmd(
 
     if save:
         _save_query_concept(question, relevant, root)
+        slug = _title_to_slug(question)
+        schema = load_schema(root)
+        update_schema(root, [slug], schema)
+        update_index(root)
+        typer.echo("  schema + INDEX.md 已同步")
 
     typer.echo("\n--- 概念摘要 ---\n")
     for c in relevant:
