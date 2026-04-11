@@ -27,6 +27,7 @@ window.SKILL_DATA_KNOWLEDGE_COMPILER = {
         { zh: '自定义源目录：支持 doc/、design/ 等已有目录，raw/ 仅为可选默认结构', en: 'Custom source dirs: supports existing dirs like doc/, design/; raw/ is optional default' },
         { zh: '人机共维：编译器保留用户手动编辑，Schema 由人和 AI 共同维护', en: 'Human-AI co-maintenance: compiler preserves manual edits, schema co-maintained' },
         { zh: '会话模式：staging / recommended / primary 三种模式自动注入上下文', en: 'Session modes: staging / recommended / primary for automatic context injection' },
+        { zh: 'Mermaid 图表：每篇 wiki 文章至少 1 个流程图/架构图，辅助可视化', en: 'Mermaid diagrams: at least 1 flowchart/architecture diagram per wiki article' },
         { zh: '跨平台兼容：支持 Cursor、Claude Code、Codex', en: 'Cross-platform: supports Cursor, Claude Code, Codex' }
     ],
     scripts: [],
