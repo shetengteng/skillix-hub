@@ -135,6 +135,29 @@ Phase 5: State    — 更新 .compile-state.json + log.md
 
 详细的确认场景和规则见 [skills/wiki-compiler.md](skills/wiki-compiler.md) 的"交互式确认"章节。
 
+## AI 渐进式披露协议
+
+生成的知识库面向 AI 消费。AI 按以下层级逐步深入，避免一次性读取所有内容：
+
+```
+Layer 0: .kc-config.json       → 知识库是否存在、源目录、语言、模式
+Layer 1: wiki/INDEX.md          → 全部主题列表、摘要、覆盖度（快速扫描）
+Layer 2: wiki/concepts/*.md     → 仅读 YAML frontmatter（summary、tags、answers）
+Layer 3: wiki/concepts/*.md     → 读完整文章正文
+Layer 4: 源目录中的原始文件       → 仅在 low 覆盖或需要验证时读取
+```
+
+**规则：**
+1. **Layer 1 是入口**。AI 收到知识相关问题时，**先读 INDEX.md**，不要直接读 concepts/。
+2. **Layer 2 做匹配**。通过 frontmatter 的 `summary`、`tags`、`answers` 判断哪些文章与问题相关，不需要读全文。
+3. **Layer 3 按需读取**。只读与问题相关的文章，且优先读 high/medium 覆盖度的章节。
+4. **Layer 4 最后手段**。仅在 low 覆盖度章节不足以回答，或 `session_mode=recommended/primary` 要求验证时才读原始文件。
+
+**Frontmatter 快速匹配字段：**
+- `summary`：2-3 句概述，AI 据此判断文章是否与问题相关
+- `tags`：关键词列表，用于语义匹配
+- `answers`：该文章能回答的典型问题列表，AI 据此做精准路由
+
 ## 核心约定
 
 1. **AI 是编译器**：不运行外部脚本，AI 读取指令文件后自己执行所有步骤

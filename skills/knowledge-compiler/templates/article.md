@@ -1,7 +1,11 @@
 ---
 id: "{{topic-slug}}"
 title: "{{主题标题}}"
+summary: "2-3 句概述，AI 用于快速判断文章是否与问题相关。"
 tags: [{{标签1}}, {{标签2}}]
+answers:
+  - "该文章能回答的典型问题 1？"
+  - "该文章能回答的典型问题 2？"
 sources:
   - {{source/path/to/file.md}}
 relations:

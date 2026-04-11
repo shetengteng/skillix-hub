@@ -3,6 +3,12 @@
 > 由 knowledge-compiler 自动维护。上次编译: {{YYYY-MM-DD}}
 > 编译: `kc compile` | 健康检查: `kc lint` | 查询: `kc query <问题>`
 
+<!-- AI 导航指南:
+本文件是知识库的入口（Layer 1）。AI 收到知识相关问题时，先读本文件。
+导航路径: INDEX.md → frontmatter（summary/tags/answers）→ 正文 → 源文件
+不要一次性读取所有 concepts/*.md，按需逐层深入。
+-->
+
 ## {{分类名称}}
 
 | 主题 | 摘要 | 覆盖度 | 更新日期 |
