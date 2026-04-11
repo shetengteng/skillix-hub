@@ -1,111 +1,111 @@
-# Quality Gates Reference
+# 质量门控参考
 
-Detailed definitions of the Hard and Soft Gates used by `kc lint` and the compile pipeline's Phase 4 verification.
+`kc lint` 和编译管道 Phase 4 验证使用的 Hard Gate 和 Soft Gate 详细定义。
 
 ---
 
 ## Hard Gates
 
-Hard Gates must pass. If a gate fails, attempt to fix it automatically. If auto-fix is not possible, report the failure and continue checking remaining gates.
+Hard Gate 必须通过。如果某个门控失败，尝试自动修复。无法自动修复的，报告失败并继续检查剩余门控。
 
-### 1. Frontmatter Complete
+### 1. Frontmatter 完整
 
-**Check:** Every `wiki/concepts/*.md` file has YAML frontmatter with these required fields:
-- `id` — topic slug (must match filename)
-- `title` — human-readable title
-- `sources` — list of raw/ file paths
-- `created` — date of first compilation
-- `updated` — date of last compilation
+**检查：** 每个 `wiki/concepts/*.md` 文件的 YAML frontmatter 包含以下必需字段：
+- `id` — 主题 slug（必须与文件名一致）
+- `title` — 可读标题
+- `sources` — 原始文件路径列表
+- `created` — 首次编译日期
+- `updated` — 最近编译日期
 
-**Auto-fix:** Add missing fields with sensible defaults:
-- `id`: derive from filename
-- `title`: derive from H1 heading
-- `sources`: `[]` (empty, flag for user attention)
-- `created`/`updated`: today's date
+**自动修复：** 用合理默认值补充缺失字段：
+- `id`：从文件名推导
+- `title`：从 H1 标题推导
+- `sources`：`[]`（空，标记需用户关注）
+- `created`/`updated`：当天日期
 
-### 2. Coverage Tags Present
+### 2. 覆盖度标记存在
 
-**Check:** Every `## Section` heading in a concept article is followed by a `<!-- coverage: high|medium|low -->` comment.
+**检查：** 每个概念文章中的 `## 章节` 标题后面有 `<!-- coverage: high|medium|low -->` 注释。
 
-**Auto-fix:** Add `<!-- coverage: low -->` to sections missing the tag.
+**自动修复：** 对缺失标记的章节添加 `<!-- coverage: low -->`。
 
-### 3. Source References Valid
+### 3. 来源引用有效
 
-**Check:** Every `[source: raw/path/to/file.md]` citation in a concept article points to a file that actually exists in the filesystem.
+**检查：** 概念文章中的每个 `[source: path]` 引用指向文件系统中实际存在的文件。
 
-**Auto-fix:** Remove the broken reference and add a warning comment: `<!-- WARNING: source removed, file not found: raw/old-path.md -->`. Downgrade the section's coverage to `low` if it was higher.
+**自动修复：** 移除断裂引用，添加警告注释：`<!-- 警告: 来源已移除，文件不存在: path -->`。如果章节原覆盖度高于 `low`，降级为 `low`。
 
-### 4. Schema Consistency
+### 4. Schema 一致性
 
-**Check:** Every topic that has a compiled article in `wiki/concepts/` appears in `wiki/schema.md` under some category.
+**检查：** `wiki/concepts/` 中每个已编译的主题在 `wiki/schema.md` 的某个分类下有对应条目。
 
-**Auto-fix:** Add missing topics to the `### Uncategorized` section of schema.md.
+**自动修复：** 将缺失的主题添加到 schema.md 的 `### 未分类` 区域。
 
-### 5. Non-Empty Content
+### 5. 非空内容
 
-**Check:** Every section in a concept article has substantive content beyond the heading. A section with only the heading and coverage tag but no prose is considered empty.
+**检查：** 概念文章中每个章节有实质内容（不能只有标题和覆盖度标记而无正文）。
 
-**Auto-fix:** Insert `[NEEDS INPUT: no source content available for this section]` as a placeholder.
+**自动修复：** 插入 `[待补充: 该章节无可用源内容]` 作为占位符。
 
 ---
 
 ## Soft Gates
 
-Soft Gates produce warnings but do not block compilation or lint from completing. They highlight areas that need attention.
+Soft Gate 产生警告但不阻断编译或 lint 完成。它们标记需要关注的区域。
 
-### 1. Stale Articles
+### 1. 过期文章
 
-**Check:** Compare source file mtimes against `.compile-state.json`.
-- A source file whose mtime is newer than the recorded mtime means the associated topic may be outdated.
+**检查：** 对比源文件 mtime 与 `.compile-state.json`。
+- 源文件 mtime 比记录的 mtime 新，说明关联主题可能已过期。
 
-**Severity:**
-- Source changed <7 days ago: info
-- Source changed 7-30 days ago: warning
-- Source changed >30 days ago, or topic >30 days since `updated` date: alert
+**严重程度：**
+- 源文件变更 <7 天前：信息
+- 源文件变更 7-30 天前：警告
+- 源文件变更 >30 天前，或主题 `updated` 日期 >30 天：警报
 
-### 2. Orphan Pages
+### 2. 孤立页面
 
-**Check:** Find wiki pages that have no inbound links:
-- Not referenced in `wiki/INDEX.md`
-- Not linked via `[[slug]]` from any other concept article
+**检查：** 查找无入站链接的 wiki 页面：
+- 未在 `wiki/INDEX.md` 中引用
+- 未被其他概念文章通过 `[[slug]]` 链接
 
-**Suggestion:** Consider linking from a related topic or removing if no longer relevant.
+**建议：** 考虑从相关主题链接，或如果不再相关则移除。
 
-### 3. Missing Cross-References
+### 3. 缺失交叉引用
 
-**Check:** Scan concept article text for mentions of other topic titles or slugs that are not linked with `[[slug]]` notation.
+**检查：** 扫描概念文章文本中提到了其他主题的标题或 slug 但未用 `[[slug]]` 标注的。
 
-**Suggestion:** Add `[[slug]]` links where topics are mentioned.
+**建议：** 在提到的地方添加 `[[slug]]` 链接。
 
-### 4. Low Coverage Clusters
+### 4. 低覆盖集群
 
-**Check:** Flag topics where ALL sections have coverage tag `low`. These topics have minimal source support and may be unreliable.
+**检查：** 标记所有章节的覆盖度标记均为 `low` 的主题。这些主题的源支撑最少，可能不可靠。
 
-**Suggestion:** Add more source materials to `raw/` covering this topic, then run `kc compile --topic <slug>`.
+**建议：** 向源目录添加更多相关材料，然后运行 `kc compile --topic <slug>`。
 
-### 5. Content Contradictions
+### 5. 内容矛盾
 
-**Check:** Look for conflicting claims across different concept articles about the same subject. For example, if topic A says "we use PostgreSQL" and topic B says "we use MySQL" for the same system.
+**检查：** 查找不同概念文章中关于同一事物的矛盾说法。例如主题 A 说"使用 PostgreSQL"而主题 B 说同一系统"使用 MySQL"。
 
-**Suggestion:** Review the conflicting articles and resolve. This check requires AI judgment — flag potential contradictions for user review.
+**建议：** 审查矛盾文章并解决。此检查需要 AI 判断——标记潜在矛盾供用户审查。
 
-### 6. Schema Drift
+### 6. Schema 漂移
 
-**Check:** Compare topics listed in `wiki/schema.md` against actual files in `wiki/concepts/`. Flag:
-- Topics in schema but no article file
-- Topics in articles but not in schema (also caught by Hard Gate 4)
+**检查：** 对比 `wiki/schema.md` 中列出的主题与 `wiki/concepts/` 中的实际文件。标记：
+- schema 中有但无文章文件的主题
+- 有文章但不在 schema 中的主题（也被 Hard Gate 4 捕获）
 
-### 7. Broken Wiki Links
+### 7. 断裂 Wiki 链接
 
-**Check:** Find `[[slug]]` references in concept articles that point to non-existent pages (no matching `wiki/concepts/slug.md` file).
+**检查：** 查找概念文章中 `[[slug]]` 引用指向不存在页面（无匹配的 `wiki/concepts/slug.md` 文件）的情况。
 
-**Suggestion:** Create the missing topic or fix the link.
+**建议：** 创建缺失的主题或修复链接。
 
-### 8. Missing Optional Frontmatter
+### 8. 缺失可选 Frontmatter
 
-**Check:** Pages lacking recommended but not required fields:
-- `tags` — helps with search and categorization
-- `relations.related` — helps with knowledge graph navigation
-- `relations.depends_on` — clarifies dependency relationships
+**检查：** 缺少推荐但非必须字段的页面：
+- `tags` — 有助于搜索和分类
+- `relations.related` — 有助于知识图谱导航
+- `relations.depends_on` — 明确依赖关系
 
-**Suggestion:** Add these fields to improve wiki navigability.
+**建议：** 添加这些字段以提升 wiki 可导航性。

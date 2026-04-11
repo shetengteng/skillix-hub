@@ -5,45 +5,32 @@ updated: "{{YYYY-MM-DD}}"
 
 # Wiki Schema
 
-> This file is the structural contract for this knowledge base. It is co-maintained by the compiler and the user.
-> The compiler reads this file to guide topic naming, categorization, and cross-reference rules.
-> Edit this file to override compiler defaults.
+> 本文件是知识库的结构契约，由编译器和用户共同维护。
+> 编译器读取本文件来指导主题命名、分类和交叉引用规则。
+> 编辑本文件可覆盖编译器默认行为。
 
-## Topic Taxonomy
+## 主题分类
 
-Define the top-level categories and the topics that belong to each.
+### {{分类名称}}
+- `{{topic-slug}}` — 一句话描述
 
-### {{Category Name}}
-- `{{topic-slug}}` — one-line description
+### 未分类
+<!-- 新主题在没有明确分类时出现在这里。 -->
 
-### Uncategorized
-<!-- New topics without a clear category appear here. Move them as taxonomy matures. -->
+## 命名规范
 
-## Naming Conventions
+- 主题 slug：`lowercase-kebab-case`
 
-- Topic slugs: `lowercase-kebab-case`
-- Prefer specific over generic: `transformer-attention` not `attention`
-- Avoid year suffixes unless the year is load-bearing: `gpt-4` ok, `llm-2024` not ok
-
-## Cross-Reference Rules
-
-Define which topics should always link to each other:
+## 交叉引用规则
 
 ```
-<!-- example:
-transformer-architecture <-> attention-mechanism
-retrieval-augmented-generation -> vector-database
-fine-tuning -> parameter-efficient-training
--->
+<!-- example: topic-a <-> topic-b -->
 ```
 
-## Deprecated Topics
+## 已弃用主题
 
-Topics that have been merged or renamed. The compiler will not recreate these.
+| 旧 Slug | 合并到 | 日期 |
+|---------|-------|------|
 
-| Old Slug | Merged Into | Date |
-|----------|-------------|------|
+## 备注
 
-## Notes
-
-Free-form notes about the wiki structure that don't fit above.

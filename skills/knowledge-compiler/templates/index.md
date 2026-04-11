@@ -1,29 +1,27 @@
-# Wiki Index
+# Wiki 索引
 
-> Auto-maintained by knowledge-compiler. Last compiled: {{YYYY-MM-DD}}
-> Compile: `kc compile` | Health check: `kc lint` | Query: `kc query <question>`
+> 由 knowledge-compiler 自动维护。上次编译: {{YYYY-MM-DD}}
+> 编译: `kc compile` | 健康检查: `kc lint` | 查询: `kc query <问题>`
 
-## {{Category Name}}
+## {{分类名称}}
 
-| Topic | Summary | Coverage | Updated |
-|-------|---------|----------|---------|
-| [[concepts/{{topic-slug}}]] | One-line description | high/medium/low | YYYY-MM-DD |
+| 主题 | 摘要 | 覆盖度 | 更新日期 |
+|------|------|--------|---------|
+| [[concepts/{{topic-slug}}]] | 一句话描述 | high/medium/low | YYYY-MM-DD |
 
-## Uncategorized
+## 未分类
 
-| Topic | Summary | Coverage | Updated |
-|-------|---------|----------|---------|
+| 主题 | 摘要 | 覆盖度 | 更新日期 |
+|------|------|--------|---------|
 
-## Analyses
+## 分析记录
 
-Saved answers and syntheses from `kc query --save`.
+| 页面 | 问题 | 日期 |
+|------|------|------|
+| [[analyses/{{slug}}]] | 问题摘要 | YYYY-MM-DD |
 
-| Page | Question | Date |
-|------|----------|------|
-| [[analyses/{{slug}}]] | Summary of question | YYYY-MM-DD |
+## 统计
 
-## Stats
-
-- Total topics: {{N}}
-- High coverage: {{N}} | Medium: {{N}} | Low: {{N}}
-- Sources indexed: {{N}} files
+- 总主题数: {{N}}
+- 高覆盖: {{N}} | 中覆盖: {{N}} | 低覆盖: {{N}}
+- 已索引源文件: {{N}} 个

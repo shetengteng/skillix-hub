@@ -1,9 +1,9 @@
 ---
 id: "{{topic-slug}}"
-title: "{{Topic Title}}"
-tags: [{{tag1}}, {{tag2}}]
+title: "{{主题标题}}"
+tags: [{{标签1}}, {{标签2}}]
 sources:
-  - {{raw/path/to/source.md}}
+  - {{source/path/to/file.md}}
 relations:
   related: []
   depends_on: []
@@ -12,46 +12,45 @@ updated: "{{YYYY-MM-DD}}"
 compile_count: 1
 ---
 
-# {{Topic Title}}
+# {{主题标题}}
 
-> One-sentence definition or summary of this topic.
+> 一句话定义或概述。
 
-<!-- coverage: high | medium | low -->
-<!-- Assign a coverage tag to each section below. -->
-<!-- high = multiple consistent sources; medium = single source; low = inferred/sparse -->
-
-## Summary
+## 概要
 <!-- coverage: ? -->
 
-A concise overview (3-6 sentences). What is this? Why does it matter? Where does it fit?
+全面概述（5-10 句）。涵盖：是什么、为什么重要、在系统中的定位、关键特征。
+保留源材料中的具体细节（字段名、路径、数据格式）。
 
-## Key Decisions
+## 关键决策
 <!-- coverage: ? -->
 
-Important design decisions, trade-offs, or architectural choices.
+从源材料中提取所有设计决策、权衡和架构选择。
+每条决策：做出的选择 + 理由 + 考虑过的替代方案。目标 3-8 条。
 
-- **Decision:** Why this approach was chosen over alternatives.
-  [source: raw/path/to/source.md]
+- **决策:** 选择理由。
+  [source: source/path/to/file.md]
 
-## Current State
+## 当前状态
 <!-- coverage: ? -->
 
-What is the current status? What is in production today?
+完整的当前实现状态。包含数据模型、API 端点、配置、数据库 schema。
+不要过度概括——保留字段名、类型、端点路径、SQL schema、代码示例等具体信息。
 
-## Gotchas
+## 注意事项
 <!-- coverage: ? -->
 
-Common pitfalls, non-obvious behaviors, or things that surprised practitioners.
+所有陷阱、边界情况、非直觉行为。逐条列出。
 
-## Open Questions
+## 待解决问题
 <!-- coverage: ? -->
 
-Unresolved debates, active discussion areas, or things the compiler couldn't determine from sources.
+仅列出源材料中真正未解决的问题。不要编造。
 
-## Related
+## 相关概念
 - [[related-concept-slug]]
 
-## Sources
+## 来源
 {{#each sources}}
 - [source: {{this}}]
 {{/each}}

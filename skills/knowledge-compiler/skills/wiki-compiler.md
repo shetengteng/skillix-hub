@@ -1,25 +1,26 @@
 # Skill: wiki-compiler
 
-## Purpose
+## 用途
 
-Compile a markdown knowledge base into a structured, AI-queryable wiki. Discovers topics automatically, tracks coverage confidence per section, and supports incremental recompilation on change.
+将 Markdown 知识库编译为结构化、AI 可查询的 wiki。自动发现主题，按章节追踪覆盖度置信度，支持基于变更的增量重编译。
 
-## When to Activate
+## 激活条件
 
-This skill activates when the user invokes `kc compile`, or when another command delegates to `wiki-compiler`.
+当用户调用 `kc compile`，或其他命令委托给 wiki-compiler 时激活。
 
 ---
 
-## Input
+## 输入
 
-Read `.kc-config.json` in the project root for configuration:
+读取项目根目录的 `.kc-config.json` 获取配置：
 
 ```json
 {
   "session_mode": "recommended",
-  "sources": ["raw/designs", "raw/decisions", "raw/research", "raw/notes"],
+  "language": "zh",
+  "sources": ["doc"],
   "output_dir": "wiki",
-  "exclude": ["raw/assets"],
+  "exclude": [],
   "compile_options": {
     "parallel_topics": true,
     "max_parallel": 4
@@ -27,126 +28,158 @@ Read `.kc-config.json` in the project root for configuration:
 }
 ```
 
+**语言配置：** `language` 字段控制生成的 wiki 内容语言。
+- `"zh"` — 中文（默认）。文章正文、章节标题、摘要、覆盖度注释均为中文。YAML frontmatter key 保持英文。
+- `"en"` — English。
+- 语言设置仅影响**生成的内容**。源文件以其原始语言读取。
+
 ---
 
-## Compilation Pipeline (5 Phases)
+## 编译管道（5 阶段）
 
-### Phase 1 — Scan Sources
+### Phase 1 — 扫描源文件
 
-1. Read `.compile-state.json` to get the previous compilation snapshot (file paths + mtimes).
-2. Walk all directories listed in `sources`.
-3. For each `.md` file found, get the current modification time:
+1. 读取 `.compile-state.json` 获取上次编译快照（文件路径 + mtime）。
+2. 遍历 `sources` 中列出的所有目录。
+3. 对找到的每个 `.md` 文件，获取当前修改时间：
    ```bash
    stat -f "%m" <file>     # macOS
    stat -c "%Y" <file>     # Linux
    ```
-4. Compare current mtime to the snapshot.
-5. Produce three lists: `new_files`, `changed_files`, `deleted_files`.
-6. If `--full` flag is set, treat ALL source files as changed regardless of state.
-7. If `.compile-state.json` does not exist, treat all files as new.
+4. 对比当前 mtime 与快照。
+5. 生成三个列表：`new_files`、`changed_files`、`deleted_files`。
+6. 如果设置了 `--full` 标志，无论状态如何，将所有源文件视为已变更。
+7. 如果 `.compile-state.json` 不存在，将所有文件视为新增。
 
-**Output:** `scan_result = { new, changed, deleted }`
+**输出：** `scan_result = { new, changed, deleted }`
 
-**Quick exit:** If all three lists are empty, report "Nothing to compile — all topics up to date." and stop.
-
----
-
-### Phase 2 — Classify & Discover Topics
-
-For each file in `new_files + changed_files`:
-1. Read: file path, H1 title (or filename if no H1), and first 500 characters of content.
-2. Infer a topic slug: `lowercase-kebab-case` (e.g. `api-gateway-design`, `event-driven-architecture`).
-3. Group files by topic. A single file may belong to multiple topics if it covers distinct subjects.
-4. Cross-reference with existing `wiki/INDEX.md` to reuse established topic slugs where possible.
-5. Flag genuinely new topics for Phase 3 article creation.
-
-**Output:** `topic_map = { topic_slug: [file_paths] }`
-
-**Rules:**
-- Prefer merging into an existing topic over creating a new one.
-- When uncertain, ask the user: "Found content that could be `topic-a` or `topic-b` — which topic fits better?"
-- If `--topic <slug>` was specified, only process that single topic.
+**快速退出：** 如果三个列表都为空，报告"无需编译——所有主题已是最新。"并停止。
 
 ---
 
-### Phase 3 — Compile Topic Articles
+### Phase 2 — 分类与发现主题
 
-For each topic with changed source files:
+对 `new_files + changed_files` 中的每个文件：
+1. 读取：文件路径、H1 标题（无 H1 则用文件名）、前 500 字符内容。
+2. 推断主题 slug：`lowercase-kebab-case`（如 `api-gateway-design`、`event-driven-architecture`）。
+3. 按主题分组。一个文件如果涵盖不同主题，可以属于多个主题。
+4. 与现有 `wiki/INDEX.md` 交叉引用，尽量复用已有的主题 slug。
+5. 标记真正的新主题供 Phase 3 创建文章。
 
-1. **Read** ALL source files belonging to that topic in full.
-2. **Check** if `wiki/concepts/{topic-slug}.md` already exists.
-   - If it exists: read the current article, identify user-edited sections (sections without `[source: ...]` citations, or where the user modified compiler-generated content). Preserve these.
-   - If new: create from `templates/article.md`.
-3. **Generate** the article content:
-   - Fill each section from the template with synthesized information from sources.
-   - Assign a **coverage tag** to each section:
-     - `high` — multiple sources, consistent, well-documented
-     - `medium` — single source or partial coverage
-     - `low` — inferred or sparse; reader should verify against raw/
-   - Add `[source: raw/path/to/file.md]` citations inline wherever information is drawn from a source.
-4. **Merge** with existing content:
-   - Compiler-generated sections (with `[source: ...]`): update with new synthesis.
-   - User-edited sections (no source citations or manually adjusted): keep the user's version.
-   - New sections from sources not previously covered: append.
+**输出：** `topic_map = { topic_slug: [file_paths] }`
 
-**Parallelism:** If `compile_options.parallel_topics` is true and there are 3+ topics to compile, process topics in parallel batches (up to `max_parallel`).
+**规则：**
+- 优先合并到已有主题，而非创建新主题。
+- 不确定时询问用户："发现内容可能属于 `topic-a` 或 `topic-b`——哪个更合适？"
+- 如果指定了 `--topic <slug>`，仅处理该单一主题。
 
-**Output:** Updated or created `wiki/concepts/{topic-slug}.md` files.
+---
+
+### Phase 3 — 编译主题文章
+
+对每个有变更源文件的主题：
+
+1. **完整读取**该主题的所有源文件。
+2. **检查** `wiki/concepts/{topic-slug}.md` 是否已存在。
+   - 已存在：读取当前文章，识别用户编辑的章节（无 `[source: ...]` 引用的章节，或用户修改了编译器生成内容的章节）。保留这些。
+   - 新建：从 `templates/article.md` 创建。
+3. **生成**文章内容（使用配置中指定的 `language`）：
+
+   **语言处理规则：**
+   - 模板骨架是中文（默认 `zh`）。当 `language=zh` 时，直接使用中文章节名和中文正文。
+   - 当 `language=en` 时，使用以下映射替换章节名，正文用英文：
+
+     | 模板中文 | English |
+     |---------|---------|
+     | 概要 | Summary |
+     | 关键决策 | Key Decisions |
+     | 当前状态 | Current State |
+     | 注意事项 | Gotchas |
+     | 待解决问题 | Open Questions |
+     | 相关概念 | Related |
+     | 来源 | Sources |
+     | 主题分类 | Topic Taxonomy |
+     | 未分类 | Uncategorized |
+     | Wiki 索引 | Wiki Index |
+     | 分析记录 | Analyses |
+     | 统计 | Stats |
+   - 用源材料中的**详尽、深入**综合填充模板的每个章节。
+   - **深度要求：**
+     - **概要**：5-10 句。涵盖是什么、为什么重要、在系统中的定位、关键特征。包含源材料中的具体细节（字段名、路径、格式）。
+     - **关键决策**：提取源材料中的每一个设计决策、权衡和架构选择。每条决策说明选择内容 + 理由 + 考虑过的替代方案。目标 3-8 条。
+     - **当前状态**：描述完整的当前实现状态。包含数据模型、API 端点、配置详情、数据库 schema——源材料中提供的所有信息。结构化数据用表格呈现。
+     - **注意事项**：提取所有陷阱、边界情况、非直觉行为。如果源材料提到不一致、格式问题或意外行为，逐条列出。
+     - **待解决问题**：仅列出真正未解决的问题。不要编造——只列出源材料中留下的开放问题。
+   - 如果源材料内容丰富（>100 行），编译的文章应至少同等详细。**不要过度概括。** 保留字段名、端点路径、数据格式、SQL schema、代码示例等具体细节。
+   - 为每个章节标注**覆盖度**：
+     - `high` — 多个来源，一致，文档充分
+     - `medium` — 单一来源或部分覆盖
+     - `low` — 推断或稀疏；读者应核查原始文件
+   - 在引用源信息的地方添加 `[source: path/to/file.md]` 行内引用。
+4. **与现有内容合并：**
+   - 编译器生成的章节（带 `[source: ...]`）：用新综合内容更新。
+   - 用户编辑的章节（无来源引用或手动调整过的）：保留用户版本。
+   - 来自之前未涵盖的源的新章节：追加。
+
+**并行处理：** 如果 `compile_options.parallel_topics` 为 true 且有 3 个以上主题要编译，按批次并行处理（最多 `max_parallel` 个）。
+
+**输出：** 更新或创建的 `wiki/concepts/{topic-slug}.md` 文件。
 
 ---
 
 ### Phase 3.5 — Schema
 
-- **First run:** Generate `wiki/schema.md` from `templates/schema.md`. Infer topic taxonomy, naming conventions, and cross-reference rules from the compiled articles.
-- **Subsequent runs:** Incrementally update schema only when new topics are added or existing topics are restructured. Never overwrite manual edits to schema.md.
-- Schema is a shared contract between the human and the compiler. Treat it as authoritative for topic naming and categorization.
+- **首次运行：** 从 `templates/schema.md` 生成 `wiki/schema.md`。从已编译文章中推断主题分类、命名规范和交叉引用规则。
+- **后续运行：** 仅在新增主题或现有主题重组时增量更新 schema。永远不覆盖 schema.md 中的手动编辑。
+- Schema 是人和编译器之间的共享契约。在主题命名和分类方面以它为准。
 
 ---
 
-### Phase 4 — Update INDEX + Verify
+### Phase 4 — 更新索引 + 验证
 
-#### 4a. Update INDEX.md
+#### 4a. 更新 INDEX.md
 
-Rewrite `wiki/INDEX.md` using `templates/index.md`:
-- List all topics with one-line description and coverage summary.
-- Group by category (infer from schema.md if available).
-- Mark new/updated topics with `[updated: YYYY-MM-DD]`.
+使用 `templates/index.md` 重写 `wiki/INDEX.md`：
+- 列出所有主题及一句话描述和覆盖度摘要。
+- 按分类分组（如有 schema.md 则从中推断）。
+- 标记新增/更新的主题：`[更新: YYYY-MM-DD]`。
 
-#### 4b. Hard Gate Verification
+#### 4b. Hard Gate 验证
 
-Run these checks. If any fail, report the failure and attempt to fix before proceeding:
+运行以下检查。如有失败，报告问题并尝试修复后再继续：
 
-| Gate | Check | On Fail |
-|------|-------|---------|
-| Frontmatter complete | Every concept article has `id`, `title`, `sources`, `created`, `updated` in YAML frontmatter | Add missing fields |
-| Coverage tags | Every `## Section` has a `<!-- coverage: X -->` comment | Add `<!-- coverage: low -->` as default |
-| Source references valid | Every `[source: path]` points to a file that exists in raw/ | Remove invalid references, warn user |
-| Schema consistency | Every compiled topic appears in `wiki/schema.md` | Add missing entries to schema |
-| Non-empty content | Every section has substantive content beyond the heading | Flag empty sections with `[NEEDS INPUT: no source content available]` |
+| 门控 | 检查项 | 失败时 |
+|------|--------|--------|
+| Frontmatter 完整 | 每篇概念文章的 YAML frontmatter 有 `id`、`title`、`sources`、`created`、`updated` | 补充缺失字段 |
+| 覆盖度标记 | 每个 `## 章节` 有 `<!-- coverage: X -->` 注释 | 添加 `<!-- coverage: low -->` |
+| 来源引用有效 | 每个 `[source: path]` 指向实际存在的文件 | 移除无效引用，警告用户 |
+| Schema 一致性 | 每个已编译主题在 `wiki/schema.md` 中有条目 | 将缺失条目添加到 schema |
+| 非空内容 | 每个章节有实质内容（不仅仅是标题） | 标记空章节：`[待补充: 无可用源内容]` |
 
-#### 4c. Soft Gate Checks
+#### 4c. Soft Gate 检查
 
-Run these checks and report warnings (do not block):
+运行以下检查并报告警告（不阻断）：
 
-| Gate | Check |
-|------|-------|
-| Orphan pages | Wiki pages with no inbound links from INDEX.md or other articles |
-| Low coverage clusters | Topics where all sections are tagged `low` |
-| Stale detection | Source files changed since last compile (mtime), or concept >30 days since update |
-| Content contradictions | Conflicting claims across topic articles on the same subject |
-| Broken wiki links | `[[topic-slug]]` references pointing to non-existent pages |
-| Missing cross-references | Topics mentioned in articles but not linked to their own page |
+| 门控 | 检查项 |
+|------|--------|
+| 孤立页面 | 未被 INDEX.md 或其他文章通过 `[[链接]]` 引用的 wiki 页面 |
+| 低覆盖集群 | 所有章节都标记为 `low` 的主题 |
+| 过期检测 | 源文件自上次编译后有变更（mtime），或概念超过 30 天未更新 |
+| 内容矛盾 | 不同主题文章中关于同一事物的矛盾说法 |
+| 断裂链接 | `[[topic-slug]]` 引用指向不存在的页面 |
+| 缺失交叉引用 | 文章中提到但未链接到对应页面的主题 |
 
 ---
 
-### Phase 5 — State & Log
+### Phase 5 — 状态与日志
 
-1. **Update `.compile-state.json`:**
+1. **更新 `.compile-state.json`：**
 ```json
 {
   "last_compiled": "YYYY-MM-DD",
+  "language": "zh",
   "files": {
-    "raw/designs/api-gateway.md": {
+    "doc/api-gateway.md": {
       "mtime": 1234567890,
       "topics": ["api-gateway-design"]
     }
@@ -154,41 +187,74 @@ Run these checks and report warnings (do not block):
 }
 ```
 
-2. **Append to `wiki/log.md`:**
+2. **追加到 `wiki/log.md`：**
 ```markdown
-## [YYYY-MM-DD] compile | incremental
-- Topics compiled: X new, Y updated, Z unchanged
-- Files processed: A new, B changed, C deleted
-- New topics: [list]
-- Updated topics: [list]
-- Hard Gate: all passed / N issues fixed
-- Soft Gate: N warnings
+## [YYYY-MM-DD] compile | 增量
+- 编译主题: X 新建, Y 更新, Z 未变
+- 处理文件: A 新增, B 变更, C 删除
+- 新增主题: [列表]
+- 更新主题: [列表]
+- Hard Gate: 全部通过 / N 个问题已修复
+- Soft Gate: N 个警告
 ```
 
 ---
 
-## Dry Run Mode
+## 预览模式
 
-If `--dry-run` flag is set:
-- Run Phase 1 and Phase 2 only.
-- Output a preview: which files changed, which topics would be compiled, estimated scope.
-- Do not write any files.
-
----
-
-## Single Topic Mode
-
-If `--topic <slug>` flag is set:
-- Skip Phase 1 scan. Instead, look up the topic in `.compile-state.json` to find its source files.
-- Run Phase 2 only for that topic's files.
-- Run Phase 3 for that single topic.
-- Run Phase 3.5, 4, 5 as normal.
+如果设置了 `--dry-run` 标志：
+- 仅运行 Phase 1 和 Phase 2。
+- 输出预览：哪些文件有变更、哪些主题会被编译、预估范围。
+- 不写入任何文件。
 
 ---
 
-## Error Handling
+## 单主题模式
 
-- If a source file is unreadable, log a warning and continue with remaining files.
-- If topic classification is ambiguous for >3 files, pause and ask the user.
-- If schema.md conflicts with discovered topics, surface the conflict and ask before updating.
-- If a Hard Gate fails and cannot be auto-fixed, report the issue and continue with remaining checks.
+如果设置了 `--topic <slug>` 标志：
+- 跳过 Phase 1 扫描。从 `.compile-state.json` 中查找该主题的源文件。
+- 仅对该主题的文件运行 Phase 2。
+- 对该单一主题运行 Phase 3。
+- Phase 3.5、4、5 正常运行。
+
+---
+
+## 交互式确认（强制规则）
+
+编译过程中 AI **必须**在以下场景暂停并向用户确认，不可自行决定：
+
+### 必须确认的场景
+
+| 阶段 | 场景 | 询问方式 |
+|------|------|---------|
+| Phase 2 | 一个文件可能属于多个主题 | "该文件涉及 `topic-a` 和 `topic-b`，应归入哪个主题？还是拆分为两条？" |
+| Phase 2 | 发现新主题，但与现有主题名称相近 | "发现新内容，它应该合并到现有的 `existing-topic` 还是创建新主题 `new-topic`？" |
+| Phase 3 | 源文件之间存在矛盾信息 | "文件 A 说 X，文件 B 说 Y。以哪个为准？" |
+| Phase 3 | 已有文章包含用户手动编辑的内容，且新源信息与之冲突 | "你之前手动写了 X，但新源文件说 Y。保留你的版本还是更新？" |
+| Phase 3.5 | Schema 中现有分类与新发现的主题不匹配 | "新主题 `X` 不属于现有任何分类。创建新分类 `Y` 还是放入未分类？" |
+| Phase 4 | Hard Gate 失败且无法自动修复 | "检查到以下问题无法自动修复：[列表]。是否继续编译？" |
+
+### 可自动处理的场景（不需要确认）
+
+| 场景 | AI 行为 |
+|------|---------|
+| 源文件不可读 | 记录警告，跳过该文件，继续处理剩余 |
+| 缺失覆盖度标记 | 自动添加 `<!-- coverage: low -->` |
+| 缺失 frontmatter 字段 | 自动从文件名/标题推导 |
+| 新主题分类明确且不冲突 | 自动归入对应分类 |
+| 孤立页面、缺失交叉引用 | 作为 Soft Gate 警告报告 |
+
+### 确认方式
+
+- 每次确认只问一个问题，不要堆积多个问题。
+- 提供明确的选项（而非开放式问题）。
+- 如果用户回答"你决定"或"都行"，选择更保守的选项（合并而非创建、保留用户版本而非覆盖）。
+
+---
+
+## 错误处理
+
+- 如果源文件不可读，记录警告并继续处理剩余文件。
+- 如果超过 3 个文件的主题分类不明确，暂停并逐个询问用户。
+- 如果 schema.md 与发现的主题冲突，展示冲突并在更新前询问。
+- 如果 Hard Gate 失败且无法自动修复，报告问题并询问是否继续。

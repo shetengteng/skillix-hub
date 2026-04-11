@@ -40,8 +40,8 @@ platforms:
 
 | 用户意图 | 指令文件 | 说明 |
 |---------|---------|------|
-| "kc init" / "初始化知识库" | [commands/kc-init.md](commands/kc-init.md) | 创建 raw/ + wiki/ + 配置 |
-| "kc add" / "添加材料" | [commands/kc-add.md](commands/kc-add.md) | 添加文件到 raw/ |
+| "kc init" / "初始化知识库" | [commands/kc-init.md](commands/kc-init.md) | 创建源目录 + wiki/ + 配置 |
+| "kc add" / "添加材料" | [commands/kc-add.md](commands/kc-add.md) | 添加文件到源目录 |
 | "kc compile" / "编译" / "compile" | [commands/kc-compile.md](commands/kc-compile.md) | 编译 Wiki（增量/全量/预览） |
 | "kc query" / "问一下" / "查知识库" | [commands/kc-query.md](commands/kc-query.md) | 基于 Wiki 回答问题 |
 | "kc lint" / "健康检查" / "检查质量" | [commands/kc-lint.md](commands/kc-lint.md) | Hard/Soft Gate 检查 |
@@ -53,7 +53,7 @@ platforms:
 ## 编译管道概览
 
 ```
-Phase 1: Scan    — 读 .compile-state.json，对比 raw/ 文件 mtime，找出 new/changed/deleted
+Phase 1: Scan    — 读 .compile-state.json，对比源文件 mtime，找出 new/changed/deleted
 Phase 2: Classify — 读标题+前500字，推断 topic slug，匹配已有概念
 Phase 3: Compile  — 读全文，生成/更新概念文章，标记覆盖度，标注来源
 Phase 3.5: Schema — 首次生成 / 增量更新 schema.md
@@ -69,8 +69,8 @@ Phase 5: State    — 更新 .compile-state.json + log.md
 {project}/
 ├── .kc-config.json              # 配置
 ├── .compile-state.json          # 编译状态（mtime 快照）
-├── raw/                         # 原始材料（只读约定）
-│   ├── designs/
+├── {sources}/                   # 源目录（只读约定，默认 raw/，也可使用 doc/、design/ 等已有目录）
+│   ├── designs/                 # ← 使用默认 raw/ 结构时的子目录
 │   ├── decisions/
 │   ├── research/
 │   └── notes/
@@ -78,8 +78,10 @@ Phase 5: State    — 更新 .compile-state.json + log.md
     ├── INDEX.md                 # 概念索引（分类 + 覆盖度）
     ├── schema.md                # 结构契约（分类 + 命名规则 + 交叉引用）
     ├── log.md                   # 编译日志
-    └── concepts/
-        └── {topic-slug}.md      # 概念文章（frontmatter + 覆盖度标记）
+    ├── concepts/
+    │   └── {topic-slug}.md      # 概念文章（frontmatter + 覆盖度标记）
+    └── analyses/
+        └── {date}-{slug}.md     # 保存的查询分析（kc query --save 产物）
 ```
 
 ## 覆盖度标记
@@ -88,9 +90,20 @@ Phase 5: State    — 更新 .compile-state.json + log.md
 |------|------|---------|
 | high | 多个一致来源 | 直接引用 |
 | medium | 单一来源 | 引用但标注"可能需补充" |
-| low | 推断或稀疏 | 自动回查 raw/ 原始文件 |
+| low | 推断或稀疏 | 自动回查源目录中的原始文件 |
 
 详细说明见 [references/coverage-tags.md](references/coverage-tags.md)。
+
+## 输出语言
+
+配置 `.kc-config.json` 中的 `language`：
+
+| 值 | 含义 |
+|----|------|
+| `zh` | 中文（默认）— 文章正文、章节标题、摘要均为中文 |
+| `en` | English — 章节标题和正文切换为英文（按 wiki-compiler.md 中的映射表） |
+
+模板骨架为中文（默认语言）。`language=en` 时，编译器按映射表将章节标题替换为英文，正文用英文生成。YAML frontmatter key 始终为英文。
 
 ## 会话模式
 
@@ -100,7 +113,7 @@ Phase 5: State    — 更新 .compile-state.json + log.md
 |------|------|
 | staging | Wiki 可用，按需查阅 |
 | recommended | 先读 Wiki 再读原始文件 |
-| primary | Wiki 为主，low 覆盖才看 raw/ |
+| primary | Wiki 为主，low 覆盖才看源目录 |
 
 进入含 `.kc-config.json` 的目录时自动识别，未找到则静默退出。
 
@@ -111,12 +124,24 @@ Phase 5: State    — 更新 .compile-state.json + log.md
 - **Hard Gates**（必须通过）：frontmatter 完整、覆盖度标记、来源引用有效、schema 一致、非空内容
 - **Soft Gates**（警告不阻断）：孤立概念、低覆盖集群、过期文档、内容矛盾、断裂链接
 
+## 交互原则
+
+编译过程中 AI **必须在不确定时暂停并向用户确认**，不可擅自决定：
+- 主题归属不明确（一个文件可能属于多个主题）
+- 新主题与现有主题名称相近（合并还是新建）
+- 源文件之间存在矛盾
+- 用户手动编辑与新源冲突
+- Hard Gate 失败且无法自动修复
+
+详细的确认场景和规则见 [skills/wiki-compiler.md](skills/wiki-compiler.md) 的"交互式确认"章节。
+
 ## 核心约定
 
 1. **AI 是编译器**：不运行外部脚本，AI 读取指令文件后自己执行所有步骤
-2. **Raw 不可变**：编译器永远不修改 raw/ 下的文件
+2. **源目录不可变**：编译器永远不修改源目录下的文件
 3. **人机共维**：用户手动编辑的内容在重编译时保留
 4. **按需加载**：AI 只在需要时读取对应的指令文件和参考文档，避免一次性加载所有内容
+5. **不确定则问**：遇到歧义时暂停向用户确认，不擅自选择
 
 ## Skill 文件结构
 

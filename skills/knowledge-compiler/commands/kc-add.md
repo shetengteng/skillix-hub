@@ -1,43 +1,55 @@
-# Command: kc add
+# 命令: kc add
 
-Add source material to the knowledge base.
+向知识库添加源材料。
 
-## Usage
+## 用法
 
 ```
-kc add <path>                          # add a single file
-kc add <path> --tags "tag1,tag2"       # add with tags
-kc add <directory> --recursive         # add all .md files in directory
+kc add <path>                          # 添加单个文件
+kc add <path> --tags "标签1,标签2"      # 添加并打标签
+kc add <directory> --recursive         # 递归添加目录下所有 .md 文件
 ```
 
 ---
 
-## Steps
+## 步骤
 
-1. **Verify config.** Check that `.kc-config.json` exists. If not: "No knowledge base found. Run `kc init` first."
+1. **验证配置。** 检查 `.kc-config.json` 是否存在。不存在则提示："未找到知识库。请先运行 `kc init`。"
 
-2. **Determine target location.** Based on the file content, suggest which `raw/` subdirectory to place it in:
-   - Design docs, architecture docs → `raw/designs/`
-   - Decision records, ADRs → `raw/decisions/`
-   - Research, papers, technical investigations → `raw/research/`
-   - Meeting notes, personal notes → `raw/notes/`
-   - Ask the user to confirm or override: "Place in `raw/designs/`? (y/n/custom path)"
+2. **读取 sources 配置。** 从 `.kc-config.json` 中获取当前配置的 source 目录列表。
 
-3. **Copy or symlink.** Copy the file into the determined raw/ subdirectory.
-   - If the file is already inside `raw/`, skip the copy — just acknowledge it.
-   - If `--recursive`, walk the directory and copy all `.md` files, preserving subdirectory structure.
+3. **确定目标位置。** 根据文件内容和当前 source 配置，选择最合适的目标目录：
 
-4. **Report:**
+   **当 sources 为自定义目录时**（如 `doc/`、`design/`）：
+   - 判断文件内容类型，在已配置的 source 目录中选择最合适的
+   - 例如 sources 为 `["doc", "design"]`，设计文档放到 `design/`，其他放到 `doc/`
+
+   **当 sources 为默认 raw/ 结构时**：
+   - 设计文档、架构文档 → `raw/designs/`
+   - 决策记录、ADR → `raw/decisions/`
+   - 调研、论文、技术探索 → `raw/research/`
+   - 会议纪要、个人笔记 → `raw/notes/`
+
+   **确认规则：**
+   - 如果用户意图明确指定了目标（如"把设计文档加到 design/ 里"），直接放置，不询问。
+   - 如果文件已在某个配置的 source 目录中，跳过复制，直接确认。
+   - 否则，询问："放到 `{推荐目录}`？(y/n/自定义路径)"
+
+4. **复制文件。** 将文件复制到确定的目标目录。
+   - 如果文件已在 source 目录中，跳过复制，只确认。
+   - 如果 `--recursive`，遍历目录复制所有 `.md` 文件，保持子目录结构。
+
+5. **输出报告**（动态反映实际落点）：
    ```
-   Added: raw/designs/api-gateway-design.md
-   Tags: architecture, api
-   Run `kc compile` to include in wiki.
+   已添加: {实际目标路径}
+   标签: {标签列表}
+   运行 `kc compile` 将其编入 wiki。
    ```
 
 ---
 
-## Notes
+## 注意事项
 
-- Raw files are immutable by convention — the compiler never modifies files in `raw/`.
-- Tags are stored as a comment at the top of the copied file if not already present: `<!-- tags: tag1, tag2 -->`.
-- Adding files does NOT trigger compilation. The user must run `kc compile` separately.
+- 源文件按约定不可变——编译器永远不修改 source 目录下的文件。
+- 标签存储为文件顶部的 HTML 注释（如果尚未存在）：`<!-- tags: 标签1, 标签2 -->`。
+- 添加文件不触发编译。用户需单独运行 `kc compile`。

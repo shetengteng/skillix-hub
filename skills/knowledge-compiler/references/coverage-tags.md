@@ -1,10 +1,10 @@
-# Coverage Tags Reference
+# 覆盖度标记参考
 
-Coverage tags are the core mechanism for tracking how well each section of a concept article is supported by source material. They guide both human readers and AI agents on when to trust the wiki versus when to verify against raw sources.
+覆盖度标记是追踪概念文章每个章节与源材料支撑程度的核心机制。它指导人类读者和 AI 在何时信任 wiki、何时需要核查原始文件。
 
 ---
 
-## Tag Definitions
+## 标记定义
 
 ### high
 
@@ -12,16 +12,16 @@ Coverage tags are the core mechanism for tracking how well each section of a con
 <!-- coverage: high -->
 ```
 
-**Meaning:** Multiple consistent sources confirm this information. The synthesis is well-supported.
+**含义：** 多个一致的来源确认了这些信息。综合内容有充分支撑。
 
-**When to assign:**
-- 2+ source files provide consistent information on this section
-- The sources are authoritative (design docs, official decisions, reviewed research)
-- No conflicting information exists across sources
+**何时标注：**
+- 2 个以上源文件对该章节提供了一致的信息
+- 来源具有权威性（设计文档、正式决策、经审查的调研）
+- 各来源之间不存在矛盾信息
 
-**AI behavior:** Trust and cite directly. No need to cross-reference raw/ files.
+**AI 行为：** 直接引用。无需交叉核查原始文件。
 
-**Reader behavior:** Information is reliable. Treat as established fact within this knowledge base.
+**读者行为：** 信息可靠。在本知识库范围内可视为确立的事实。
 
 ### medium
 
@@ -29,16 +29,16 @@ Coverage tags are the core mechanism for tracking how well each section of a con
 <!-- coverage: medium -->
 ```
 
-**Meaning:** Single source or partial coverage. The information is likely correct but not cross-validated.
+**含义：** 单一来源或部分覆盖。信息可能正确但未经交叉验证。
 
-**When to assign:**
-- Only 1 source file covers this section
-- Multiple sources exist but they only partially overlap
-- The source is a meeting note or informal document (lower authority than a design doc)
+**何时标注：**
+- 仅有 1 个源文件涵盖该章节
+- 多个来源存在但仅部分重叠
+- 来源是会议纪要或非正式文档（权威性低于设计文档）
 
-**AI behavior:** Cite with a note that the information may need supplementation. If the user asks follow-up questions on a medium section, consider reading the raw source file for more context.
+**AI 行为：** 引用时加注"基于单一来源，可能需补充"。如果用户就 medium 章节追问，考虑读取原始文件获取更多上下文。
 
-**Reader behavior:** Useful but verify if making critical decisions based on this.
+**读者行为：** 有参考价值，但如果据此做关键决策则需验证。
 
 ### low
 
@@ -46,55 +46,55 @@ Coverage tags are the core mechanism for tracking how well each section of a con
 <!-- coverage: low -->
 ```
 
-**Meaning:** Inferred, sparse, or minimally supported. The compiler synthesized this from indirect references or fragmentary information.
+**含义：** 推断性的、稀疏的或支撑最少的。编译器从间接引用或片段化信息中综合了这些内容。
 
-**When to assign:**
-- No source directly discusses this section's topic
-- Information was inferred from context in other sections or related topics
-- The source material is outdated or tangentially related
-- The section was created as a placeholder to maintain article structure
+**何时标注：**
+- 没有来源直接讨论该章节的主题
+- 信息是从其他章节或相关主题的上下文中推断的
+- 源材料已过期或仅间接相关
+- 该章节是为保持文章结构完整而创建的占位内容
 
-**AI behavior:** Before citing or using this section's content, read the raw source files listed in the article's frontmatter `sources` field. If sources don't help, flag as uncertain.
+**AI 行为：** 在引用或使用该章节内容之前，先读取文章 frontmatter `sources` 字段中列出的原始文件。如果原始文件也无法帮助，标记为不确定。
 
-**Reader behavior:** Treat as a starting point, not a conclusion. Verify before acting.
+**读者行为：** 视为起点而非结论。行动前请验证。
 
 ---
 
-## Placement Rules
+## 放置规则
 
-1. Every `## Section` heading must be immediately followed by a coverage tag on the next line:
+1. 每个 `## 章节` 标题后面必须紧跟一个覆盖度标记：
    ```markdown
-   ## Summary
+   ## 概要
    <!-- coverage: high -->
 
-   Content here...
+   正文内容...
    ```
 
-2. The tag applies to all content under that section until the next `##` heading.
+2. 标记适用于该章节下的所有内容，直到下一个 `##` 标题。
 
-3. Sub-sections (`###`) inherit their parent section's coverage unless explicitly overridden.
+3. 子章节（`###`）继承父章节的覆盖度，除非显式覆盖。
 
-4. The article-level coverage (shown in INDEX.md) is the **dominant** tag — the most common coverage level across all sections. Ties break toward the lower level.
-
----
-
-## Coverage in Session Mode
-
-The `session_mode` in `.kc-config.json` interacts with coverage tags:
-
-| Mode | high sections | medium sections | low sections |
-|------|--------------|----------------|-------------|
-| **staging** | Read if asked | Read if asked | Read if asked |
-| **recommended** | Read wiki first | Read wiki, note uncertainty | Read wiki + raw sources |
-| **primary** | Wiki only | Wiki only, flag uncertainty | Read raw sources |
+4. 文章级覆盖度（在 INDEX.md 中显示）取**主导**标记——所有章节中最常见的覆盖度级别。相同数量时取较低的级别。
 
 ---
 
-## Upgrading Coverage
+## 覆盖度与会话模式
 
-Coverage improves when:
-- More sources are added to `raw/` covering the same topic
-- The compiler detects consistent information across multiple sources
-- A user manually upgrades a tag after verifying content
+`.kc-config.json` 中的 `session_mode` 与覆盖度标记的交互：
 
-Coverage is recalculated during `kc compile`. Manual overrides by the user are preserved — the compiler will not downgrade a tag that a user has manually set to a higher level.
+| 模式 | high 章节 | medium 章节 | low 章节 |
+|------|----------|------------|---------|
+| **staging** | 被问到时才读 | 被问到时才读 | 被问到时才读 |
+| **recommended** | 优先读 wiki | 读 wiki 并标注不确定性 | 读 wiki + 原始文件 |
+| **primary** | 仅 wiki | 仅 wiki，标记不确定性 | 读原始文件 |
+
+---
+
+## 覆盖度升级
+
+覆盖度在以下情况下提升：
+- 向源目录添加了更多涵盖同一主题的源文件
+- 编译器检测到多个来源之间的一致信息
+- 用户在验证内容后手动升级标记
+
+覆盖度在 `kc compile` 时重新计算。用户的手动覆盖会被保留——编译器不会降级用户手动设置为更高级别的标记。

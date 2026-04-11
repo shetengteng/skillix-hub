@@ -1,43 +1,33 @@
-# Command: kc compile
+# 命令: kc compile
 
-Trigger wiki compilation. Delegates to the `wiki-compiler` skill.
+触发知识库编译。实际编译工作委托给 [skills/wiki-compiler.md](../skills/wiki-compiler.md)。
 
-## Usage
+## 用法
 
 ```
-kc compile                    # incremental — only recompile changed topics
-kc compile --full             # full recompile of all topics
-kc compile --topic <slug>     # recompile a single topic
-kc compile --dry-run          # preview what would change, no writes
+kc compile                 # 增量编译（仅处理变更的源文件）
+kc compile --full          # 全量编译（重新处理所有源文件）
+kc compile --dry-run       # 预览模式（不写入任何文件）
+kc compile --topic <slug>  # 仅编译指定主题
 ```
 
 ---
 
-## Steps
+## 步骤
 
-1. **Verify config.** Check that `.kc-config.json` exists. If not: "No knowledge base found. Run `kc init` first."
+1. **验证配置。** 检查 `.kc-config.json` 是否存在。不存在则提示："未找到知识库。请先运行 `kc init`。"
 
-2. **Parse flags** from the user's invocation:
-   - No flags → incremental mode
-   - `--full` → full recompile
-   - `--topic <slug>` → single topic mode
-   - `--dry-run` → preview only
+2. **解析标志。** 识别用户意图中的 flag：
+   - "全量编译" / "重新编译所有" → `--full`
+   - "先看看会改什么" / "预览一下" → `--dry-run`
+   - "只编译 xxx" → `--topic <slug>`
 
-3. **Read the compilation skill.** Load [skills/wiki-compiler.md](../skills/wiki-compiler.md) and execute the 5-phase pipeline with the parsed flags.
+3. **加载编译管道。** 读取 [skills/wiki-compiler.md](../skills/wiki-compiler.md)，按 5 阶段管道执行。
 
-4. **Report results** after compilation completes:
+4. **报告结果：**
    ```
-   Compiled: 3 topics updated, 1 new, 12 unchanged
-   Hard Gates: all passed
-   Soft Gates: 2 warnings (see wiki/log.md)
+   编译完成: X 新建, Y 更新, Z 未变
+   Hard Gates: 全部通过 / N 个问题已修复
+   Soft Gates: N 个警告
    Wiki: wiki/INDEX.md
    ```
-
----
-
-## Notes
-
-- Incremental mode is the default and recommended for regular use.
-- Use `--full` after major reorganization of raw/ files or after manually editing schema.md.
-- Use `--dry-run` to preview before a large compilation.
-- The compilation pipeline is defined in [skills/wiki-compiler.md](../skills/wiki-compiler.md) — read that file for the detailed 5-phase process.
