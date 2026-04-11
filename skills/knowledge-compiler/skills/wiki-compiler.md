@@ -111,25 +111,34 @@
      - **注意事项**：提取所有陷阱、边界情况、非直觉行为。如果源材料提到不一致、格式问题或意外行为，逐条列出。
      - **待解决问题**：仅列出真正未解决的问题。不要编造——只列出源材料中留下的开放问题。
    - 如果源材料内容丰富（>100 行），编译的文章应至少同等详细。**不要过度概括。** 保留字段名、端点路径、数据格式、SQL schema、代码示例等具体细节。
-   - **Mermaid 流程图（强制）：** 在以下场景中必须使用 mermaid 图表辅助说明：
-     - 存在明确的流程、工作流或生命周期 → 使用 `flowchart` 或 `sequenceDiagram`
-     - 存在组件/模块之间的关系 → 使用 `graph` 或 `classDiagram`
-     - 存在状态转换 → 使用 `stateDiagram-v2`
-     - 存在数据流或架构层次 → 使用 `flowchart TD`
-     - 存在时间线或阶段 → 使用 `timeline`
-   - 每篇文章至少包含 **1 个 mermaid 图表**（放在概要或当前状态章节中最合适的位置）。
-   - 图表语法使用 markdown 代码块：
-     ```
-     ```mermaid
-     flowchart TD
-         A[步骤1] --> B[步骤2]
-     ```
-     ```
-   - 图表中的文字遵循 `language` 配置（zh 用中文，en 用英文）。
-   - **Frontmatter 快速匹配字段（渐进式披露 Layer 2）：**
-     - `summary`：2-3 句精准概述。AI 仅读 frontmatter 时靠这个字段判断文章是否与用户问题相关。要包含关键名词和核心功能。
-     - `answers`：3-5 个该文章能回答的典型问题。用自然语言写，如 "系统活动 API 支持哪些查询？"。AI 做精准路由时用。
-     - `tags`：关键词列表，用于语义匹配。包含技术术语、业务领域、组件名称。
+   - **Mermaid 图表（场景化推荐，非强制）：** 以下类型的 topic 推荐包含 mermaid 图表：
+     - 架构类（组件关系）→ `graph` 或 `classDiagram`
+     - 流程类（工作流、生命周期）→ `flowchart` 或 `sequenceDiagram`
+     - 状态机类（状态转换）→ `stateDiagram-v2`
+   - 以下类型**不强制**：概念解释类、FAQ 类、配置说明类。
+   - 图表语法使用 markdown 代码块 ` ```mermaid `。
+   - 图表中的文字遵循 `language` 配置。
+   - **判断原则**：如果图表对 AI 检索没有帮助（AI 不依赖图表做召回），则不必添加。
+   - **Frontmatter 检索字段约束（渐进式披露 Layer 2）：**
+
+     **`summary`（1-3 句，必须包含主题专有名词）：**
+     - 不允许只写泛化描述（如"这是一个设计文档"）
+     - 必须包含：该主题做什么、覆盖哪些关键概念
+     - 好例子："系统活动 API 提供控制台活动、请求历史、审计日志三个分页查询端点，支持 JWT 认证和灵活过滤。"
+     - 坏例子："系统活动相关的 API 接口。"
+
+     **`tags`（3-12 个，至少覆盖 3 类）：**
+     - 技术术语（如 api, jwt, pagination）
+     - 组件/模块名（如 console-tracking, audit-log）
+     - 业务域关键词（如 system-activity, user-behavior）
+     - 不要只用泛化标签（如 design, document, system）
+
+     **`answers`（3-5 个自然语言问题句）：**
+     - 必须是问句（以？结尾）
+     - 应直接反映该 topic 的回答边界
+     - 好例子："系统活动 API 支持哪些查询类型？"
+     - 坏例子："系统活动 API 的说明"（不是问句）
+     - 不同 topic 的 answers 应互不重叠——如果两个 topic 能回答同一个问题，说明主题边界不清
    - 为每个章节标注**覆盖度**：
      - `high` — 多个来源，一致，文档充分
      - `medium` — 单一来源或部分覆盖
@@ -156,12 +165,20 @@
 
 ### Phase 4 — 更新索引 + 验证
 
-#### 4a. 更新 INDEX.md
+#### 4a. 更新 INDEX.md（含 Topic Registry）
 
 使用 `templates/index.md` 重写 `wiki/INDEX.md`：
-- 列出所有主题及一句话描述和覆盖度摘要。
-- 按分类分组（如有 schema.md 则从中推断）。
-- 标记新增/更新的主题：`[更新: YYYY-MM-DD]`。
+
+**Topic Registry（机器优先）：**
+- 为每个已编译主题生成一行 registry 记录
+- 字段：slug、title、summary、tags、answers、coverage、updated、sources_count
+- 数据直接从 concept frontmatter 提取，必须与 frontmatter 一致
+- `kc query / kc browse / kc status` 优先依赖此表做首轮召回
+
+**分类视图（人类友好）：**
+- 按分类分组（如有 schema.md 则从中推断）
+- 标记新增/更新的主题：`[更新: YYYY-MM-DD]`
+- 与 Registry 数据一致，仅组织形式不同
 
 #### 4b. Hard Gate 验证
 
@@ -187,6 +204,8 @@
 | 内容矛盾 | 不同主题文章中关于同一事物的矛盾说法 |
 | 断裂链接 | `[[topic-slug]]` 引用指向不存在的页面 |
 | 缺失交叉引用 | 文章中提到但未链接到对应页面的主题 |
+| Topic 边界重叠 | 多个 topic 的 `answers` 中包含语义几乎相同的问题 — 说明主题划分不清 |
+| Registry 信息漂移 | `INDEX.md` Registry 中的元数据与 concept frontmatter 不一致 |
 
 ---
 
