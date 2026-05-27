@@ -32,6 +32,7 @@ AI Skill is a reusable AI instruction set that helps AI programming assistants b
 | [socratic](./skills/socratic/) | Socratic critical thinking analysis that auto-detects requirements, design review, tech research, and data analysis scenarios, intelligently choosing fast-track (≤1 question) or deep exploration (≤5 questions), with 4-dimension questioning framework and 5 output templates |
 | [knowledge-base](./skills/knowledge-base/) | Local knowledge asset index and Wiki compilation, managing design docs, code, datasets and any file type, compiling into structured Wiki with backlinks, concept categorization, and knowledge graph, supporting progressive browsing and incremental compilation |
 | [first-principles](./skills/first-principles/) | First principles analysis that decomposes problems to bedrock facts, systematically challenges every assumption, and rebuilds solutions from the ground up, with 6 domain mental models (architecture, cost, engineering, product, tech selection, strategy) and T1-T4 complexity routing |
+| [agent-workflow](./skills/agent-workflow/) | Cross-IDE / cross-LLM declarative workflow engine. CLI state machine drives YAML for multi-step tasks (agent_call / wait_user / loop / sleep) with crash recovery, long-run liveness (chain_timeout + stall watchdog), `$ENV` expansion + automatic secrets redaction, and a built-in shadcn-styled browser visualizer (`view` command) |
 
 ## Installation
 
@@ -783,6 +784,80 @@ Recommended sequence: `/socratic` → `/first-principles`
 - **Cost**: why so expensive, can we reduce cost
 - **Root Cause**: why does this keep happening, what's the root cause
 - **Redesign**: break convention, start from scratch
+
+## Agent Workflow Skill
+
+Agent Workflow is a cross-IDE / cross-LLM declarative workflow engine that runs as a CLI state machine. It models multi-step tasks, user-blocking gates, conditional loops, and cross-LLM CLI collaboration (Claude / Codex / current agent) as a single YAML file. The CLI handles persistence, progression, and crash recovery; all reasoning is delegated to the caller (your IDE Agent) or spawned external LLM CLIs.
+
+### Core Capabilities
+
+- **4 node types**: `agent_call` (reasoning) / `wait_user` (block + JSON Schema validation) / `loop` (conditional loop with do-while semantics) / `sleep` (atomic delay)
+- **10 CLI actions**: `create` / `validate` / `start` / `advance` / `resume` / `status` / `list` / `abort` / `executors` / `view`
+- **4-layer validation**: L1 YAML syntax + L2 JSON Schema + L3 reference consistency + L4 executor PATH check
+- **Long-run stability**: `chain_timeout` (default 25 s; CLI proactively returns `continue` when its internal chain stalls) + `stall watchdog` (force-kills external processes idle for 300 s+) + caller handoff (resumable after IDE restart)
+- **secrets / $ENV**: `vars.api_key: "$ENV:OPENAI_API_KEY"` + `vars._secrets: ["api_key"]` — auto-expanded at start, redacted to `***REDACTED***` in events / audit / state
+- **`view` command**: self-contained shadcn-styled HTML (vanilla CSS + dark/light) — browse node topology / cursor / history / events / vars in the browser
+- **Full disk persistence**: each run owns `.agent-workflow/runs/<run_id>/` with `state.json` / `events.ndjson` / `audit.log` / `outputs/`, protected by filelock
+
+### Use Cases
+
+| Scenario | Trigger Signals |
+|----------|-----------------|
+| 🔀 Multi-step SOP | "make this a repeatable template", "automate these steps" |
+| ⏸️ User-blocking confirmation | "let me confirm each step", "continue only after review passes" |
+| 🔁 Conditional iteration | "loop until review approves", "refine until criteria met" |
+| 🤝 Cross-LLM collaboration | "Claude designs → Codex implements → current agent reviews" |
+| ♻️ Resume after restart | "continue yesterday's workflow", "IDE restarted, can we resume" |
+| 🔍 Auditable history | "persist every step", "replayable execution trace" |
+
+### Caller Integration Loop
+
+```python
+response = cli("start", {"workflow": "./flow.yaml", "vars": {...}})
+while True:
+    if response["error"]:                 # error first
+        handle_error(response["error"])
+        break
+    r = response["result"]
+    if r["action"] == "execute_agent":    # caller reasons
+        out = you_reason(r["payload"]["prompt"])
+        response = cli("advance", {"run_id": r["run_id"], "result": {"output": out}})
+    elif r["action"] == "continue":       # long-run keep-alive: re-issue advance, no result
+        response = cli("advance", {"run_id": r["run_id"]})
+    elif r["action"] == "wait_user":      # ask the user
+        user_input = collect(r["payload"]["message"], schema=r["payload"].get("schema"))
+        response = cli("resume", {"run_id": r["run_id"], "user_input": user_input})
+    elif r["action"] == "done":
+        break
+```
+
+### Examples
+
+```bash
+# 1) Create a cross-LLM workflow from a built-in template
+python3 skills/agent-workflow/tool.py create '{
+  "action":"from_template","template":"cross-llm-pipeline","out":"./flows/demo.yaml"
+}'
+
+# 2) Run all 4 validation layers
+python3 skills/agent-workflow/tool.py validate '{"workflow":"./flows/demo.yaml"}'
+
+# 3) Start a run
+python3 skills/agent-workflow/tool.py start '{"workflow":"./flows/demo.yaml","caller":"manual"}'
+
+# 4) Visualize in browser (shadcn-styled, auto-opens)
+python3 skills/agent-workflow/tool.py view '{}'
+```
+
+### Trigger Words
+
+- **Workflow**: workflow, flow, SOP, automate, runbook, "run this whole pipeline"
+- **Multi-step**: "do A then B", "several steps", "chain these tasks"
+- **User confirmation**: "let me confirm", "block until I approve", "user review"
+- **Loop**: "iterate until passes", "refine repeatedly", "loop until condition met"
+- **Cross-LLM**: "Claude designs + Codex implements", "different LLMs cooperating"
+- **Resume**: "continue yesterday's workflow", "resume after restart", "pick up where I left off"
+- **Visualize**: "show me the progress", "open browser to view workflow"
 
 ## Contributing
 

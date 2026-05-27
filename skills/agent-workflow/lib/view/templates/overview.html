@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>$title</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>$base_css</style>
+<script>$theme_js</script>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="header-row">
+      <div class="header-title">
+        <span class="name">agent-workflow</span>
+        <span class="run-id mono">runs</span>
+      </div>
+      <span class="badge badge-outline">$total runs</span>
+      <div class="header-spacer"></div>
+      <div class="header-meta">
+        <span class="kv">project: <b class="mono">$project_root</b></span>
+      </div>
+      $theme_toggle
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <input id="q" class="input" type="search" placeholder="搜索 run_id / workflow / caller / last alias">
+    <select id="status-filter" class="select">
+      <option value="">all status</option>
+      $status_options
+    </select>
+    <div class="spacer"></div>
+    <span class="muted mono">matches <code id="match-count">$total / $total</code></span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:32%">run_id</th>
+          <th>workflow</th>
+          <th>status</th>
+          <th>steps</th>
+          <th>last alias</th>
+          <th>updated</th>
+        </tr>
+      </thead>
+      <tbody>$run_rows</tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <span>generated at $generated_at</span>
+    <span>agent-workflow · v1.5.3 · 单 run 详情见同目录 <code>&lt;run_id&gt;.html</code></span>
+  </div>
+</div>
+<script>$overview_js</script>
+</body>
+</html>

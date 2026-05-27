@@ -32,6 +32,7 @@ AI Skill 是一种可复用的 AI 指令集，帮助 AI 编程助手更好地完
 | [socratic](./skills/socratic/) | 苏格拉底式批判性思维分析，自动识别需求分析、系统设计、技术选型、数据分析四类场景，智能决定快速结论（≤1问）或深度探索（≤5问），含 4 维度提问框架和 5 种输出模板 |
 | [knowledge-base](./skills/knowledge-base/) | 本地知识资料索引与 Wiki 编译，管理设计文档、代码、数据集等任意文件，通过 LLM 编译成结构化 Wiki（含反向链接、概念归类、知识图谱），支持渐进式浏览和增量编译 |
 | [first-principles](./skills/first-principles/) | 第一性原理分析，将问题拆解到不可置疑的基础事实，系统挑战每一个假设，再从地基向上重建解决方案，支持 6 个领域心智模型（架构、成本、工程、产品、选型、战略）和 T1-T4 复杂度路由 |
+| [agent-workflow](./skills/agent-workflow/) | 跨 IDE / 跨 LLM 的声明式工作流引擎，CLI 状态机推动 YAML 多步任务（agent_call / wait_user / loop / sleep），支持崩溃恢复、长链保活（chain_timeout + stall watchdog）、$ENV 展开 + secrets 自动脱敏，内置 shadcn 风格浏览器可视化 view 命令 |
 
 ## 安装使用
 
@@ -955,6 +956,80 @@ AI (T3 架构决策):
 - **成本**：为什么这么贵、成本能不能降
 - **根因**：为什么反复出现、根本原因是什么
 - **重设计**：打破惯例、从零开始
+
+## Agent Workflow Skill 使用说明
+
+Agent Workflow 是跨 IDE / 跨 LLM 的声明式工作流引擎，以 CLI 状态机形态运行。把多步任务、用户阻塞、条件循环、跨 LLM CLI 协作（Claude / Codex / 当前 Agent）描述为一份 YAML，CLI 负责落盘、推进、崩溃恢复，所有推理动作要么交给 caller（你的 IDE Agent），要么 spawn 外部 LLM CLI。
+
+### 核心能力
+
+- **4 种节点类型**：`agent_call`（推理）/ `wait_user`（用户阻塞 + JSON Schema 校验）/ `loop`（条件循环 + do-while 语义）/ `sleep`（原子睡眠）
+- **10 个 CLI 命令**：`create` / `validate` / `start` / `advance` / `resume` / `status` / `list` / `abort` / `executors` / `view`
+- **4 级校验**：L1 YAML 语法 + L2 JSON Schema + L3 引用一致性 + L4 executor PATH 检查
+- **长链稳定性**：`chain_timeout`（默认 25s，CLI 内部 chain 超时主动返回 `continue`）+ `stall watchdog`（外部进程 300s 无 stdout 强杀）+ caller handoff（断点续跑）
+- **secrets / $ENV**：`vars.api_key: "$ENV:OPENAI_API_KEY"` + `vars._secrets: ["api_key"]`，启动展开 + events / audit / state 自动脱敏为 `***REDACTED***`
+- **可视化 view 命令**：自包含 shadcn 风格 HTML（vanilla CSS + dark/light），浏览器查看节点拓扑 / cursor / history / events / vars
+- **状态全部落盘**：每个 run 在 `.agent-workflow/runs/<run_id>/` 下有 `state.json` / `events.ndjson` / `audit.log` / `outputs/`，filelock 并发安全
+
+### 适用场景
+
+| 场景 | 触发信号 |
+|------|---------|
+| 🔀 多步任务 SOP | "把这套流程做成可重复模板"、"自动化这几步" |
+| ⏸️ 用户阻塞确认 | "做完每一步让我确认"、"评审通过再继续" |
+| 🔁 条件迭代 | "直到 review 通过为止"、"反复优化到满足条件" |
+| 🤝 跨 LLM 协作 | "Claude 设计 → Codex 实现 → 当前 Agent review" |
+| ♻️ 断点续跑 | "昨天那个流程接着跑"、"IDE 重启了能继续吗" |
+| 🔍 审计可追溯 | "每一步落盘"、"过程要可重放" |
+
+### 主循环模式（Caller 集成骨架）
+
+```python
+response = cli("start", {"workflow": "./flow.yaml", "vars": {...}})
+while True:
+    if response["error"]:                 # 错误优先
+        handle_error(response["error"])
+        break
+    r = response["result"]
+    if r["action"] == "execute_agent":    # caller 推理
+        out = you_reason(r["payload"]["prompt"])
+        response = cli("advance", {"run_id": r["run_id"], "result": {"output": out}})
+    elif r["action"] == "continue":       # 长链保活：立即重发，不带 result
+        response = cli("advance", {"run_id": r["run_id"]})
+    elif r["action"] == "wait_user":      # 问用户
+        user_input = collect(r["payload"]["message"], schema=r["payload"].get("schema"))
+        response = cli("resume", {"run_id": r["run_id"], "user_input": user_input})
+    elif r["action"] == "done":
+        break
+```
+
+### 使用示例
+
+```bash
+# 1) 从内置模板创建一个跨 LLM workflow
+python3 skills/agent-workflow/tool.py create '{
+  "action":"from_template","template":"cross-llm-pipeline","out":"./flows/demo.yaml"
+}'
+
+# 2) 4 级校验
+python3 skills/agent-workflow/tool.py validate '{"workflow":"./flows/demo.yaml"}'
+
+# 3) 启动 run
+python3 skills/agent-workflow/tool.py start '{"workflow":"./flows/demo.yaml","caller":"manual"}'
+
+# 4) 浏览器可视化（shadcn 风格，自动打开）
+python3 skills/agent-workflow/tool.py view '{}'
+```
+
+### 触发词
+
+- **工作流**：workflow、流程、SOP、自动化、跑一遍、做一套流程
+- **多步任务**：分几步做、先 A 再 B、连续做
+- **用户确认**：让我确认、阻塞等我、用户审阅
+- **循环**：直到通过、反复优化、迭代到满足
+- **跨 LLM**：Claude 设计 + Codex 实现、不同 LLM 协作
+- **恢复**：昨天那个流程接着跑、IDE 重启后继续、断点续跑
+- **可视化**：看一下进度、打开浏览器看 workflow
 
 ## 贡献
 

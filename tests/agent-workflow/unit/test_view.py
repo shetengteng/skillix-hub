@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "skills" / "agent-w
 
 from lib import engine  # noqa: E402
 from lib.errors import ErrorCode, WorkflowError  # noqa: E402
+from lib.view import templates as view_templates  # noqa: E402
 from lib.view.render import (  # noqa: E402
     render_overview_html,
     render_run_detail_html,
@@ -138,6 +139,41 @@ class ViewActionTest(unittest.TestCase):
         with self.assertRaises(WorkflowError) as ctx:
             view_action({"run_id": "wf-does-not-exist", "open": False})
         self.assertEqual(ctx.exception.code, ErrorCode.RUN_NOT_FOUND)
+
+
+class TemplateLoaderTest(unittest.TestCase):
+    """T-VW-T: 模板加载器自身契约。"""
+
+    def test_load_known_templates(self) -> None:
+        for name in ("base.css", "run.css", "run.html", "overview.html",
+                     "theme.js", "overview.js",
+                     "fragments/node_row.html", "fragments/history_row.html",
+                     "fragments/event_row.html", "fragments/run_row.html",
+                     "fragments/theme_toggle.html"):
+            content = view_templates.load(name)
+            self.assertIsInstance(content, str)
+            self.assertGreater(len(content), 0, f"template {name} is empty")
+
+    def test_missing_template_raises(self) -> None:
+        with self.assertRaises(FileNotFoundError):
+            view_templates.load("does-not-exist.html")
+
+    def test_render_safe_substitute_keeps_unknown_placeholders(self) -> None:
+        # 用 base.css 渲染一个没意义的占位，确保 safe_substitute 不抛 KeyError
+        rendered = view_templates.render("base.css")  # base.css 不含 $var
+        self.assertIn(":root", rendered)
+        self.assertIn("--background", rendered)
+
+    def test_no_inline_html_or_css_strings_in_render_py(self) -> None:
+        """硬卡：render.py 不应再持有 _BASE_CSS / _RUN_DETAIL_CSS 等大块静态字符串常量。"""
+        render_py = Path(__file__).resolve().parents[3] / "skills" / "agent-workflow" / "lib" / "view" / "render.py"
+        content = render_py.read_text("utf-8")
+        forbidden_constants = ["_BASE_CSS = ", "_RUN_DETAIL_CSS = ", "_OVERVIEW_JS = "]
+        for ident in forbidden_constants:
+            self.assertNotIn(
+                ident, content,
+                f"render.py 仍包含大块静态资源常量 {ident}；模板应抽到 templates/ 目录"
+            )
 
 
 if __name__ == "__main__":
