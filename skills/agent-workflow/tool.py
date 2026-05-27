@@ -14,6 +14,7 @@ action 列表：
     list       列出 runs（支持 format=table）
     abort      中止 run
     executors  列出可用 executor
+    view       生成可视化 HTML（总览 / 单 run），自动打开浏览器
 
 统一输出：{"result": {...}} 或 {"error": {...}}
 退出码：0 = result，1 = error
@@ -42,6 +43,7 @@ VALID_ACTIONS = {
     "list",
     "abort",
     "executors",
+    "view",
 }
 
 
@@ -105,6 +107,10 @@ def dispatch(action: str, params: dict) -> dict:
         from lib.engine import abort_action
 
         return abort_action(params)
+    if action == "view":
+        from lib.view.render import view_action
+
+        return view_action(params)
     raise RuntimeError(f"unhandled action: {action}")
 
 

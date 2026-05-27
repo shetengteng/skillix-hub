@@ -55,7 +55,7 @@ cd skills/agent-workflow && pip3 install -r requirements.txt
 
 > v1.5.2 已可用：`python3 tool.py <action> '<JSON>'` 直接调用。
 
-## 命令规约（v1 必做 9 个）
+## 命令规约（v1.5.3 共 10 个）
 
 所有命令格式：
 
@@ -208,6 +208,30 @@ python3 skills/agent-workflow/tool.py executors '{}'
 ```
 
 返回每个 executor 是否在 PATH、配置参数等。
+
+### view — 生成可视化 HTML（v1.5.3）
+
+把 run 状态渲染成自包含 HTML（零外部依赖），自动用系统命令打开浏览器。
+
+```bash
+# 总览：所有 run 的可搜索 / 可过滤表格 + 每个 run 的详情页
+python3 skills/agent-workflow/tool.py view '{}'
+
+# 单 run 详情：节点拓扑 + 状态色块 + history 时间线 + events 流 + vars
+python3 skills/agent-workflow/tool.py view '{"run_id":"wf-..."}'
+
+# 关掉自动打开
+python3 skills/agent-workflow/tool.py view '{"open":false}'
+
+# 指定输出路径（默认放在 .agent-workflow/views/view-<ts>/ 下）
+python3 skills/agent-workflow/tool.py view '{"out":"./report.html"}'
+```
+
+可选参数：
+- `run_id`：单 run 详情；不传则生成总览
+- `out`：HTML 输出路径
+- `open`：默认 true，自动用 `open` / `xdg-open` / `start` 打开
+- `scope`、`limit`：仅总览模式生效，与 `list` 命令相同语义
 
 ## Agent 调用约定（强制 — 必须遵守）
 

@@ -57,7 +57,7 @@ python3 tool.py status '{"run_id":"wf-...","include_events":true}'
 
 ---
 
-## 9 个 CLI 命令
+## 10 个 CLI 命令
 
 | Action | 用途 | 详细参数 |
 |---|---|---|
@@ -70,6 +70,19 @@ python3 tool.py status '{"run_id":"wf-...","include_events":true}'
 | `list` | 列出 run（JSON 或表格） | `SKILL.md` §list |
 | `abort` | 主动中止 | `SKILL.md` §abort |
 | `executors` | 列出已注册 executor 及 PATH 状态 | `SKILL.md` §executors |
+| `view` | 生成自包含 HTML，浏览器可视化查看 run（v1.5.3） | `SKILL.md` §view |
+
+### 可视化 view 命令一行体验
+
+```bash
+# 看所有 run（总览 + 每个 run 详情页，自动开浏览器）
+python3 skills/agent-workflow/tool.py view '{}'
+
+# 看某个 run 的节点拓扑 + history 时间线 + events 流
+python3 skills/agent-workflow/tool.py view '{"run_id":"wf-20260527-100647-6d81e3"}'
+```
+
+输出为零外部依赖的 self-contained HTML（vanilla CSS + 内嵌 JS 提供搜索/过滤），离线可读、可分享。
 
 ---
 
@@ -95,6 +108,8 @@ python3 tool.py status '{"run_id":"wf-...","include_events":true}'
 ## 接外部 LLM CLI（真实跑通的写法）
 
 内置 `claude` / `codex` spec 默认 `cmd: ["claude"]` / `cmd: ["codex","exec"]`，部分版本下 claude 默认进 REPL 不接 stdin，会被 stall watchdog 误杀。推荐在 workflow 里直接 override `cmd`，传 headless flag：
+
+> **opencode 暂未官方支持**：opencode CLI（v0.x）在 stdout 不是 TTY 时只输出第一条 `step_start` 事件后自缓冲死，无法直接被 SpawnExecutor 调用；需要 v1.6 增加 PTY 执行模式后才能接入。当前如需使用，可在 TUI 中手动执行。
 
 ```yaml
 executors:
@@ -150,7 +165,7 @@ python3 -m unittest discover -s tests/agent-workflow/unit
 AGENT_WORKFLOW_REAL_CLAUDE=1 python3 -m unittest tests.agent-workflow.integration.test_real_spawn
 ```
 
-当前 50 个用例（49 单测 + 1 个真实 python3 spawn 集成测试，1 个 claude 用例 opt-in skip）。
+当前 57 个用例（55 单测 + 1 个真实 python3 spawn 集成测试 + 1 个 claude opt-in skip）。
 
 ---
 
@@ -169,7 +184,8 @@ skills/agent-workflow/
     ├── errors.py logger.py template.py parser.py store.py engine.py
     ├── nodes/                # agent_call / wait_user / loop / sleep
     ├── executors/            # base/caller/mock + registry
-    └── builder/scaffold.py   # create 命令实现
+    ├── builder/scaffold.py   # create 命令实现
+    └── view/render.py        # view 命令：HTML 渲染（v1.5.3）
 
 tests/agent-workflow/         # 测试代码（与其他 skill 统一存放在顶层 tests/）
 ├── run_tests.py              # 统一入口
