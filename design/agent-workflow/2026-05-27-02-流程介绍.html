@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Workflow — 跨 IDE / 跨 LLM 工作流引擎</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'PingFang SC', 'Microsoft YaHei', 'system-ui', 'sans-serif'],
+          mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+        },
+        colors: {
+          brand: {
+            50:  '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe',
+            300: '#c4b5fd', 400: '#a78bfa', 500: '#8b5cf6',
+            600: '#7c3aed', 700: '#6d28d9', 800: '#5b21b6', 900: '#4c1d95',
+          },
+        },
+      }
+    }
+  }
+</script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#ede9fe',
+      primaryTextColor: '#312e81',
+      primaryBorderColor: '#8b5cf6',
+      lineColor: '#8b5cf6',
+      secondaryColor: '#fef3c7',
+      tertiaryColor: '#dbeafe',
+      fontSize: '14px',
+    },
+    flowchart: { curve: 'basis', htmlLabels: true },
+    sequence: { actorMargin: 50 }
+  });
+  window.mermaid = mermaid;
+</script>
+<style>
+  :root { color-scheme: light; }
+  body { font-feature-settings: 'cv11', 'ss01'; }
+  .gradient-text {
+    background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .hero-grid {
+    background-image:
+      linear-gradient(rgba(124, 58, 237, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124, 58, 237, 0.08) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .glow {
+    box-shadow: 0 0 60px rgba(124, 58, 237, 0.15), 0 0 120px rgba(236, 72, 153, 0.08);
+  }
+  .mermaid { background: white; }
+  .code-block {
+    font-family: 'JetBrains Mono', Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .kbd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 0 #e5e7eb;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+  .scroll-mt { scroll-margin-top: 80px; }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased">
+
+<!-- Navigation -->
+<nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
+  <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm">A</div>
+      <span class="font-semibold text-slate-900">agent-workflow</span>
+      <span class="pill bg-brand-100 text-brand-700">v1.5 设计稿</span>
+    </div>
+    <div class="hidden md:flex items-center gap-3 text-xs">
+      <a href="#overview" class="text-slate-600 hover:text-brand-600">概览</a>
+      <a href="#positioning" class="text-slate-600 hover:text-brand-600">定位</a>
+      <a href="#architecture" class="text-slate-600 hover:text-brand-600">架构</a>
+      <a href="#nodes" class="text-slate-600 hover:text-brand-600">节点</a>
+      <a href="#state" class="text-slate-600 hover:text-brand-600">状态机</a>
+      <a href="#persistence" class="text-slate-600 hover:text-brand-600">记录</a>
+      <a href="#validation" class="text-slate-600 hover:text-brand-600">校验</a>
+      <a href="#creation" class="text-slate-600 hover:text-brand-600">创建</a>
+      <a href="#error" class="text-slate-600 hover:text-brand-600">错误</a>
+      <a href="#example" class="text-slate-600 hover:text-brand-600">示例</a>
+      <a href="#capability-matrix" class="text-brand-600 font-semibold hover:text-brand-700">能力矩阵</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero-grid relative overflow-hidden">
+  <div class="max-w-7xl mx-auto px-6 py-20 md:py-32 relative">
+    <div class="max-w-4xl">
+      <div class="flex items-center gap-2 mb-6">
+        <span class="pill bg-brand-100 text-brand-700">Skill</span>
+        <span class="pill bg-pink-100 text-pink-700">Cross-IDE</span>
+        <span class="pill bg-amber-100 text-amber-700">Cross-LLM</span>
+        <span class="pill bg-emerald-100 text-emerald-700">State Machine</span>
+      </div>
+      <h1 class="text-5xl md:text-6xl font-bold tracking-tight leading-tight mb-6">
+        Agent <span class="gradient-text">Workflow</span> 引擎
+      </h1>
+      <p class="text-xl md:text-2xl text-slate-600 leading-relaxed mb-8">
+        一个 YAML 描述、CLI 驱动、任何 IDE 的 AI Agent 都能跑的工作流引擎。<br>
+        支持串行编排、用户阻塞、条件循环，可在同一流程内调用 Claude / Codex / Gemini 等多个 LLM CLI 协作。
+      </p>
+      <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 mb-3 max-w-2xl">
+        <div class="flex gap-3">
+          <div class="text-2xl">📋</div>
+          <div class="text-sm text-amber-900">
+            <strong>v1.5 经过设计审核大修订</strong>：删 edges、修 loop+wait_user、统一错误协议、node UUID + alias、prompt 安全、状态机拆 6 状态、events.ndjson 入 v1、新增 §9 v1 能力矩阵。<br>
+            <span class="text-xs text-amber-700 mt-1 inline-block">→ 见 <a href="#capability-matrix" class="underline font-semibold">§9 能力矩阵</a>（Phase 5 最小闭环范围）</span>
+          </div>
+        </div>
+      </div>
+      <div class="bg-sky-50 border-2 border-sky-200 rounded-2xl p-4 mb-8 max-w-2xl">
+        <div class="flex gap-3">
+          <div class="text-2xl">🛡️</div>
+          <div class="text-sm text-sky-900">
+            <strong>v1.5.2 长任务稳定性 + caller 接力</strong>：
+            <code class="kbd bg-sky-100">chain_timeout=25s</code> + <code class="kbd bg-sky-100">action:"continue"</code> 长链保活；
+            <code class="kbd bg-sky-100">stall watchdog 300s</code> 外部 executor 卡死回收；
+            <code class="kbd bg-sky-100">status.last_payload</code> caller 关闭后可接力恢复；
+            <code class="kbd bg-sky-100">stats</code> 命令（v1.5）聚合节点耗时报表。
+          </div>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <a href="#overview" class="inline-flex items-center gap-2 bg-slate-900 hover:bg-brand-700 text-white font-semibold px-6 py-3 rounded-xl transition shadow-lg hover:shadow-xl">
+          快速了解
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+        </a>
+        <a href="#persistence" class="inline-flex items-center gap-2 bg-white hover:bg-slate-100 text-slate-900 font-semibold px-6 py-3 rounded-xl transition border border-slate-300">
+          看执行记录设计
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section: Why -->
+<section id="overview" class="scroll-mt py-20 bg-white">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="grid md:grid-cols-3 gap-6 mb-12">
+      <div class="bg-gradient-to-br from-brand-50 to-purple-50 rounded-2xl p-6 border border-brand-100">
+        <div class="w-10 h-10 rounded-lg bg-brand-100 flex items-center justify-center mb-4">
+          <svg class="w-5 h-5 text-brand-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </div>
+        <h3 class="font-bold text-lg mb-2">跨 IDE 通用</h3>
+        <p class="text-slate-600 text-sm leading-relaxed">CLI 形态发布，Claude Code / Cursor / Codex / OpenCode / GitHub Copilot 的 agent 都能 shell spawn 调用，不绑定任何 IDE 私有抽象。</p>
+      </div>
+      <div class="bg-gradient-to-br from-pink-50 to-rose-50 rounded-2xl p-6 border border-pink-100">
+        <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center mb-4">
+          <svg class="w-5 h-5 text-pink-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <h3 class="font-bold text-lg mb-2">跨 LLM 协作</h3>
+        <p class="text-slate-600 text-sm leading-relaxed">每个节点声明 <code class="kbd">executor</code>：设计交给 Claude、实现交给 Codex、评审回到当前 agent。CLI 不内嵌 SDK，spawn 你已登录的 CLI。</p>
+      </div>
+      <div class="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-6 border border-emerald-100">
+        <div class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center mb-4">
+          <svg class="w-5 h-5 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <h3 class="font-bold text-lg mb-2">状态机驱动</h3>
+        <p class="text-slate-600 text-sm leading-relaxed">每个 Run 一份 <code class="kbd">state.json</code>，崩溃可恢复、wait_user 可暂停几天、多 Run 并发互不干扰，文件锁串行推进。</p>
+      </div>
+    </div>
+
+    <div class="bg-slate-900 rounded-2xl p-8 text-white">
+      <div class="flex items-start gap-4">
+        <div class="text-4xl leading-none">💡</div>
+        <div>
+          <h3 class="font-bold text-lg mb-2">一句话设计哲学</h3>
+          <p class="text-slate-300 text-base leading-relaxed">
+            <strong class="text-white">CLI 是纯状态机</strong>，自身不调用任何 LLM API。
+            节点执行由两类角色完成：<strong class="text-brand-300">caller</strong>（当前 IDE 的 agent，利用 IDE 内置 LLM 与工具能力）和
+            <strong class="text-pink-300">外部 LLM CLI</strong>（spawn 子进程）。
+            workflow 用 YAML 描述，状态全部落盘可恢复。
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section: Positioning -->
+<section id="positioning" class="scroll-mt py-20 bg-gradient-to-br from-slate-50 to-brand-50">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="mb-10">
+      <span class="pill bg-brand-100 text-brand-700 mb-3">§1.5 定位 (v1.4)</span>
+      <h2 class="text-3xl font-bold mb-2">Skill 定位：全生命周期一体</h2>
+      <p class="text-slate-600">本 skill 同时覆盖 workflow 的<strong>创建 / 校验 / 执行 / 持久化 / 管理</strong>。一个 skill 走完所有阶段。</p>
+    </div>
+
+    <div class="grid lg:grid-cols-5 gap-3 mb-8">
+      <div class="bg-white rounded-2xl p-5 border-2 border-brand-200 shadow-sm">
+        <div class="text-2xl mb-2">📝</div>
+        <h4 class="font-bold mb-1 text-sm">创建</h4>
+        <p class="text-xs text-slate-500 mb-2">从模板 / AI 生成 / 手工编写</p>
+        <code class="kbd text-xs">create</code>
+      </div>
+      <div class="bg-white rounded-2xl p-5 border-2 border-pink-200 shadow-sm">
+        <div class="text-2xl mb-2">✅</div>
+        <h4 class="font-bold mb-1 text-sm">校验</h4>
+        <p class="text-xs text-slate-500 mb-2">4 级校验 + AI 自我修正</p>
+        <code class="kbd text-xs">validate</code>
+      </div>
+      <div class="bg-white rounded-2xl p-5 border-2 border-amber-200 shadow-sm">
+        <div class="text-2xl mb-2">▶️</div>
+        <h4 class="font-bold mb-1 text-sm">执行</h4>
+        <p class="text-xs text-slate-500 mb-2">状态机 + 跨 LLM 调用</p>
+        <code class="kbd text-xs">start / advance / resume</code>
+      </div>
+      <div class="bg-white rounded-2xl p-5 border-2 border-emerald-200 shadow-sm">
+        <div class="text-2xl mb-2">💾</div>
+        <h4 class="font-bold mb-1 text-sm">持久化</h4>
+        <p class="text-xs text-slate-500 mb-2">每 Run 独立目录 + 快照</p>
+        <code class="kbd text-xs">state.json</code>
+      </div>
+      <div class="bg-white rounded-2xl p-5 border-2 border-sky-200 shadow-sm">
+        <div class="text-2xl mb-2">📊</div>
+        <h4 class="font-bold mb-1 text-sm">管理</h4>
+        <p class="text-xs text-slate-500 mb-2">查询 / 中止 / 清理</p>
+        <code class="kbd text-xs">status / list / abort</code>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm">
+      <h3 class="font-bold text-lg mb-4">AI 视角的典型工作流</h3>
+      <div class="mermaid">
+flowchart LR
+    U[用户描述需求] --> A1[AI 调 create<br/>选模板/scaffold]
+    A1 --> A2[AI 调 validate]
+    A2 -->|errors| A3[AI 自动修正<br/>最多 3 轮]
+    A3 --> A2
+    A2 -->|valid| A4[AI 调 start]
+    A4 --> L{action?}
+    L -->|execute_agent| A5[agent 自己推理<br/>调 advance]
+    L -->|wait_user| A6[索取用户输入<br/>调 resume]
+    L -->|done| A7[展示最终结果]
+    A5 --> L
+    A6 --> L
+    A7 --> U2[用户:再看下执行]
+    U2 --> A8[AI 调 status/list<br/>展示 history]
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section: Architecture -->
+<section id="architecture" class="scroll-mt py-20 bg-slate-50">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="mb-10">
+      <span class="pill bg-brand-100 text-brand-700 mb-3">§4.1 架构</span>
+      <h2 class="text-3xl font-bold mb-2">整体架构</h2>
+      <p class="text-slate-600">三层结构：调用方 Agent ↔ CLI 状态机 ↔ 外部 LLM CLI。状态全部落盘到 <code class="kbd">~/.agent-workflow/</code>。</p>
+    </div>
+
+    <div class="bg-white rounded-2xl p-6 md:p-10 border border-slate-200 shadow-sm">
+      <div class="mermaid">
+flowchart TB
+    subgraph IDE["IDE Agent（caller，例如 Cursor / Claude Code / OpenCode）"]
+      direction LR
+      A1[读 SKILL.md] --> A2[shell spawn start]
+      A2 --> A3[收 execute_agent<br/>自己推理 → advance]
+      A3 --> A4[收 wait_user<br/>问用户 → resume]
+      A4 --> A5[收 done<br/>展示结果]
+    end
+
+    subgraph CLI["agent-workflow CLI (Python 3.10+)"]
+      direction TB
+      P[parser.py<br/>YAML→AST 校验]
+      E[engine.py<br/>状态机 + chain]
+      S[store.py<br/>state.json + filelock]
+      N[nodes/<br/>agent_call / wait_user / loop]
+      EX["executors/ (v1.1)<br/>caller / claude / codex<br/>opencode / gemini / custom"]
+      T[template.py<br/>变量插值]
+    end
+
+    subgraph LLM["外部 LLM CLI"]
+      C1[claude]
+      C2[codex]
+      C3[gemini]
+      C4[...]
+    end
+
+    subgraph FS["状态目录 ~/.agent-workflow/"]
+      F1[config.yaml]
+      F2[runs/wf-.../state.json]
+      F3[runs/wf-.../workflow.yaml 快照]
+      F4[runs/wf-.../audit.log]
+    end
+
+    IDE -->|stdin/stdout JSON| CLI
+    CLI -->|spawn 子进程| LLM
+    CLI -->|读/写| FS
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section: Nodes -->
+<section id="nodes" class="scroll-mt py-20 bg-white">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="mb-10">
+      <span class="pill bg-pink-100 text-pink-700 mb-3">§4.4 节点</span>
+      <h2 class="text-3xl font-bold mb-2">四类节点（v1.5.1）</h2>
+      <p class="text-slate-600">三类核心 + 一个原子 <code class="kbd">sleep</code>。每个节点共享 <code class="kbd">alias</code> / <code class="kbd">type</code> / <code class="kbd">description</code> 三个通用字段（CLI 自动生成 UUID 主键）。</p>
+    </div>
+
+    <div class="grid lg:grid-cols-2 xl:grid-cols-4 gap-6">
+      <!-- agent_call -->
+      <div class="bg-gradient-to-br from-brand-50 to-purple-50 rounded-2xl p-6 border-2 border-brand-200">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-8 h-8 rounded-lg bg-brand-500 text-white flex items-center justify-center font-bold">A</div>
+          <h3 class="text-xl font-bold">agent_call</h3>
+        </div>
+        <p class="text-slate-600 text-sm mb-4 leading-relaxed">让某个 agent 或 LLM CLI 执行一段 prompt，输出写回 vars。</p>
+        <div class="bg-slate-900 text-slate-100 rounded-xl p-4 code-block overflow-x-auto">
+<pre>- alias: design
+  type: agent_call
+  description: 由 Claude 产出技术设计
+  executor: claude
+  prompt: |
+    基于调研结果设计：
+    {{research_result}}
+  output: design_doc        # v1.5 必填
+  timeout: 600
+  context_files: ["./README.md"]</pre>
+        </div>
+        <div class="mt-4 text-xs space-y-1.5 text-slate-700">
+          <div class="flex gap-2"><span class="font-semibold w-20">executor:</span><span>caller / claude / codex / opencode / gemini / 自定义</span></div>
+          <div class="flex gap-2"><span class="font-semibold w-20">prompt:</span><span>支持 <code class="kbd">{{var}}</code> 插值</span></div>
+          <div class="flex gap-2"><span class="font-semibold w-20">output:</span><span>结果写回 vars 的字段名</span></div>
+        </div>
+      </div>
+
+      <!-- wait_user -->
+      <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 border-2 border-amber-200">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold">W</div>
+          <h3 class="text-xl font-bold">wait_user</h3>
+        </div>
+        <p class="text-slate-600 text-sm mb-4 leading-relaxed">阻塞节点。CLI 把 status 设为 waiting，落盘后退出，等用户调 resume 才继续。</p>
+        <div class="bg-slate-900 text-slate-100 rounded-xl p-4 code-block overflow-x-auto">
+<pre>- alias: review
+  type: wait_user
+  description: 用户审阅设计文档
+  message: 请审阅设计文档，是否通过？
+  schema:                  # v1.5 JSON Schema 子集
+    type: object
+    required: [approved]
+    properties:
+      approved: { type: boolean }
+      feedback: { type: string }</pre>
+        </div>
+        <div class="mt-4 text-xs space-y-1.5 text-slate-700">
+          <div class="flex gap-2"><span class="font-semibold w-20">message:</span><span>展示给终端用户的提示语</span></div>
+          <div class="flex gap-2"><span class="font-semibold w-20">schema:</span><span>约束 user_input 结构（可选）</span></div>
+          <div class="flex gap-2"><span class="font-semibold w-20">超时:</span><span>默认 7 天未 resume 自动 abort</span></div>
+        </div>
+      </div>
+
+      <!-- loop -->
+      <div class="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-6 border-2 border-emerald-200">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center font-bold">L</div>
+          <h3 class="text-xl font-bold">loop</h3>
+        </div>
+        <p class="text-slate-600 text-sm mb-4 leading-relaxed">条件循环。v1.5：body 内允许嵌套 <code class="kbd">wait_user</code> / <code class="kbd">sleep</code>，每轮完重新评估 condition。</p>
+        <div class="bg-slate-900 text-slate-100 rounded-xl p-4 code-block overflow-x-auto">
+<pre>- alias: refine_loop
+  type: loop
+  description: 用户反馈式循环
+  condition: "{{review.approved}} == false"
+  max_iterations: 3
+  body:
+    - alias: review        # ✅ v1.5 允许
+      type: wait_user
+      message: 是否通过？
+    - alias: refine
+      type: agent_call
+      executor: claude
+      output: design_doc</pre>
+        </div>
+        <div class="mt-4 text-xs space-y-1.5 text-slate-700">
+          <div class="flex gap-2"><span class="font-semibold w-20">condition:</span><span>白名单运算符 <code class="kbd">==</code> <code class="kbd">!=</code> <code class="kbd">&lt;</code> <code class="kbd">&gt;</code> <code class="kbd">&amp;&amp;</code> <code class="kbd">||</code></span></div>
+          <div class="flex gap-2"><span class="font-semibold w-20">上限:</span><span>max_iterations 最大 100</span></div>
+          <div class="flex gap-2"><span class="font-semibold w-20">嵌套:</span><span>body 含 wait_user / sleep / agent_call</span></div>
+        </div>
+      </div>
+
+      <!-- sleep（v1.5.1 新增） -->
+      <div class="bg-gradient-to-br from-sky-50 to-cyan-50 rounded-2xl p-6 border-2 border-sky-200">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-8 h-8 rounded-lg bg-sky-500 text-white flex items-center justify-center font-bold">S</div>
+          <h3 class="text-xl font-bold">sleep</h3>
+          <span class="pill bg-sky-200 text-sky-800 text-[10px]">v1.5.1 新增</span>
+        </div>
+        <p class="text-slate-600 text-sm mb-4 leading-relaxed">原子节点。同步等待 N 秒（0-300），任何位置都能插入做 rate limit / 轮询间隔。</p>
+        <div class="bg-slate-900 text-slate-100 rounded-xl p-4 code-block overflow-x-auto">
+<pre>- alias: cool_down
+  type: sleep
+  description: 防 LLM rate limit
+  seconds: 5             # 必填，可 {{var}}
+
+# 典型：loop.body 内做轮询
+- alias: poll_loop
+  type: loop
+  condition: "{{job_status}} != 'done'"
+  body:
+    - alias: check
+      type: agent_call
+      ...
+    - alias: gap
+      type: sleep
+      seconds: 5</pre>
+        </div>
+        <div class="mt-4 text-xs space-y-1.5 text-slate-700">
+          <div class="flex gap-2"><span class="font-semibold w-20">seconds:</span><span>0-300（5 分钟上限）</span></div>
+          <div class="flex gap-2"><span class="font-semibold w-20">实现:</span><span>v1 同步 <code class="kbd">time.sleep()</code>；不持久化、不可 abort（v1.5 异步）</span></div>
+          <div class="flex gap-2"><span class="font-semibold w-20">无 output:</span><span>不写 vars，纯时间流逝</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Executor 矩阵 -->
+    <div class="mt-12">
+      <h3 class="text-xl font-bold mb-4">Executor 矩阵（v1.1）</h3>
+      <div class="overflow-x-auto bg-white rounded-2xl border border-slate-200">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide">
+            <tr>
+              <th class="text-left px-4 py-3">名称</th>
+              <th class="text-left px-4 py-3">默认命令</th>
+              <th class="text-left px-4 py-3">是否 v1 内置</th>
+              <th class="text-left px-4 py-3">行为</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr>
+              <td class="px-4 py-3"><code class="kbd">caller</code></td>
+              <td class="px-4 py-3 text-slate-500">— 不 spawn 子进程</td>
+              <td class="px-4 py-3"><span class="pill bg-emerald-100 text-emerald-700">✅ v1</span></td>
+              <td class="px-4 py-3">返回 <code class="kbd">execute_agent</code> 给调用方 agent</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3"><code class="kbd">claude</code></td>
+              <td class="px-4 py-3 font-mono text-xs">claude -p "{{prompt}}"</td>
+              <td class="px-4 py-3"><span class="pill bg-emerald-100 text-emerald-700">✅ v1</span></td>
+              <td class="px-4 py-3">spawn 子进程同步执行，stdout 写回 vars</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3"><code class="kbd">codex</code></td>
+              <td class="px-4 py-3 font-mono text-xs">codex exec --prompt "{{prompt}}"</td>
+              <td class="px-4 py-3"><span class="pill bg-emerald-100 text-emerald-700">✅ v1</span></td>
+              <td class="px-4 py-3">spawn 子进程，命令格式 Phase 5 验证</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3"><code class="kbd">opencode</code></td>
+              <td class="px-4 py-3 font-mono text-xs">opencode run --prompt "{{prompt}}"</td>
+              <td class="px-4 py-3"><span class="pill bg-amber-100 text-amber-700">v1.5</span></td>
+              <td class="px-4 py-3">spawn 子进程</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3"><code class="kbd">gemini</code></td>
+              <td class="px-4 py-3 font-mono text-xs">gemini "{{prompt}}"</td>
+              <td class="px-4 py-3"><span class="pill bg-amber-100 text-amber-700">v1.5</span></td>
+              <td class="px-4 py-3">spawn 子进程</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3"><code class="kbd">custom</code></td>
+              <td class="px-4 py-3 font-mono text-xs">在 config.yaml 自定义</td>
+              <td class="px-4 py-3"><span class="pill bg-emerald-100 text-emerald-700">✅ v1</span></td>
+              <td class="px-4 py-3">用户自定义 cmd / args / input_mode / output_parser</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section: Flow Sequence -->
+<section id="flow" class="scroll-mt py-20 bg-slate-50">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="mb-10">
+      <span class="pill bg-amber-100 text-amber-700 mb-3">§2.1 时序</span>
+      <h2 class="text-3xl font-bold mb-2">执行时序</h2>
+      <p class="text-slate-600">caller 节点会返回给 IDE agent；非 caller 节点 CLI 内部自动 chain，调用方无感知。</p>
+    </div>
+
+    <div class="bg-white rounded-2xl p-6 md:p-10 border border-slate-200 shadow-sm">
+      <div class="mermaid">
+sequenceDiagram
+    actor User
+    participant IDE as IDE Agent (caller)
+    participant CLI as agent-workflow CLI
+    participant FS as state.json
+    participant LLM as 外部 LLM CLI
+
+    User->>IDE: 触发 "启动 my-flow"
+    IDE->>CLI: start(workflow, vars)
+    CLI->>FS: 创建 run_id 目录 + 落地快照
+    CLI-->>IDE: {action: execute_agent, prompt}<br/>node: research (caller)
+
+    Note over IDE: caller 节点：自己推理
+    IDE->>IDE: LLM 推理
+    IDE->>CLI: advance(run_id, result)
+
+    Note over CLI: 命中 executor=claude<br/>CLI 内部自动 chain
+    CLI->>LLM: spawn claude -p "..."
+    LLM-->>CLI: stdout
+    CLI->>FS: 写 vars + history
+    CLI->>LLM: spawn codex exec "..."
+    LLM-->>CLI: stdout
+    CLI->>FS: 写 vars + history
+
+    Note over CLI: 命中 wait_user
+    CLI-->>IDE: {action: wait_user, message}
+    IDE->>User: 弹窗/提示索取输入
+    User->>IDE: 用户输入
+    IDE->>CLI: resume(run_id, user_input)
+
+    CLI->>FS: 写 vars
+    CLI-->>IDE: {action: done, final_report}
+    IDE->>User: 展示最终结果
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section: State Machine -->
+<section id="state" class="scroll-mt py-20 bg-white">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="mb-10">
+      <span class="pill bg-emerald-100 text-emerald-700 mb-3">§2.2 状态机</span>
+      <h2 class="text-3xl font-bold mb-2">节点状态流转</h2>
+      <p class="text-slate-600">五个核心状态，加上"循环回跳"和"外部执行"两个瞬态。</p>
+    </div>
+
+    <div class="mb-4 inline-flex items-center gap-2 bg-rose-50 border border-rose-200 rounded-lg px-3 py-1.5 text-xs text-rose-700">
+      <span class="font-semibold">v1.5 变更</span>
+      <span>原 `running` 拆分为 3 个具体状态：`awaiting_agent` / `executing_external` / `waiting_user`，避免歧义</span>
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-3 mb-6">
+      <div class="bg-brand-100 rounded-xl p-4 text-center">
+        <div class="text-xs font-bold text-brand-700 uppercase mb-1">awaiting_agent</div>
+        <div class="text-sm text-brand-900">caller 节点等待 IDE agent 调 advance</div>
+      </div>
+      <div class="bg-pink-100 rounded-xl p-4 text-center">
+        <div class="text-xs font-bold text-pink-700 uppercase mb-1">executing_external</div>
+        <div class="text-sm text-pink-900">CLI 正在 spawn 外部 LLM 子进程</div>
+      </div>
+      <div class="bg-amber-100 rounded-xl p-4 text-center">
+        <div class="text-xs font-bold text-amber-700 uppercase mb-1">waiting_user</div>
+        <div class="text-sm text-amber-900">命中 wait_user，等用户 resume</div>
+      </div>
+    </div>
+    <div class="grid lg:grid-cols-3 gap-3 mb-10">
+      <div class="bg-emerald-100 rounded-xl p-4 text-center">
+        <div class="text-xs font-bold text-emerald-700 uppercase mb-1">completed</div>
+        <div class="text-sm text-emerald-900">所有节点正常完成</div>
+      </div>
+      <div class="bg-rose-100 rounded-xl p-4 text-center">
+        <div class="text-xs font-bold text-rose-700 uppercase mb-1">failed</div>
+        <div class="text-sm text-rose-900">节点执行报错（v1 无 retry）</div>
+      </div>
+      <div class="bg-slate-300 rounded-xl p-4 text-center">
+        <div class="text-xs font-bold text-slate-700 uppercase mb-1">aborted</div>
+        <div class="text-sm text-slate-900">用户主动中止或 7 天超时</div>
+      </div>
+    </div>
+
+    <div class="bg-slate-50 rounded-2xl p-6 md:p-10 border border-slate-200">
+      <div class="mermaid">
+stateDiagram-v2
+    [*] --> Pending: 创建 run
+    Pending --> AwaitingAgent: start，命中 caller 节点
+    Pending --> ExecutingExternal: start，命中外部 executor
+
+    AwaitingAgent --> ExecutingExternal: advance 后<br/>下一节点是外部
+    AwaitingAgent --> AwaitingAgent: advance 后<br/>下一节点仍是 caller
+    AwaitingAgent --> WaitingUser: advance 后<br/>下一节点是 wait_user
+    AwaitingAgent --> Completed: advance 后无下一节点
+    AwaitingAgent --> Failed: advance 传 result.error
+
+    ExecutingExternal --> AwaitingAgent: 子进程完成后<br/>下一节点是 caller
+    ExecutingExternal --> ExecutingExternal: 子进程完成后<br/>下一节点是外部
+    ExecutingExternal --> WaitingUser: 子进程完成后<br/>下一节点是 wait_user
+    ExecutingExternal --> Completed: 全部完成
+    ExecutingExternal --> Failed: 非零退出/超时
+
+    WaitingUser --> AwaitingAgent: resume 后<br/>下一节点是 caller
+    WaitingUser --> ExecutingExternal: resume 后<br/>下一节点是外部
+    WaitingUser --> WaitingUser: loop body 再次 wait_user<br/>(v1.5 允许)
+    WaitingUser --> Completed: resume 后无下一节点
+    WaitingUser --> Aborted: 7 天超时
+
+    AwaitingAgent --> Aborted: 用户 abort
+    ExecutingExternal --> Aborted: 用户 abort
+    WaitingUser --> Aborted: 用户 abort
+
+    Completed --> [*]
+    Failed --> [*]
+    Aborted --> [*]
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section: Persistence (重点回答用户问题) -->
+<section id="persistence" class="scroll-mt py-20 bg-gradient-to-br from-brand-50 via-white to-pink-50">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="mb-10">
+      <span class="pill bg-brand-500 text-white mb-3">§4.10 重点回答</span>
+      <h2 class="text-3xl md:text-4xl font-bold mb-3">执行记录如何处理？</h2>
+      <p class="text-xl text-slate-700"><strong class="text-brand-700">是的：每启动一次 workflow = 创建一个独立 Run = 一份 state.json</strong>。多次启动互不干扰。</p>
+    </div>
+
+    <!-- 核心规则卡片 -->
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+      <div class="bg-white rounded-2xl p-6 border-2 border-brand-200 shadow-sm">
+        <div class="text-3xl mb-2">1️⃣</div>
+        <h4 class="font-bold mb-2">一次启动 = 一个 run_id</h4>
+        <p class="text-sm text-slate-600 leading-relaxed">格式 <code class="kbd">wf-YYYY-MM-DD-xxxxxx</code>，例：<code class="kbd">wf-2026-05-27-a3f9c1</code></p>
+      </div>
+      <div class="bg-white rounded-2xl p-6 border-2 border-pink-200 shadow-sm">
+        <div class="text-3xl mb-2">2️⃣</div>
+        <h4 class="font-bold mb-2">独立目录</h4>
+        <p class="text-sm text-slate-600 leading-relaxed">每个 Run 一个文件夹：<code class="kbd">~/.agent-workflow/runs/&lt;run_id&gt;/</code></p>
+      </div>
+      <div class="bg-white rounded-2xl p-6 border-2 border-amber-200 shadow-sm">
+        <div class="text-3xl mb-2">3️⃣</div>
+        <h4 class="font-bold mb-2">3 个文件</h4>
+        <p class="text-sm text-slate-600 leading-relaxed"><code class="kbd">state.json</code>（运行状态）+ <code class="kbd">workflow.yaml</code>（启动时快照）+ <code class="kbd">audit.log</code>（append-only）</p>
+      </div>
+      <div class="bg-white rounded-2xl p-6 border-2 border-emerald-200 shadow-sm">
+        <div class="text-3xl mb-2">4️⃣</div>
+        <h4 class="font-bold mb-2">并发安全</h4>
+        <p class="text-sm text-slate-600 leading-relaxed">不同 run_id 完全独立；同 run_id <code class="kbd">filelock</code> 文件锁串行</p>
+      </div>
+    </div>
+
+    <!-- 目录树可视化 -->
+    <div class="grid lg:grid-cols-2 gap-6 mb-12">
+      <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+        <h3 class="font-bold text-lg mb-4">目录结构</h3>
+        <div class="bg-slate-900 text-slate-100 rounded-xl p-4 code-block overflow-x-auto">
+<pre><span class="text-brand-300">~/.agent-workflow/</span>
+├── <span class="text-amber-300">config.yaml</span>             <span class="text-slate-500"># 全局：executor 配置 + defaults</span>
+└── <span class="text-brand-300">runs/</span>
+    ├── <span class="text-pink-300">wf-2026-05-27-a3f9c1/</span>  <span class="text-emerald-400"># 第 1 次启动（completed）</span>
+    │   ├── state.json
+    │   ├── workflow.yaml
+    │   └── audit.log
+    ├── <span class="text-pink-300">wf-2026-05-27-b8d2e3/</span>  <span class="text-amber-400"># 第 2 次启动（waiting）</span>
+    │   ├── state.json
+    │   └── workflow.yaml
+    └── <span class="text-pink-300">wf-2026-05-27-c4f1a2/</span>  <span class="text-sky-400"># 第 3 次启动（running）</span>
+        ├── state.json
+        └── workflow.yaml</pre>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+        <h3 class="font-bold text-lg mb-4">3 个文件的职责</h3>
+        <div class="space-y-3 text-sm">
+          <div class="flex gap-3 items-start">
+            <code class="kbd shrink-0 mt-0.5">state.json</code>
+            <div class="text-slate-600">运行时状态：current_node / vars / history / status。每次 advance/resume 更新。</div>
+          </div>
+          <div class="flex gap-3 items-start">
+            <code class="kbd shrink-0 mt-0.5">workflow.yaml</code>
+            <div class="text-slate-600">启动时的工作流定义快照。<strong class="text-rose-600">只读</strong>——避免源 YAML 改了导致状态对不上。</div>
+          </div>
+          <div class="flex gap-3 items-start">
+            <code class="kbd shrink-0 mt-0.5">audit.log</code>
+            <div class="text-slate-600">append-only 审计日志。每次 advance/resume/spawn 追加一行。v1.5 引入，v1 可选。</div>
+          </div>
+        </div>
+
+        <div class="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+          <div class="flex gap-2 items-start">
+            <span class="text-xl">💡</span>
+            <div class="text-sm text-amber-900">
+              <strong>为什么 workflow.yaml 要快照？</strong><br>
+              避免你在 run 进行到一半时修改源 YAML，导致 advance 解析时 schema 对不上 vars/history。快照让 Run 完全可复现。
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 保留策略 -->
+    <div class="grid md:grid-cols-2 gap-6 mb-12">
+      <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+        <h3 class="font-bold text-lg mb-4">保留策略（可在 config.yaml 改）</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-xs text-slate-500 uppercase">
+              <tr><th class="text-left py-2">策略</th><th class="text-left py-2">默认</th></tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr><td class="py-2">Run 完成后</td><td class="py-2"><span class="pill bg-emerald-100 text-emerald-700">永久保留</span></td></tr>
+              <tr><td class="py-2">wait_user 超时</td><td class="py-2"><span class="pill bg-amber-100 text-amber-700">7 天</span></td></tr>
+              <tr><td class="py-2">history 长度</td><td class="py-2"><span class="pill bg-sky-100 text-sky-700">最近 100 条</span></td></tr>
+              <tr><td class="py-2">磁盘上限</td><td class="py-2"><span class="pill bg-slate-100 text-slate-700">不限（v1.5）</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+        <h3 class="font-bold text-lg mb-4">并发场景</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex items-start gap-2">
+            <span class="text-emerald-500 font-bold">✓</span>
+            <div>同一 workflow YAML 启动多个 Run（不同 run_id）→ 完全独立</div>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-emerald-500 font-bold">✓</span>
+            <div>同一 run_id 串行 advance/resume → 文件锁保护</div>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-rose-500 font-bold">✗</span>
+            <div>同一 run_id 并行 advance → 后者返回 <code class="kbd">error: run busy</code></div>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-emerald-500 font-bold">✓</span>
+            <div>不同 IDE/进程操作同 run_id → 跨进程文件锁排队</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- state.json 示例 -->
+    <div class="bg-slate-900 rounded-2xl p-6 md:p-8 text-white">
+      <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+        <span class="text-2xl">📄</span> state.json 完整示例
+      </h3>
+      <div class="bg-slate-950 rounded-xl p-4 code-block overflow-x-auto">
+<pre class="text-slate-300"><span class="text-pink-400">{</span>
+  <span class="text-amber-300">"run_id"</span>: <span class="text-emerald-300">"wf-2026-05-27-a3f9c1"</span>,
+  <span class="text-amber-300">"workflow_name"</span>: <span class="text-emerald-300">"cross-llm-pipeline"</span>,
+  <span class="text-amber-300">"workflow_snapshot"</span>: <span class="text-emerald-300">"./workflow.yaml"</span>,
+  <span class="text-amber-300">"caller"</span>: <span class="text-emerald-300">"opencode"</span>,
+  <span class="text-amber-300">"status"</span>: <span class="text-emerald-300">"waiting"</span>,
+  <span class="text-amber-300">"current_node"</span>: <span class="text-emerald-300">"review"</span>,
+  <span class="text-amber-300">"vars"</span>: <span class="text-pink-400">{</span>
+    <span class="text-amber-300">"topic"</span>: <span class="text-emerald-300">"Claude Code workflow"</span>,
+    <span class="text-amber-300">"research_result"</span>: <span class="text-emerald-300">"..."</span>,
+    <span class="text-amber-300">"design_doc"</span>: <span class="text-emerald-300">"..."</span>
+  <span class="text-pink-400">}</span>,
+  <span class="text-amber-300">"loop_counters"</span>: <span class="text-pink-400">{</span> <span class="text-amber-300">"refine_loop"</span>: <span class="text-sky-300">0</span> <span class="text-pink-400">}</span>,
+  <span class="text-amber-300">"history"</span>: <span class="text-pink-400">[</span>
+    <span class="text-pink-400">{</span>
+      <span class="text-amber-300">"node_id"</span>: <span class="text-emerald-300">"research"</span>,
+      <span class="text-amber-300">"description"</span>: <span class="text-emerald-300">"调研主题，给出核心要点列表"</span>,
+      <span class="text-amber-300">"executor"</span>: <span class="text-emerald-300">"caller"</span>,
+      <span class="text-amber-300">"status"</span>: <span class="text-emerald-300">"completed"</span>,
+      <span class="text-amber-300">"duration_ms"</span>: <span class="text-sky-300">12000</span>
+    <span class="text-pink-400">}</span>,
+    <span class="text-pink-400">{</span>
+      <span class="text-amber-300">"node_id"</span>: <span class="text-emerald-300">"design"</span>,
+      <span class="text-amber-300">"description"</span>: <span class="text-emerald-300">"由 Claude 基于调研结果产出技术设计"</span>,
+      <span class="text-amber-300">"executor"</span>: <span class="text-emerald-300">"claude"</span>,
+      <span class="text-amber-300">"status"</span>: <span class="text-emerald-300">"completed"</span>,
+      <span class="text-amber-300">"cmd"</span>: <span class="text-emerald-300">"claude -p '...'"</span>,
+      <span class="text-amber-300">"duration_ms"</span>: <span class="text-sky-300">28456</span>,
+      <span class="text-amber-300">"output_chars"</span>: <span class="text-sky-300">2048</span>
+    <span class="text-pink-400">}</span>
+  <span class="text-pink-400">]</span>,
+  <span class="text-amber-300">"created_at"</span>: <span class="text-emerald-300">"2026-05-27T13:29:50Z"</span>,
+  <span class="text-amber-300">"updated_at"</span>: <span class="text-emerald-300">"2026-05-27T13:30:42Z"</span>
+<span class="text-pink-400">}</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section: Validation -->
+<section id="validation" class="scroll-mt py-20 bg-white">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="mb-10">
+      <span class="pill bg-rose-100 text-rose-700 mb-3">§4.11 校验 (v1.4)</span>
+      <h2 class="text-3xl font-bold mb-2">Workflow 校验机制</h2>
+      <p class="text-slate-600">AI 生成的 YAML 可能出错，本 skill 内置 <strong>4 级校验</strong>体系，错误信息带 code / location / line / suggestion，AI 可<strong>自动修正</strong>。</p>
+    </div>
+
+    <!-- 4 级校验 -->
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+      <div class="bg-rose-50 rounded-2xl p-5 border-2 border-rose-200">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-bold text-rose-600 uppercase">最严</span>
+          <span class="pill bg-rose-200 text-rose-800">L1</span>
+        </div>
+        <h4 class="font-bold mb-1">YAML 语法</h4>
+        <p class="text-xs text-slate-600 leading-relaxed mb-2">PyYAML 能否成功解析</p>
+        <p class="text-xs text-rose-600 font-mono">YAML parse error at line X col Y</p>
+      </div>
+      <div class="bg-amber-50 rounded-2xl p-5 border-2 border-amber-200">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-bold text-amber-600 uppercase">严</span>
+          <span class="pill bg-amber-200 text-amber-800">L2</span>
+        </div>
+        <h4 class="font-bold mb-1">Schema 结构</h4>
+        <p class="text-xs text-slate-600 leading-relaxed mb-2">JSON Schema 校验字段类型、必填、枚举值</p>
+        <p class="text-xs text-amber-700 font-mono">nodes[2].type expected enum</p>
+      </div>
+      <div class="bg-sky-50 rounded-2xl p-5 border-2 border-sky-200">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-bold text-sky-600 uppercase">中</span>
+          <span class="pill bg-sky-200 text-sky-800">L3</span>
+        </div>
+        <h4 class="font-bold mb-1">引用一致性</h4>
+        <p class="text-xs text-slate-600 leading-relaxed mb-2">edges 引用、template 变量、loop 嵌套</p>
+        <p class="text-xs text-sky-700 font-mono">unknown node 'finalreview'</p>
+      </div>
+      <div class="bg-emerald-50 rounded-2xl p-5 border-2 border-emerald-200">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-bold text-emerald-600 uppercase">宽</span>
+          <span class="pill bg-emerald-200 text-emerald-800">L4</span>
+        </div>
+        <h4 class="font-bold mb-1">环境就绪</h4>
+        <p class="text-xs text-slate-600 leading-relaxed mb-2">executor 在 PATH 中、timeout 合理</p>
+        <p class="text-xs text-emerald-700 font-mono">'codex' not found in PATH</p>
+      </div>
+    </div>
+
+    <!-- 校验时机 -->
+    <div class="grid lg:grid-cols-2 gap-6 mb-10">
+      <div class="bg-slate-50 rounded-2xl p-6 border border-slate-200">
+        <h3 class="font-bold text-lg mb-4">校验时机</h3>
+        <table class="w-full text-sm">
+          <thead class="text-xs text-slate-500 uppercase">
+            <tr>
+              <th class="text-left py-2">命令</th>
+              <th class="text-left py-2">强制级别</th>
+              <th class="text-left py-2">失败行为</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            <tr>
+              <td class="py-2"><code class="kbd">start</code></td>
+              <td class="py-2">L1+L2+L3</td>
+              <td class="py-2 text-xs">拒绝启动，不创建 Run（L4 仅 warning）</td>
+            </tr>
+            <tr>
+              <td class="py-2"><code class="kbd">validate</code></td>
+              <td class="py-2">L1+L2+L3+L4</td>
+              <td class="py-2 text-xs">不实际执行，返回完整报告</td>
+            </tr>
+            <tr>
+              <td class="py-2"><code class="kbd">advance</code></td>
+              <td class="py-2">L1+L2（重读快照）</td>
+              <td class="py-2 text-xs">节点 status=failed</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="bg-slate-900 rounded-2xl p-6 text-slate-100">
+        <h3 class="font-bold text-lg mb-3">AI 自我修正循环</h3>
+        <pre class="code-block text-xs leading-relaxed text-slate-300">1. AI 生成 workflow.yaml
+2. AI 调 validate
+3. <span class="text-rose-300">if errors:</span>
+     ├─ 读 errors[].code / location / line
+     ├─ 自动修复 YAML
+     └─ 回到第 2 步（最多 3 轮）
+4. <span class="text-amber-300">if warnings (L4):</span>
+     └─ 提示用户安装 CLI 或改用 caller
+5. <span class="text-emerald-300">if valid:</span>
+     └─ 调 start 启动</pre>
+      </div>
+    </div>
+
+    <!-- validate 返回示例 -->
+    <div class="bg-slate-900 rounded-2xl p-6 md:p-8 text-slate-100">
+      <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+        <span class="text-2xl">📋</span> validate 返回示例（失败时）
+      </h3>
+      <div class="bg-slate-950 rounded-xl p-4 code-block overflow-x-auto">
+<pre class="text-slate-300"><span class="text-pink-400">{</span>
+  <span class="text-amber-300">"result"</span>: <span class="text-pink-400">{</span>
+    <span class="text-amber-300">"valid"</span>: <span class="text-rose-400">false</span>,
+    <span class="text-amber-300">"errors"</span>: <span class="text-pink-400">[</span>
+      <span class="text-pink-400">{</span>
+        <span class="text-amber-300">"level"</span>: <span class="text-emerald-300">"L3"</span>,
+        <span class="text-amber-300">"code"</span>: <span class="text-emerald-300">"UNKNOWN_NODE_REF"</span>,         <span class="text-slate-500">// AI 可识别的机器码</span>
+        <span class="text-amber-300">"message"</span>: <span class="text-emerald-300">"edge from 'review' references unknown node 'refine_lop'"</span>,
+        <span class="text-amber-300">"location"</span>: <span class="text-emerald-300">"edges[3].to"</span>,           <span class="text-slate-500">// 精确定位</span>
+        <span class="text-amber-300">"line"</span>: <span class="text-sky-300">42</span>,
+        <span class="text-amber-300">"suggestion"</span>: <span class="text-emerald-300">"did you mean 'refine_loop'?"</span> <span class="text-slate-500">// 修正提示</span>
+      <span class="text-pink-400">}</span>
+    <span class="text-pink-400">]</span>,
+    <span class="text-amber-300">"warnings"</span>: <span class="text-pink-400">[]</span>,
+    <span class="text-amber-300">"summary"</span>: <span class="text-rose-400">null</span>
+  <span class="text-pink-400">}</span>,
+  <span class="text-amber-300">"error"</span>: <span class="text-rose-400">null</span>
+<span class="text-pink-400">}</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section: Creation -->
+<section id="creation" class="scroll-mt py-20 bg-slate-50">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="mb-10">
+      <span class="pill bg-sky-100 text-sky-700 mb-3">§4.12 创建 (v1.4)</span>
+      <h2 class="text-3xl font-bold mb-2">Workflow 创建方式</h2>
+      <p class="text-slate-600">三种创建路径，配合内置模板库与 AI 生成最佳实践，让 workflow 创建低成本、高质量。</p>
+    </div>
+
+    <!-- 3 种路径 -->
+    <div class="grid lg:grid-cols-3 gap-6 mb-10">
+      <div class="bg-white rounded-2xl p-6 border-2 border-brand-200">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-10 h-10 rounded-xl bg-brand-100 flex items-center justify-center text-2xl">📂</div>
+          <h3 class="text-lg font-bold">A. 模板复用</h3>
+        </div>
+        <p class="text-sm text-slate-600 mb-4">用 <code class="kbd">create from_template</code> 复制内置模板，改改 prompt 即可用。</p>
+        <div class="bg-slate-900 text-slate-100 rounded-xl p-3 code-block text-xs overflow-x-auto">
+<pre>create '{
+  "action": "from_template",
+  "template": "research-and-implement",
+  "out": "./my-flow.yaml"
+}'</pre>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl p-6 border-2 border-pink-200">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center text-2xl">🤖</div>
+          <h3 class="text-lg font-bold">B. AI 生成</h3>
+        </div>
+        <p class="text-sm text-slate-600 mb-4">AI 把自然语言需求转 YAML，自带 validate 循环修正。</p>
+        <div class="bg-slate-900 text-slate-100 rounded-xl p-3 code-block text-xs overflow-x-auto">
+<pre>用户："做调研→设计→实现"
+  ↓
+AI 写 YAML + validate
+  ↓ errors? 修正
+  ↓ valid → start</pre>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl p-6 border-2 border-amber-200">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-2xl">✍️</div>
+          <h3 class="text-lg font-bold">C. 手工编写</h3>
+        </div>
+        <p class="text-sm text-slate-600 mb-4">高级用户直接写 YAML，依靠 IDE 高亮 + validate。</p>
+        <div class="bg-slate-900 text-slate-100 rounded-xl p-3 code-block text-xs overflow-x-auto">
+<pre>create '{
+  "action": "scaffold",
+  "out": "./blank.yaml",
+  "name": "my-new-flow"
+}'</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- 内置模板库 -->
+    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+      <h3 class="font-bold text-lg mb-4">v1 内置模板库（4 个）</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50 text-xs text-slate-500 uppercase">
+            <tr>
+              <th class="text-left px-4 py-3">模板名</th>
+              <th class="text-left px-4 py-3">节点数</th>
+              <th class="text-left px-4 py-3">特性</th>
+              <th class="text-left px-4 py-3">适用场景</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr>
+              <td class="px-4 py-3"><code class="kbd">research-and-implement</code></td>
+              <td class="px-4 py-3 text-center">5</td>
+              <td class="px-4 py-3 text-xs">caller + wait_user</td>
+              <td class="px-4 py-3 text-xs">调研 → 设计 → 用户审 → 实现 → 报告</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3"><code class="kbd">cross-llm-pipeline</code></td>
+              <td class="px-4 py-3 text-center">7</td>
+              <td class="px-4 py-3 text-xs">caller / claude / codex + wait_user + loop</td>
+              <td class="px-4 py-3 text-xs">跨 LLM 协作（设计 Claude / 实现 Codex）</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3"><code class="kbd">code-review</code></td>
+              <td class="px-4 py-3 text-center">4</td>
+              <td class="px-4 py-3 text-xs">caller + wait_user</td>
+              <td class="px-4 py-3 text-xs">代码审查 → 检查 → 确认 → 评论</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3"><code class="kbd">iterative-refine</code></td>
+              <td class="px-4 py-3 text-center">3</td>
+              <td class="px-4 py-3 text-xs">caller + wait_user + loop</td>
+              <td class="px-4 py-3 text-xs">生成 → 反馈 → 循环优化（max=3）</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section: Error Handling -->
+<section id="error" class="scroll-mt py-20 bg-white">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="mb-10">
+      <span class="pill bg-rose-100 text-rose-700 mb-3">§4.13 错误处理 (v1.4)</span>
+      <h2 class="text-3xl font-bold mb-2">节点结果与错误处理</h2>
+      <p class="text-slate-600">每个节点的成功 / 失败路径都有明确定义，错误对象规范化便于 AI 自动决策。</p>
+    </div>
+
+    <!-- 成功路径 -->
+    <div class="bg-emerald-50 rounded-2xl p-6 border border-emerald-200 mb-6">
+      <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+        <span class="text-2xl">✅</span> 成功路径
+      </h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="text-xs text-emerald-700 uppercase">
+            <tr>
+              <th class="text-left py-2 px-3">节点类型</th>
+              <th class="text-left py-2 px-3">成功判定</th>
+              <th class="text-left py-2 px-3">vars 写入</th>
+              <th class="text-left py-2 px-3">状态变化</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-emerald-200">
+            <tr>
+              <td class="py-2 px-3"><code class="kbd">agent_call</code><br><span class="text-xs text-slate-500">caller</span></td>
+              <td class="py-2 px-3 text-xs">advance 时 <code>result.error == null</code> 且 output 非空</td>
+              <td class="py-2 px-3 text-xs"><code>vars[node.output] = result.output</code></td>
+              <td class="py-2 px-3 text-xs">completed → 下一节点</td>
+            </tr>
+            <tr>
+              <td class="py-2 px-3"><code class="kbd">agent_call</code><br><span class="text-xs text-slate-500">外部 CLI</span></td>
+              <td class="py-2 px-3 text-xs">spawn <code>exit_code == 0</code> 且 stdout 非空</td>
+              <td class="py-2 px-3 text-xs"><code>vars[node.output] = parseOutput(stdout)</code></td>
+              <td class="py-2 px-3 text-xs">completed → 下一节点</td>
+            </tr>
+            <tr>
+              <td class="py-2 px-3"><code class="kbd">wait_user</code></td>
+              <td class="py-2 px-3 text-xs">resume 时 user_input 通过 schema 校验</td>
+              <td class="py-2 px-3 text-xs"><code>vars[node.id] = user_input</code></td>
+              <td class="py-2 px-3 text-xs">completed → 下一节点</td>
+            </tr>
+            <tr>
+              <td class="py-2 px-3"><code class="kbd">loop</code></td>
+              <td class="py-2 px-3 text-xs"><code>iteration_count &lt; max_iterations</code> 且 condition true</td>
+              <td class="py-2 px-3 text-xs">—— </td>
+              <td class="py-2 px-3 text-xs">进入 body</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 失败路径 -->
+    <div class="bg-rose-50 rounded-2xl p-6 border border-rose-200 mb-8">
+      <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+        <span class="text-2xl">❌</span> 失败路径（6 种情况）
+      </h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="text-xs text-rose-700 uppercase">
+            <tr>
+              <th class="text-left py-2 px-3 w-12">#</th>
+              <th class="text-left py-2 px-3">失败原因</th>
+              <th class="text-left py-2 px-3">节点 status</th>
+              <th class="text-left py-2 px-3">run status</th>
+              <th class="text-left py-2 px-3">关键错误码</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-rose-200">
+            <tr>
+              <td class="py-2 px-3 font-mono">F1</td>
+              <td class="py-2 px-3 text-xs">caller advance 传 <code>result.error</code></td>
+              <td class="py-2 px-3 text-xs">failed</td>
+              <td class="py-2 px-3 text-xs">failed</td>
+              <td class="py-2 px-3 text-xs"><code class="text-rose-700">CALLER_ERROR</code></td>
+            </tr>
+            <tr>
+              <td class="py-2 px-3 font-mono">F2</td>
+              <td class="py-2 px-3 text-xs">非 caller spawn 非零退出</td>
+              <td class="py-2 px-3 text-xs">failed</td>
+              <td class="py-2 px-3 text-xs">failed</td>
+              <td class="py-2 px-3 text-xs"><code class="text-rose-700">EXECUTOR_NONZERO_EXIT</code></td>
+            </tr>
+            <tr>
+              <td class="py-2 px-3 font-mono">F3</td>
+              <td class="py-2 px-3 text-xs">非 caller spawn 超时</td>
+              <td class="py-2 px-3 text-xs">failed</td>
+              <td class="py-2 px-3 text-xs">failed</td>
+              <td class="py-2 px-3 text-xs"><code class="text-rose-700">NODE_TIMEOUT</code></td>
+            </tr>
+            <tr>
+              <td class="py-2 px-3 font-mono">F4</td>
+              <td class="py-2 px-3 text-xs">非 caller stdout 为空或解析失败</td>
+              <td class="py-2 px-3 text-xs">failed</td>
+              <td class="py-2 px-3 text-xs">failed</td>
+              <td class="py-2 px-3 text-xs"><code class="text-rose-700">EMPTY_OUTPUT</code></td>
+            </tr>
+            <tr class="bg-amber-50">
+              <td class="py-2 px-3 font-mono">F5</td>
+              <td class="py-2 px-3 text-xs">wait_user user_input 不符 schema</td>
+              <td class="py-2 px-3 text-xs"><strong class="text-amber-700">waiting（不变）</strong></td>
+              <td class="py-2 px-3 text-xs"><strong class="text-amber-700">waiting</strong></td>
+              <td class="py-2 px-3 text-xs"><code class="text-amber-700">SCHEMA_VIOLATION (retryable)</code></td>
+            </tr>
+            <tr>
+              <td class="py-2 px-3 font-mono">F6</td>
+              <td class="py-2 px-3 text-xs">loop 超过 max_iterations 仍 true</td>
+              <td class="py-2 px-3 text-xs">failed</td>
+              <td class="py-2 px-3 text-xs">failed</td>
+              <td class="py-2 px-3 text-xs"><code class="text-rose-700">LOOP_EXCEEDED</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-4 p-3 bg-amber-100 rounded-lg text-xs text-amber-900">
+        <strong>💡 F5 特殊：</strong>"用户输错"不是节点逻辑错。节点状态不变，CLI 返回 <code class="kbd">retryable: true</code>，提示 caller 重新索取输入再 resume，不让整个 run 进入 failed。
+      </div>
+    </div>
+
+    <!-- 错误对象规范 v1.5 -->
+    <div class="bg-slate-900 rounded-2xl p-6 md:p-8 text-slate-100">
+      <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+        <span class="text-2xl">📐</span> 统一错误对象规范（v1.5）
+      </h3>
+      <div class="mb-3 text-sm text-amber-300">
+        <strong>v1.5 关键变化</strong>：错误协议统一为顶层 <code class="kbd text-amber-200 bg-slate-800">error</code> 对象。删除原 <code class="kbd text-rose-300 bg-slate-800">action="error"</code> 形态。<code class="kbd text-amber-200 bg-slate-800">result.action</code> 仅保留 <code class="text-emerald-300">execute_agent</code> / <code class="text-emerald-300">wait_user</code> / <code class="text-emerald-300">done</code>。
+      </div>
+      <div class="bg-slate-950 rounded-xl p-4 code-block overflow-x-auto">
+<pre class="text-slate-300"><span class="text-pink-400">{</span>
+  <span class="text-amber-300">"result"</span>: <span class="text-rose-400">null</span>,
+  <span class="text-amber-300">"error"</span>: <span class="text-pink-400">{</span>
+    <span class="text-amber-300">"code"</span>: <span class="text-emerald-300">"NODE_TIMEOUT"</span>,
+    <span class="text-amber-300">"message"</span>: <span class="text-emerald-300">"node 'design' (7f3a9c2e) timed out after 600s"</span>,
+    <span class="text-amber-300">"node"</span>: <span class="text-pink-400">{</span>
+      <span class="text-amber-300">"internal_id"</span>: <span class="text-emerald-300">"7f3a9c2e"</span>,             <span class="text-slate-500">// UUID 主键</span>
+      <span class="text-amber-300">"alias"</span>: <span class="text-emerald-300">"design"</span>,                     <span class="text-slate-500">// 用户起的语义化名</span>
+      <span class="text-amber-300">"description"</span>: <span class="text-emerald-300">"由 Claude 基于调研结果产出技术设计"</span>
+    <span class="text-pink-400">}</span>,
+    <span class="text-amber-300">"executor"</span>: <span class="text-emerald-300">"claude"</span>,
+    <span class="text-amber-300">"details"</span>: <span class="text-pink-400">{</span>
+      <span class="text-amber-300">"exit_code"</span>: <span class="text-sky-300">124</span>,
+      <span class="text-amber-300">"stderr_tail"</span>: <span class="text-emerald-300">"..."</span>,
+      <span class="text-amber-300">"cmd_template"</span>: <span class="text-emerald-300">"claude (stdin)"</span>      <span class="text-slate-500">// v1.5 不存渲染后 prompt</span>
+    <span class="text-pink-400">}</span>,
+    <span class="text-amber-300">"retryable"</span>: <span class="text-rose-400">false</span>,
+    <span class="text-amber-300">"suggestion"</span>: <span class="text-emerald-300">"Increase timeout or split prompt"</span>
+  <span class="text-pink-400">}</span>
+<span class="text-pink-400">}</span></pre>
+      </div>
+      <div class="mt-4 grid md:grid-cols-3 gap-3 text-xs">
+        <div class="bg-slate-800 rounded-lg p-3">
+          <strong class="text-amber-300">code</strong>：机器可读错误码，AI 据此分支处理
+        </div>
+        <div class="bg-slate-800 rounded-lg p-3">
+          <strong class="text-amber-300">retryable</strong>：是否可直接重试（F5/SCHEMA_VIOLATION 为 true）
+        </div>
+        <div class="bg-slate-800 rounded-lg p-3">
+          <strong class="text-amber-300">suggestion</strong>：人类可读修复建议，AI 透传给用户
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section: YAML Example -->
+<section id="example" class="scroll-mt py-20 bg-slate-50">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="mb-10">
+      <span class="pill bg-pink-100 text-pink-700 mb-3">§4.3 示例</span>
+      <h2 class="text-3xl font-bold mb-2">完整跨 LLM Workflow YAML</h2>
+      <p class="text-slate-600">调研 → Claude 设计 → 用户审阅 → 循环优化 → Codex 实现 → 当前 agent 评审</p>
+    </div>
+
+    <div class="bg-slate-900 rounded-2xl p-6 md:p-8 text-slate-100 overflow-x-auto">
+<pre class="code-block"><span class="text-slate-500"># v1.5 修订：删 edges / alias 主键 / loop.body 含 wait_user（用户反馈式循环）</span>
+<span class="text-amber-300">name:</span> cross-llm-pipeline
+<span class="text-amber-300">version:</span> 1.0
+
+<span class="text-amber-300">vars:</span>
+  <span class="text-amber-300">topic:</span> <span class="text-emerald-300">""</span>
+  <span class="text-amber-300">max_refine:</span> <span class="text-sky-300">3</span>
+
+<span class="text-amber-300">nodes:</span>
+  <span class="text-pink-400">-</span> <span class="text-amber-300">alias:</span> research                       <span class="text-slate-500"># v1.5 alias 替代 id；CLI 自动生成 UUID 主键</span>
+    <span class="text-amber-300">type:</span> agent_call
+    <span class="text-amber-300">description:</span> 调研主题，给出核心要点列表
+    <span class="text-amber-300">executor:</span> caller
+    <span class="text-amber-300">prompt:</span> <span class="text-emerald-300">|</span>
+      <span class="text-emerald-300">调研主题：{{topic}}</span>
+    <span class="text-amber-300">output:</span> research_result               <span class="text-slate-500"># v1.5 必填</span>
+
+  <span class="text-pink-400">-</span> <span class="text-amber-300">alias:</span> design
+    <span class="text-amber-300">type:</span> agent_call
+    <span class="text-amber-300">description:</span> 由 Claude 基于调研结果产出技术设计
+    <span class="text-amber-300">executor:</span> <span class="text-pink-300">claude</span>
+    <span class="text-amber-300">prompt:</span> <span class="text-emerald-300">|</span>
+      <span class="text-emerald-300">基于调研结果设计：{{research_result}}</span>
+    <span class="text-amber-300">output:</span> design_doc
+    <span class="text-amber-300">timeout:</span> <span class="text-sky-300">600</span>
+    <span class="text-amber-300">context_files:</span>                     <span class="text-slate-500"># v1.5：注入项目文件给外部 LLM</span>
+      <span class="text-pink-400">-</span> <span class="text-emerald-300">"./README.md"</span>
+
+  <span class="text-pink-400">-</span> <span class="text-amber-300">alias:</span> refine_loop
+    <span class="text-amber-300">type:</span> <span class="text-pink-300">loop</span>
+    <span class="text-amber-300">description:</span> 用户反馈式循环（v1.5：body 内允许 wait_user）
+    <span class="text-amber-300">condition:</span> <span class="text-emerald-300">"{{review.approved}} == false"</span>
+    <span class="text-amber-300">max_iterations:</span> <span class="text-emerald-300">"{{max_refine}}"</span>
+    <span class="text-amber-300">body:</span>
+      <span class="text-pink-400">-</span> <span class="text-amber-300">alias:</span> review                    <span class="text-slate-500"># v1.5 关键：每轮先问用户</span>
+        <span class="text-amber-300">type:</span> <span class="text-pink-300">wait_user</span>
+        <span class="text-amber-300">description:</span> 用户审阅本轮设计
+        <span class="text-amber-300">message:</span> 是否通过？
+        <span class="text-amber-300">schema:</span>                         <span class="text-slate-500"># v1.5 JSON Schema 子集</span>
+          <span class="text-amber-300">type:</span> object
+          <span class="text-amber-300">required:</span> [approved]
+          <span class="text-amber-300">properties:</span>
+            <span class="text-amber-300">approved:</span> <span class="text-pink-400">{</span> <span class="text-amber-300">type:</span> boolean <span class="text-pink-400">}</span>
+            <span class="text-amber-300">feedback:</span> <span class="text-pink-400">{</span> <span class="text-amber-300">type:</span> string <span class="text-pink-400">}</span>
+      <span class="text-pink-400">-</span> <span class="text-amber-300">alias:</span> refine
+        <span class="text-amber-300">type:</span> agent_call
+        <span class="text-amber-300">description:</span> 根据反馈优化设计
+        <span class="text-amber-300">executor:</span> claude
+        <span class="text-amber-300">prompt:</span> <span class="text-emerald-300">"反馈：{{review.feedback}}\n原设计：{{design_doc}}"</span>
+        <span class="text-amber-300">output:</span> design_doc
+
+  <span class="text-pink-400">-</span> <span class="text-amber-300">alias:</span> implement
+    <span class="text-amber-300">type:</span> agent_call
+    <span class="text-amber-300">description:</span> 由 Codex 实现代码
+    <span class="text-amber-300">executor:</span> <span class="text-pink-300">codex</span>
+    <span class="text-amber-300">prompt:</span> <span class="text-emerald-300">"基于设计实现：{{design_doc}}"</span>
+    <span class="text-amber-300">output:</span> code
+
+  <span class="text-pink-400">-</span> <span class="text-amber-300">alias:</span> final_review
+    <span class="text-amber-300">type:</span> agent_call
+    <span class="text-amber-300">description:</span> 回到当前 agent 做最终评审
+    <span class="text-amber-300">executor:</span> caller
+    <span class="text-amber-300">prompt:</span> <span class="text-emerald-300">"评审代码风格：{{code}}"</span>
+    <span class="text-amber-300">output:</span> final_report
+<span class="text-slate-500"># 注意：v1.5 移除 edges，仅按 nodes 数组顺序执行</span>
+</pre>
+    </div>
+  </div>
+</section>
+
+<!-- Section: CLI Commands -->
+<section class="py-20 bg-slate-50">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="mb-10">
+      <span class="pill bg-slate-200 text-slate-700 mb-3">§4.2 命令</span>
+      <h2 class="text-3xl font-bold mb-2">CLI 命令速查</h2>
+    </div>
+
+    <div class="overflow-x-auto bg-white rounded-2xl border border-slate-200 shadow-sm">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide">
+          <tr>
+            <th class="text-left px-4 py-3">命令</th>
+            <th class="text-left px-4 py-3">用途</th>
+            <th class="text-left px-4 py-3">关键参数</th>
+            <th class="text-left px-4 py-3">返回 action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr>
+            <td class="px-4 py-3"><code class="kbd">start</code></td>
+            <td class="px-4 py-3">启动新 workflow</td>
+            <td class="px-4 py-3 text-xs"><code>workflow, vars</code></td>
+            <td class="px-4 py-3"><code class="text-brand-700">execute_agent</code> / <code class="text-amber-700">wait_user</code></td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3"><code class="kbd">advance</code></td>
+            <td class="px-4 py-3">caller 节点完成后推进</td>
+            <td class="px-4 py-3 text-xs"><code>run_id, result</code></td>
+            <td class="px-4 py-3">下一动作</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3"><code class="kbd">resume</code></td>
+            <td class="px-4 py-3">阻塞节点恢复</td>
+            <td class="px-4 py-3 text-xs"><code>run_id, user_input</code></td>
+            <td class="px-4 py-3">下一动作</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3"><code class="kbd">status</code></td>
+            <td class="px-4 py-3">查看某个 Run 状态</td>
+            <td class="px-4 py-3 text-xs"><code>run_id</code></td>
+            <td class="px-4 py-3">完整 state.json</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3"><code class="kbd">list</code></td>
+            <td class="px-4 py-3">列出所有 Run</td>
+            <td class="px-4 py-3 text-xs"><code>status?</code></td>
+            <td class="px-4 py-3">Run 数组</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3"><code class="kbd">abort</code></td>
+            <td class="px-4 py-3">中止运行中的 Run</td>
+            <td class="px-4 py-3 text-xs"><code>run_id</code></td>
+            <td class="px-4 py-3">aborted 状态</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3"><code class="kbd">validate</code></td>
+            <td class="px-4 py-3">校验 YAML（dry-run）</td>
+            <td class="px-4 py-3 text-xs"><code>workflow</code></td>
+            <td class="px-4 py-3">错误列表</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3"><code class="kbd">executors</code></td>
+            <td class="px-4 py-3">列出可用 LLM CLI (v1.1)</td>
+            <td class="px-4 py-3 text-xs">—</td>
+            <td class="px-4 py-3">executor 列表</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3"><code class="kbd">config</code></td>
+            <td class="px-4 py-3">管理 executor 配置 (v1.1)</td>
+            <td class="px-4 py-3 text-xs"><code>action, executor</code></td>
+            <td class="px-4 py-3">配置 JSON</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mt-6 bg-slate-900 rounded-2xl p-6 text-slate-100">
+      <p class="text-xs text-slate-400 mb-2">所有命令统一调用格式：</p>
+      <code class="code-block text-emerald-300">python3 skills/agent-workflow/tool.py &lt;command&gt; '&lt;JSON params&gt;'</code>
+    </div>
+  </div>
+</section>
+
+<!-- §9 v1 能力矩阵 -->
+<section id="capability-matrix" class="py-20 px-6 bg-gradient-to-b from-white to-slate-50">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex items-center gap-3 mb-3">
+      <span class="pill bg-brand-100 text-brand-700">§9 v1 能力矩阵</span>
+      <span class="pill bg-amber-100 text-amber-700">v1.5 新增</span>
+    </div>
+    <h2 class="text-3xl md:text-4xl font-bold mb-4 text-slate-900">明确 v1 / v1.5 / v2 的能力边界</h2>
+    <p class="text-lg text-slate-600 mb-10 max-w-3xl">
+      响应审核 P1-10：避免「这个 v1 算不算 done」的争议。每一项能力归属版本明确，
+      <strong>Phase 5 第一批最小闭环</strong>仅取下表 ✅ 必做的子集。
+    </p>
+
+    <div class="grid lg:grid-cols-2 gap-6 mb-8">
+      <!-- 命令 -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6">
+        <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+          <span class="text-2xl">⚡</span> 命令
+        </h3>
+        <table class="w-full text-sm">
+          <thead><tr class="text-xs text-slate-500 border-b border-slate-200"><th class="text-left py-2">命令</th><th class="text-center">v1</th><th class="text-center">v1.5</th><th class="text-center">v2</th></tr></thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr><td class="py-1.5 font-mono text-xs">create / validate</td><td class="text-center text-emerald-500">✅</td><td></td><td></td></tr>
+            <tr><td class="py-1.5 font-mono text-xs">start / advance / resume</td><td class="text-center text-emerald-500">✅</td><td></td><td></td></tr>
+            <tr><td class="py-1.5 font-mono text-xs">status（含 last_payload）/ list / abort</td><td class="text-center text-emerald-500">✅</td><td></td><td></td></tr>
+            <tr><td class="py-1.5 font-mono text-xs"><strong>list --format=table</strong>（人类可读）</td><td class="text-center text-emerald-500">✅</td><td></td><td></td></tr>
+            <tr><td class="py-1.5 font-mono text-xs">executors / config show</td><td class="text-center text-emerald-500">✅</td><td></td><td></td></tr>
+            <tr><td class="py-1.5 font-mono text-xs">config set / prune / stats</td><td></td><td class="text-center text-amber-500">✅</td><td></td></tr>
+            <tr><td class="py-1.5 font-mono text-xs">dry-run / recover</td><td></td><td class="text-center text-amber-500">✅</td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 节点类型 -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6">
+        <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+          <span class="text-2xl">🧩</span> 节点类型
+        </h3>
+        <table class="w-full text-sm">
+          <thead><tr class="text-xs text-slate-500 border-b border-slate-200"><th class="text-left py-2">类型</th><th class="text-center">v1</th><th class="text-center">v1.5</th><th class="text-center">v2</th></tr></thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr><td class="py-1.5 font-mono text-xs">agent_call</td><td class="text-center text-emerald-500">✅</td><td></td><td></td></tr>
+            <tr><td class="py-1.5 font-mono text-xs">wait_user</td><td class="text-center text-emerald-500">✅</td><td></td><td></td></tr>
+            <tr><td class="py-1.5 font-mono text-xs">loop（含 body wait_user/sleep）</td><td class="text-center text-emerald-500">✅</td><td></td><td></td></tr>
+            <tr><td class="py-1.5 font-mono text-xs">sleep（同步 0-300s）</td><td class="text-center text-emerald-500">✅</td><td></td><td></td></tr>
+            <tr><td class="py-1.5 font-mono text-xs">sleep（异步，可 abort）</td><td></td><td class="text-center text-amber-500">✅</td><td></td></tr>
+            <tr><td class="py-1.5 font-mono text-xs">condition（if-else）</td><td></td><td class="text-center text-amber-500">✅</td><td></td></tr>
+            <tr><td class="py-1.5 font-mono text-xs">parallel</td><td></td><td></td><td class="text-center text-pink-500">✅</td></tr>
+            <tr><td class="py-1.5 font-mono text-xs">sub_workflow</td><td></td><td></td><td class="text-center text-pink-500">✅</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Executor -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6">
+        <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+          <span class="text-2xl">🤖</span> Executor
+        </h3>
+        <table class="w-full text-sm">
+          <thead><tr class="text-xs text-slate-500 border-b border-slate-200"><th class="text-left py-2">Executor</th><th class="text-center">v1</th><th class="text-center">v1.5</th><th class="text-center">v2</th></tr></thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr><td class="py-1.5 font-mono text-xs">caller</td><td class="text-center text-emerald-500">✅</td><td></td><td></td></tr>
+            <tr><td class="py-1.5 font-mono text-xs">claude（stdin）</td><td class="text-center text-emerald-500">✅</td><td></td><td></td></tr>
+            <tr><td class="py-1.5 font-mono text-xs">codex（stdin）</td><td class="text-center text-emerald-500">✅</td><td></td><td></td></tr>
+            <tr><td class="py-1.5 font-mono text-xs">custom（via config）</td><td class="text-center text-emerald-500">✅</td><td></td><td></td></tr>
+            <tr><td class="py-1.5 font-mono text-xs">mock（测试）</td><td class="text-center text-emerald-500">✅</td><td></td><td></td></tr>
+            <tr><td class="py-1.5 font-mono text-xs">opencode / gemini</td><td></td><td class="text-center text-amber-500">✅</td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 持久化 / 校验 / 安全 -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6">
+        <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+          <span class="text-2xl">🔒</span> 持久化 / 校验 / 安全
+        </h3>
+        <table class="w-full text-sm">
+          <thead><tr class="text-xs text-slate-500 border-b border-slate-200"><th class="text-left py-2">能力</th><th class="text-center">v1</th><th class="text-center">v1.5</th></tr></thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr><td class="py-1.5 text-xs">state.json + workflow.yaml 快照</td><td class="text-center text-emerald-500">✅</td><td></td></tr>
+            <tr><td class="py-1.5 text-xs">events.ndjson 进度流</td><td class="text-center text-emerald-500">✅</td><td></td></tr>
+            <tr><td class="py-1.5 text-xs">audit.log 最小版</td><td class="text-center text-emerald-500">✅</td><td></td></tr>
+            <tr><td class="py-1.5 text-xs">outputs/&lt;uuid&gt;.txt 大输出独立文件</td><td class="text-center text-emerald-500">✅</td><td></td></tr>
+            <tr><td class="py-1.5 text-xs">L1+L2+L3+L4 校验</td><td class="text-center text-emerald-500">✅</td><td></td></tr>
+            <tr><td class="py-1.5 text-xs">L3 变量数据流分析</td><td class="text-center text-emerald-500">✅</td><td></td></tr>
+            <tr><td class="py-1.5 text-xs">L4 强制拒绝启动（缺 executor）</td><td class="text-center text-emerald-500">✅</td><td></td></tr>
+            <tr><td class="py-1.5 text-xs">stdin 默认传 prompt</td><td class="text-center text-emerald-500">✅</td><td></td></tr>
+            <tr><td class="py-1.5 text-xs">state 不记渲染 prompt</td><td class="text-center text-emerald-500">✅</td><td></td></tr>
+            <tr><td class="py-1.5 text-xs">vars._secrets 脱敏</td><td class="text-center text-emerald-500">✅</td><td></td></tr>
+            <tr><td class="py-1.5 text-xs">macOS + Linux</td><td class="text-center text-emerald-500">✅</td><td></td></tr>
+            <tr><td class="py-1.5 text-xs"><strong>chain_timeout=25s + action:continue</strong></td><td class="text-center text-emerald-500">✅</td><td></td></tr>
+            <tr><td class="py-1.5 text-xs"><strong>stall watchdog 300s + EXECUTOR_STALLED</strong></td><td class="text-center text-emerald-500">✅</td><td></td></tr>
+            <tr><td class="py-1.5 text-xs"><strong>caller 接力：status.last_payload + list 启动检查</strong></td><td class="text-center text-emerald-500">✅</td><td></td></tr>
+            <tr><td class="py-1.5 text-xs">output_schema / assertion 运行时校验</td><td></td><td class="text-center text-amber-500">✅</td></tr>
+            <tr><td class="py-1.5 text-xs">save_output: false（side-effect 节点）</td><td></td><td class="text-center text-amber-500">✅</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Phase 5 最小闭环 -->
+    <div class="bg-gradient-to-br from-brand-50 to-pink-50 rounded-2xl border-2 border-brand-200 p-6 md:p-8">
+      <h3 class="font-bold text-xl mb-3 flex items-center gap-2 text-brand-900">
+        <span class="text-2xl">🎯</span> Phase 5 第一批最小闭环（强烈推荐先跑通）
+      </h3>
+      <p class="text-sm text-slate-700 mb-4">先用 mock executor 把状态机/校验/持久化跑通，再上真实 claude/codex。</p>
+      <div class="grid md:grid-cols-3 gap-4 text-sm">
+        <div>
+          <div class="font-semibold text-brand-800 mb-2">命令</div>
+          <div class="text-slate-600 text-xs space-y-0.5">
+            <div>validate / start / advance</div>
+            <div>resume / status / create</div>
+            <div>executors</div>
+          </div>
+        </div>
+        <div>
+          <div class="font-semibold text-brand-800 mb-2">节点 / Executor</div>
+          <div class="text-slate-600 text-xs space-y-0.5">
+            <div>agent_call / wait_user / loop / sleep</div>
+            <div>caller + mock</div>
+            <div>（loop body 含 wait_user/sleep）</div>
+          </div>
+        </div>
+        <div>
+          <div class="font-semibold text-brand-800 mb-2">持久化 / 协议</div>
+          <div class="text-slate-600 text-xs space-y-0.5">
+            <div>state.json + workflow.yaml</div>
+            <div>events.ndjson + outputs/</div>
+            <div>统一错误协议（顶层 error）</div>
+          </div>
+        </div>
+      </div>
+      <div class="mt-4 pt-4 border-t border-brand-200 text-xs text-brand-800">
+        <strong>第二批</strong>：接真实 claude/codex（stdin） · audit.log · secrets · context_files · abort · list · config show
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="bg-slate-900 text-slate-300 py-12">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="grid md:grid-cols-3 gap-8 mb-8">
+      <div>
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm">A</div>
+          <span class="font-semibold text-white">agent-workflow</span>
+        </div>
+        <p class="text-sm text-slate-400">跨 IDE / 跨 LLM 工作流引擎</p>
+      </div>
+      <div>
+        <h4 class="text-white font-semibold mb-3 text-sm">设计阶段</h4>
+        <ul class="text-sm space-y-1 text-slate-400">
+          <li>v1.0 基础架构</li>
+          <li>v1.1 跨 LLM Executor</li>
+          <li>v1.2 节点 description</li>
+          <li>v1.3 执行记录专章</li>
+          <li>v1.4 校验/创建/错误处理 + 定位</li>
+          <li class="text-amber-300">v1.5 审核大修订（24 项）</li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="text-white font-semibold mb-3 text-sm">相关文档</h4>
+        <ul class="text-sm space-y-1 text-slate-400">
+          <li><code class="text-brand-300">design/agent-workflow/2026-05-27-01-设计文档.md</code></li>
+          <li><code class="text-brand-300">design/agent-workflow/2026-05-27-03-设计审核.md</code></li>
+          <li><code class="text-brand-300">skills/agent-workflow/SKILL.md</code></li>
+        </ul>
+      </div>
+    </div>
+    <div class="pt-8 border-t border-slate-800 text-xs text-slate-500 flex flex-wrap items-center justify-between gap-4">
+      <div>© 2026 shetengteng · skillix-hub · Phase 3 设计稿（v1.5）</div>
+      <div>使用 Tailwind CSS + Mermaid 渲染</div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

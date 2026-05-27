@@ -1,0 +1,57 @@
+name: iterative-refine
+version: "1.0"
+description: |
+  起草 → 用户反馈 → 改稿 的循环。展示 loop.body 内允许 wait_user 的关键能力。
+
+vars:
+  brief: ""
+  max_rounds: 3
+
+nodes:
+  - alias: first_draft
+    type: agent_call
+    description: 起草初版
+    executor: caller
+    prompt: |
+      请根据以下 brief 起草初版：
+
+      {{brief}}
+    output: draft
+
+  - alias: refine_loop
+    type: loop
+    description: 反馈循环 — 每轮先让用户判断，再据反馈改稿
+    condition: "{{review.approved}} == false"
+    max_iterations: "{{max_rounds}}"
+    body:
+      - alias: review
+        type: wait_user
+        description: 本轮草稿审阅
+        message: |
+          当前稿件：
+
+          {{draft}}
+
+          是否通过？若不通过请填写 feedback。
+        schema:
+          type: object
+          required: [approved]
+          properties:
+            approved:
+              type: boolean
+            feedback:
+              type: string
+              default: ""
+
+      - alias: refine
+        type: agent_call
+        description: 根据反馈改稿
+        executor: caller
+        prompt: |
+          请根据反馈优化稿件：
+
+          反馈：{{review.feedback}}
+
+          原稿：
+          {{draft}}
+        output: draft

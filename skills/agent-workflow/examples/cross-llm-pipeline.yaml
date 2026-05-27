@@ -1,0 +1,97 @@
+name: cross-llm-pipeline
+version: "1.0"
+description: |
+  调研由 caller / Claude Code 完成，设计交给 Claude，实现交给 Codex，最后回到 caller 评审。
+  适合需要多 LLM 协作的复杂工作流。
+
+vars:
+  topic: ""
+  max_refine: 3
+
+nodes:
+  - alias: research
+    type: agent_call
+    description: 调研主题，给出核心要点列表
+    executor: caller
+    prompt: |
+      请就主题"{{topic}}"做技术调研，输出 5 个核心要点。
+    output: research_notes
+
+  - alias: design
+    type: agent_call
+    description: 由 Claude 基于调研结果产出技术设计
+    executor: claude
+    prompt: |
+      你是资深架构师。基于以下调研要点，写一份 1500 字以内的技术设计文档：
+
+      {{research_notes}}
+
+      要求：模块划分、关键数据结构、3 条边界条件、回滚策略。
+    output: design_doc
+    timeout: 600
+
+  - alias: refine_loop
+    type: loop
+    description: 用户反馈式循环优化设计
+    condition: "{{review.approved}} == false"
+    max_iterations: "{{max_refine}}"
+    body:
+      - alias: review
+        type: wait_user
+        description: 用户审阅本轮设计
+        message: |
+          当前设计：
+
+          {{design_doc}}
+
+          是否通过？若不通过请填写 feedback。
+        schema:
+          type: object
+          required: [approved]
+          properties:
+            approved:
+              type: boolean
+            feedback:
+              type: string
+              default: ""
+
+      - alias: refine
+        type: agent_call
+        description: 根据用户反馈优化设计
+        executor: claude
+        prompt: |
+          请根据反馈优化设计：
+
+          反馈：{{review.feedback}}
+
+          原设计：
+          {{design_doc}}
+        output: design_doc
+
+  - alias: rate_limit
+    type: sleep
+    description: 防 Codex API rate limit
+    seconds: 3
+
+  - alias: implement
+    type: agent_call
+    description: 由 Codex 基于设计实现代码
+    executor: codex
+    prompt: |
+      根据以下设计在仓库内完成实现，列出修改文件清单：
+
+      {{design_doc}}
+    output: implementation
+    timeout: 900
+
+  - alias: final_review
+    type: agent_call
+    description: 回到当前 IDE agent，结合项目上下文做最终评审
+    executor: caller
+    prompt: |
+      请评审 Codex 的实现：
+
+      {{implementation}}
+
+      要求：风险点、未覆盖测试、可改进建议。
+    output: review_report

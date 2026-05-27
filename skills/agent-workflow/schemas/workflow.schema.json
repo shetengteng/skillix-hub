@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skillix.dev/agent-workflow/workflow.schema.json",
+  "title": "agent-workflow workflow definition (v1.5)",
+  "type": "object",
+  "required": ["name", "nodes"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+    },
+    "version": {"type": "string"},
+    "description": {"type": "string"},
+    "vars": {"type": "object"},
+    "executors": {"type": "object"},
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "chain_timeout_ms": {"type": "integer", "minimum": 1},
+        "stall_timeout_ms": {"type": "integer", "minimum": 100},
+        "max_history_per_run": {"type": "integer", "minimum": 1},
+        "max_runs_listed": {"type": "integer", "minimum": 1},
+        "allow_missing_executors": {"type": "boolean"}
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/node"}
+    }
+  },
+  "$defs": {
+    "alias": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+    },
+    "node": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {"type": {"enum": ["agent_call", "wait_user", "loop", "sleep"]}},
+      "oneOf": [
+        {"$ref": "#/$defs/agent_call"},
+        {"$ref": "#/$defs/wait_user"},
+        {"$ref": "#/$defs/loop"},
+        {"$ref": "#/$defs/sleep"}
+      ]
+    },
+    "agent_call": {
+      "type": "object",
+      "required": ["type", "prompt", "output"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "agent_call"},
+        "alias": {"$ref": "#/$defs/alias"},
+        "description": {"type": "string"},
+        "executor": {"type": "string", "minLength": 1},
+        "prompt": {"type": "string", "minLength": 1},
+        "output": {"$ref": "#/$defs/alias"},
+        "timeout": {"type": "integer", "minimum": 1, "maximum": 86400},
+        "context_files": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "wait_user": {
+      "type": "object",
+      "required": ["type", "message", "schema"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "wait_user"},
+        "alias": {"$ref": "#/$defs/alias"},
+        "description": {"type": "string"},
+        "message": {"type": "string", "minLength": 1},
+        "output": {"$ref": "#/$defs/alias"},
+        "schema": {"$ref": "#/$defs/wait_user_schema"}
+      }
+    },
+    "wait_user_schema": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "object"},
+        "required": {"type": "array", "items": {"type": "string"}},
+        "properties": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {"$ref": "#/$defs/wait_user_field"}
+        }
+      }
+    },
+    "wait_user_field": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"enum": ["string", "boolean", "number", "integer"]},
+        "default": {},
+        "description": {"type": "string"},
+        "enum": {"type": "array"}
+      }
+    },
+    "loop": {
+      "type": "object",
+      "required": ["type", "condition", "max_iterations", "body"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "loop"},
+        "alias": {"$ref": "#/$defs/alias"},
+        "description": {"type": "string"},
+        "condition": {"type": "string", "minLength": 1},
+        "max_iterations": {
+          "oneOf": [
+            {"type": "integer", "minimum": 1, "maximum": 100},
+            {"type": "string", "pattern": "^\\{\\{\\s*[A-Za-z_][A-Za-z0-9_\\.]*\\s*\\}\\}$"}
+          ]
+        },
+        "body": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/node"}
+        }
+      }
+    },
+    "sleep": {
+      "type": "object",
+      "required": ["type", "seconds"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "sleep"},
+        "alias": {"$ref": "#/$defs/alias"},
+        "description": {"type": "string"},
+        "seconds": {
+          "oneOf": [
+            {"type": "number", "minimum": 0, "maximum": 300},
+            {"type": "string", "pattern": "^\\{\\{\\s*[A-Za-z_][A-Za-z0-9_\\.]*\\s*\\}\\}$"}
+          ]
+        }
+      }
+    }
+  }
+}

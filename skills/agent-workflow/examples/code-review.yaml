@@ -1,0 +1,74 @@
+name: code-review
+version: "1.0"
+description: |
+  对一个 PR / Diff 做多角度评审：风险扫描 → 测试覆盖 → 人工确认 → 形成报告。
+  纯 caller 工作流，可在任意 IDE 内运行。
+
+vars:
+  diff_summary: ""
+
+nodes:
+  - alias: risk_scan
+    type: agent_call
+    description: 扫描风险点
+    executor: caller
+    prompt: |
+      以下是待评审的代码改动摘要：
+
+      {{diff_summary}}
+
+      请列出潜在风险（最多 5 条），每条含影响面与建议。
+    output: risks
+
+  - alias: test_coverage
+    type: agent_call
+    description: 评估测试覆盖度
+    executor: caller
+    prompt: |
+      基于改动摘要：
+
+      {{diff_summary}}
+
+      回答：
+      1. 现有改动是否新增 / 修改了测试？
+      2. 哪些改动路径建议补测？
+      3. 建议的最小测试集是什么？
+    output: test_gap
+
+  - alias: confirm
+    type: wait_user
+    description: 让审阅者补充关注点
+    message: |
+      已生成自动评审：
+
+      风险：
+      {{risks}}
+
+      测试缺口：
+      {{test_gap}}
+
+      你还想关注什么？
+    schema:
+      type: object
+      required: [extra_focus]
+      properties:
+        extra_focus:
+          type: string
+          default: ""
+        approve_now:
+          type: boolean
+          default: false
+
+  - alias: final_report
+    type: agent_call
+    description: 汇总成可发送的评审报告
+    executor: caller
+    prompt: |
+      把以下信息整理成 Markdown 评审报告：
+
+      风险：{{risks}}
+      测试缺口：{{test_gap}}
+      额外关注：{{confirm.extra_focus}}
+
+      报告结构：## 风险 / ## 测试 / ## 关注点 / ## 总体结论
+    output: review_report

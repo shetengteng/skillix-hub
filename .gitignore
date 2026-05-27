@@ -36,6 +36,12 @@ tests/**/testdata/
 tests/**/reports/
 .test_tmp/
 
+# Agent Workflow runtime data (state.json / events.ndjson / outputs/)
+.agent-workflow/
+**/.agent-workflow/
+
 # Extracted archives
 prompt-skills-extracted/
 userinput.py
+
+design/other

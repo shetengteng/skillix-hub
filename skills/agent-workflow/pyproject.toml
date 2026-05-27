@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-workflow"
+version = "1.5.2-dev"
+description = "Agent 驱动的跨 IDE / 跨 LLM 工作流引擎。支持串行节点、阻塞节点、循环节点、原子 sleep；YAML 配置 + CLI 状态机实现 Cursor / Claude Code / Codex / OpenCode 通用。"
+readme = "SKILL.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "TerrellShe" }]
+keywords = [
+    "agent",
+    "workflow",
+    "llm",
+    "cross-ide",
+    "cross-llm",
+    "claude",
+    "codex",
+    "cursor",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "PyYAML>=6.0",
+    "jsonschema>=4.20",
+    "filelock>=3.13",
+]
+
+[project.scripts]
+agent-workflow = "tool:main"
+
+[tool.setuptools]
+py-modules = ["tool"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["lib*"]
+exclude = ["tests*", "examples*", "schemas*"]
