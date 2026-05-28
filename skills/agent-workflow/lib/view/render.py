@@ -1,26 +1,31 @@
-"""view 命令：把 run 状态渲染为自包含 HTML。
+"""view 命令：把 runs 数据序列化为 ``window.__AW_DATA__`` + 拷贝静态 SPA 模板。
 
-两种模式：
-    1. 总览（未传 run_id）：所有 run 的可搜索 / 可过滤表格，每个 run 同目录生成一份详情页
-    2. 单 run（传 run_id）：节点拓扑 + cursor 高亮 + history 时间线 + events 流 + vars
+设计原则:
+    - ``data.js`` 只承载**纯 JSON 数据**，不含任何 HTML 字符串
+    - 浏览器侧 JS 负责所有 DOM 构造与格式化
+    - Python 端做的事：从 ``.agent-workflow/runs/`` 收集 state/workflow/events，
+      把 nodes 打平、关联 history、解析 cursor，输出干净的结构化数据
 
-视觉风格：shadcn / new-york 主题（zero-dependency vanilla CSS + dark/light 切换）。
-本文件只负责"准备数据 + 调模板"；CSS / HTML / JS 全部在 ``templates/`` 目录。
+输出 (``.agent-workflow/views/`` 下，固定每次覆盖):
+    index.html        — overview SPA shell
+    workflow.html     — single-run SPA shell (reads ``location.hash`` 为 run_id)
+    _assets/
+        base.css, overview.css, run.css       — 样式
+        theme.js, overview.js, workflow.js    — 行为 + 渲染
+        data.js                                — ``window.__AW_DATA__ = {...};``
 """
 from __future__ import annotations
 
-import html
 import json
 import os
 import platform
 import shutil
 import subprocess
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from lib.errors import ErrorCode, WorkflowError
+from lib.errors import WorkflowError
 from lib.logger import read_events
 from lib.store import (
     DEFAULT_RUNS_DIRNAME,
@@ -34,18 +39,18 @@ from lib.store import (
 
 from . import templates as T
 
-# ---------------------------------------------------------------------------
-# 状态 → shadcn badge variant 映射
-# ---------------------------------------------------------------------------
+LIVE_STATUSES = {"running", "awaiting_agent", "waiting_user"}
 
-STATUS_BADGE: dict[str, str] = {
-    "running":        "badge-info",
-    "awaiting_agent": "badge-info",
-    "waiting_user":   "badge-warning",
-    "completed":      "badge-success",
-    "failed":         "badge-destructive",
-    "aborted":        "badge-muted",
-}
+ASSETS_DIRNAME = "_assets"
+STATIC_ASSET_FILES = (
+    "base.css",
+    "overview.css",
+    "run.css",
+    "theme.js",
+    "overview.js",
+    "workflow.js",
+)
+STATIC_HTML_FILES = ("index.html", "workflow.html")
 
 
 # ---------------------------------------------------------------------------
@@ -53,41 +58,45 @@ STATUS_BADGE: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 
-def _e(value: Any) -> str:
-    """HTML escape，None → 空字符串。"""
-    if value is None:
-        return ""
-    return html.escape(str(value), quote=True)
-
-
 def _utc_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _slugify(value: str) -> str:
-    return "".join(c if c.isalnum() or c in "-_." else "_" for c in value)
+def _parse_iso(ts: str | None) -> datetime | None:
+    if not ts:
+        return None
+    try:
+        if ts.endswith("Z"):
+            ts = ts[:-1] + "+00:00"
+        return datetime.fromisoformat(ts)
+    except (TypeError, ValueError):
+        return None
 
 
-def _badge_class(status: str | None) -> str:
-    return STATUS_BADGE.get(status or "", "badge-muted")
+def _runtime_ms(created: str | None, updated: str | None) -> int | None:
+    a = _parse_iso(created)
+    b = _parse_iso(updated)
+    if not a or not b:
+        return None
+    return max(0, int((b - a).total_seconds() * 1000))
 
 
-def _open_in_browser(path: Path) -> bool:
-    """跨平台自动打开 HTML。失败返回 False，不抛错。"""
+def _open_url(url: str) -> bool:
+    """跨平台打开 URL（支持 file:// + hash）。失败返回 False，不抛错。"""
     try:
         if platform.system() == "Darwin":
             subprocess.Popen(
-                ["open", str(path)],
+                ["open", url],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
         elif platform.system() == "Windows":
-            os.startfile(str(path))  # type: ignore[attr-defined]
+            os.startfile(url)  # type: ignore[attr-defined]
         else:
             opener = shutil.which("xdg-open") or shutil.which("sensible-browser")
             if not opener:
                 return False
             subprocess.Popen(
-                [opener, str(path)],
+                [opener, url],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
         return True
@@ -96,15 +105,8 @@ def _open_in_browser(path: Path) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# 节点 / history / events 行渲染
+# 节点拓扑遍历
 # ---------------------------------------------------------------------------
-
-
-def _node_status_for_alias(history: list[dict[str, Any]], alias: str) -> str | None:
-    for entry in reversed(history):
-        if entry.get("alias") == alias:
-            return entry.get("status")
-    return None
 
 
 def _flatten_nodes(workflow: dict[str, Any]) -> list[tuple[dict[str, Any], int]]:
@@ -144,233 +146,217 @@ def _resolve_cursor_alias(state: dict[str, Any], workflow: dict[str, Any]) -> st
         return None
 
 
-def _build_node_meta(node: dict[str, Any]) -> str:
-    parts: list[str] = []
-    ntype = node.get("type")
-    if ntype == "agent_call":
-        parts.append(f"executor: <code>{_e(node.get('executor') or '-')}</code>")
-        if node.get("output"):
-            parts.append(f"output: <code>{_e(node.get('output'))}</code>")
-    if ntype == "sleep" and node.get("seconds") is not None:
-        parts.append(f"seconds: <code>{_e(node.get('seconds'))}</code>")
-    if ntype == "loop":
-        if node.get("max_iterations") is not None:
-            parts.append(f"max_iter: <code>{_e(node.get('max_iterations'))}</code>")
-        if node.get("condition"):
-            parts.append(f"cond: <code>{_e(node.get('condition'))}</code>")
-    if node.get("description"):
-        parts.append(_e(node.get("description")))
-    if not parts:
-        return "&nbsp;"
-    return '<span class="sep">·</span>'.join(parts)
+def _group_history_by_alias(history: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for entry in history:
+        alias = entry.get("alias")
+        if not alias:
+            continue
+        grouped.setdefault(alias, []).append(entry)
+    return grouped
 
 
-def _node_classes(indent: int, is_cursor: bool, is_loop: bool) -> str:
-    classes: list[str] = []
-    if indent > 0:
-        classes.append(f"indented-{min(indent, 2)}")
-    if is_cursor:
-        classes.append("is-cursor")
-    if is_loop:
-        classes.append("is-loop")
-    return " ".join(classes)
+def _last_status_for_alias(entries: list[dict[str, Any]]) -> str | None:
+    for entry in reversed(entries):
+        if entry.get("status"):
+            return entry["status"]
+    return None
 
 
-def _render_node_row(
+# ---------------------------------------------------------------------------
+# 单 run 数据构造
+# ---------------------------------------------------------------------------
+
+
+def _node_summary(
     node: dict[str, Any],
     indent: int,
-    history: list[dict[str, Any]],
-    cursor_alias: str | None,
-) -> str:
-    alias = node.get("alias") or ""
+    entries: list[dict[str, Any]],
+    is_cursor: bool,
+) -> dict[str, Any]:
+    """把单个 node + 其历史浓缩为前端友好的结构化数据。"""
+    durations = [e.get("duration_ms") for e in entries if e.get("duration_ms") is not None]
+    total_ms = sum(durations) if durations else None
+    last = entries[-1] if entries else None
+    last_ts = (last.get("ended_at") or last.get("started_at")) if last else None
     ntype = node.get("type") or "?"
-    is_cursor = bool(alias and alias == cursor_alias)
-    status = _node_status_for_alias(history, alias) or ("running" if is_cursor else "")
 
-    duration_html = ""
-    for entry in reversed(history):
-        if entry.get("alias") == alias and entry.get("duration_ms") is not None:
-            duration_html = f"{entry['duration_ms']} ms"
-            break
-
-    cursor_tag = '<span class="badge badge-outline">current</span>' if is_cursor else ""
-
-    return T.render_fragment(
-        "node_row.html",
-        node_classes=_node_classes(indent, is_cursor, ntype == "loop"),
-        status=_e(status),
-        alias=_e(alias),
-        ntype=_e(ntype),
-        cursor_tag=cursor_tag,
-        meta=_build_node_meta(node),
-        duration=_e(duration_html),
-    )
-
-
-def _render_history_row(entry: dict[str, Any]) -> str:
-    return T.render_fragment(
-        "history_row.html",
-        alias=_e(entry.get("alias") or "?"),
-        ntype=_e(entry.get("type") or "?"),
-        status=_e(entry.get("status") or "?"),
-        status_badge_class=_badge_class(entry.get("status")),
-        started=_e(entry.get("started_at") or ""),
-        ended=_e(entry.get("ended_at") or ""),
-        duration=_e(f"{entry['duration_ms']} ms" if entry.get("duration_ms") is not None else "-"),
-    )
-
-
-def _render_event_row(event: dict[str, Any]) -> str:
-    etype = event.get("type") or "?"
-    extra = {k: v for k, v in event.items() if k not in ("ts", "type")}
-    fields = " ".join(
-        f"{_e(k)}=<code>{_e(v if not isinstance(v, (dict, list)) else json.dumps(v, ensure_ascii=False))}</code>"
-        for k, v in extra.items()
-    )
-    css = ""
-    if etype == "error" or "error_code" in extra:
-        css = "error"
-    elif etype.endswith("_end") and extra.get("status") == "failed":
-        css = "error"
-    elif etype == "run_end" and extra.get("status") == "completed":
-        css = "success"
-    return T.render_fragment(
-        "event_row.html",
-        event_class=css,
-        ts=_e(event.get("ts") or ""),
-        etype=_e(etype),
-        fields=fields,
-    )
-
-
-# ---------------------------------------------------------------------------
-# 主渲染
-# ---------------------------------------------------------------------------
-
-
-def _shared_assets() -> dict[str, str]:
-    """共享的 CSS/JS 资产，每个模板都需要。"""
-    return {
-        "base_css": T.load("base.css"),
-        "theme_js": T.load("theme.js"),
-        "theme_toggle": T.load("fragments/theme_toggle.html"),
+    summary: dict[str, Any] = {
+        "alias": node.get("alias") or "",
+        "type": ntype,
+        "indent": indent,
+        "is_loop": ntype == "loop",
+        "is_cursor": is_cursor,
+        "description": node.get("description"),
+        "status": _last_status_for_alias(entries) or ("running" if is_cursor else ""),
+        "iter_count": len(entries),
+        "total_duration_ms": total_ms,
+        "last_ts": last_ts,
     }
+    if ntype == "agent_call":
+        summary["executor"] = node.get("executor")
+        summary["output"] = node.get("output")
+    elif ntype == "sleep":
+        summary["seconds"] = node.get("seconds")
+    elif ntype == "loop":
+        summary["max_iterations"] = node.get("max_iterations")
+        summary["condition"] = node.get("condition")
+    return summary
 
 
-def render_run_detail_html(
+def build_run_data(
     state: dict[str, Any],
     workflow: dict[str, Any],
     events: list[dict[str, Any]],
-) -> str:
+) -> dict[str, Any]:
+    """单 run 的纯 JSON 数据。供 ``data.js`` payload 用。"""
     history = state.get("history") or []
+    history_by_alias = _group_history_by_alias(history)
     cursor_alias = _resolve_cursor_alias(state, workflow)
+    flat_nodes = _flatten_nodes(workflow)
 
-    node_rows = "\n".join(
-        _render_node_row(node, lvl, history, cursor_alias)
-        for node, lvl in _flatten_nodes(workflow)
-    )
-    history_rows = (
-        "\n".join(_render_history_row(e) for e in history)
-        or '<tr><td colspan="6" class="muted">no history yet</td></tr>'
-    )
-    event_rows = (
-        "\n".join(_render_event_row(e) for e in events)
-        or '<div class="event-row muted">no events</div>'
-    )
+    nodes_data = [
+        _node_summary(
+            node,
+            indent,
+            history_by_alias.get(node.get("alias") or "", []),
+            bool((node.get("alias") or "") and node.get("alias") == cursor_alias),
+        )
+        for node, indent in flat_nodes
+    ]
 
     vars_view = {k: v for k, v in (state.get("vars") or {}).items() if k != "_secrets"}
-    vars_pretty = json.dumps(vars_view, ensure_ascii=False, indent=2, default=str)
+    last_alias = history[-1].get("alias") if history else None
 
-    last_payload_block = ""
-    if state.get("last_payload"):
-        last_payload_block = (
-            '<div class="card">'
-            '<div class="card-header"><h2>Last payload</h2>'
-            '<span class="count">caller handoff</span></div>'
-            '<div class="card-content">'
-            f'<pre>{_e(json.dumps(state["last_payload"], ensure_ascii=False, indent=2))}</pre>'
-            "</div></div>"
-        )
+    history_durations = [
+        e.get("duration_ms") for e in history if e.get("duration_ms") is not None
+    ]
+    avg_step_ms = (
+        int(sum(history_durations) / len(history_durations))
+        if history_durations
+        else None
+    )
 
-    error_block = ""
-    if state.get("error"):
-        error_block = (
-            '<div class="card" style="border-color:var(--destructive);">'
-            '<div class="card-header" style="border-bottom-color:var(--destructive);">'
-            '<h2 style="color:var(--destructive);">Error</h2>'
-            f'<span class="badge badge-destructive">{_e(state["error"].get("code") or "ERROR")}</span></div>'
-            '<div class="card-content">'
-            f'<pre>{_e(json.dumps(state["error"], ensure_ascii=False, indent=2))}</pre>'
-            "</div></div>"
-        )
+    return {
+        "run_id": state.get("run_id") or "",
+        "workflow_name": workflow.get("name") or "workflow",
+        "status": (state.get("status") or "").lower(),
+        "caller": state.get("caller"),
+        "created_at": state.get("created_at"),
+        "updated_at": state.get("updated_at"),
+        "history_count": len(history),
+        "event_count": len(events),
+        "node_count_top": len(workflow.get("nodes") or []),
+        "node_count_total": len(flat_nodes),
+        "runtime_ms": _runtime_ms(state.get("created_at"), state.get("updated_at")),
+        "avg_step_ms": avg_step_ms,
+        "cursor_alias": cursor_alias,
+        "last_alias": last_alias,
+        "vars": vars_view,
+        "last_payload": state.get("last_payload"),
+        "error": state.get("error"),
+        "nodes": nodes_data,
+        "events": events,
+    }
 
-    return T.render(
-        "run.html",
-        **_shared_assets(),
-        run_css=T.load("run.css"),
-        title=f"agent-workflow · {state.get('run_id') or ''}",
-        workflow_name=_e(workflow.get("name") or "workflow"),
-        run_id=_e(state.get("run_id")),
-        status=_e(state.get("status") or "?"),
-        status_badge_class=_badge_class(state.get("status")),
-        caller=_e(state.get("caller") or "-"),
-        created_at=_e(state.get("created_at") or "-"),
-        updated_at=_e(state.get("updated_at") or "-"),
-        node_count=len(workflow.get("nodes") or []),
-        node_rows=node_rows,
-        history_count=len(history),
-        history_rows=history_rows,
-        event_count=len(events),
-        event_rows=event_rows,
-        vars_pretty=_e(vars_pretty),
-        last_payload_block=last_payload_block,
-        error_block=error_block,
-        generated_at=_utc_iso(),
+
+def _load_run_data(run_id: str) -> dict[str, Any] | None:
+    try:
+        run_dir = get_run_dir(run_id)
+        state = read_state(run_dir)
+    except WorkflowError:
+        return None
+    workflow_path = run_dir / "workflow.yaml"
+    workflow: dict[str, Any] = {}
+    if workflow_path.exists():
+        try:
+            import yaml
+            workflow = yaml.safe_load(workflow_path.read_text("utf-8")) or {}
+        except Exception:  # noqa: BLE001
+            workflow = {}
+    events = read_events(run_dir, limit=200)
+    return build_run_data(state, workflow, events)
+
+
+# ---------------------------------------------------------------------------
+# 全量 payload + data.js 序列化
+# ---------------------------------------------------------------------------
+
+
+def build_data_payload(
+    runs_meta: list[dict[str, Any]],
+    *,
+    project_root: str | None,
+    extra_run_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    """把 runs 完整 detail 数据汇总成 ``window.__AW_DATA__`` payload（纯 JSON）。
+
+    runs_meta      : ``list_runs`` 返回的轻量 metadata 列表（确定顺序/范围）
+    project_root   : project root（footer/cmdbar 展示）
+    extra_run_ids  : 单 run 模式时若该 run 不在 runs_meta（被 limit 截断），
+                     额外补充加载
+    """
+    target_ids: list[str] = []
+    seen: set[str] = set()
+    for r in runs_meta:
+        rid = r.get("run_id")
+        if rid and rid not in seen:
+            seen.add(rid)
+            target_ids.append(rid)
+    for rid in extra_run_ids or []:
+        if rid and rid not in seen:
+            seen.add(rid)
+            target_ids.append(rid)
+
+    runs_data: list[dict[str, Any]] = []
+    for rid in target_ids:
+        data = _load_run_data(rid)
+        if data is not None:
+            runs_data.append(data)
+
+    return {
+        "generated_at": _utc_iso(),
+        "project_root": project_root or "",
+        "runs": runs_data,
+    }
+
+
+def _serialize_data_js(payload: dict[str, Any]) -> str:
+    """把 payload 序列化为 ``window.__AW_DATA__ = {...};`` 形式（纯 JSON 数据）。"""
+    body = json.dumps(payload, ensure_ascii=False, default=str)
+    return (
+        "// agent-workflow view data — generated by view command, do not edit by hand.\n"
+        f"window.__AW_DATA__ = {body};\n"
     )
 
 
-def render_overview_html(runs: list[dict[str, Any]], *, project_root: str | None) -> str:
-    statuses_present = sorted({r.get("status") or "?" for r in runs})
-    status_options = "".join(
-        f'<option value="{_e(s)}">{_e(s)}</option>' for s in statuses_present
-    )
+# ---------------------------------------------------------------------------
+# 静态文件部署
+# ---------------------------------------------------------------------------
 
-    run_rows_parts: list[str] = []
-    for r in runs:
-        rid = r.get("run_id") or ""
-        search_blob = " ".join(
-            str(r.get(k) or "") for k in ("run_id", "workflow_name", "caller", "last_alias")
-        )
-        run_rows_parts.append(
-            T.render_fragment(
-                "run_row.html",
-                status=_e(r.get("status")),
-                status_badge_class=_badge_class(r.get("status")),
-                search=_e(search_blob),
-                link=_e(f"./{_slugify(rid)}.html"),
-                run_id=_e(rid),
-                workflow_name=_e(r.get("workflow_name") or "-"),
-                history_count=_e(r.get("history_count") or 0),
-                last_alias=_e(r.get("last_alias") or "-"),
-                updated_at=_e(r.get("updated_at") or "-"),
-            )
-        )
-    run_rows = (
-        "\n".join(run_rows_parts)
-        or '<tr><td colspan="6" class="muted" style="text-align:center;padding:2rem;">no runs found</td></tr>'
-    )
 
-    return T.render(
-        "overview.html",
-        **_shared_assets(),
-        overview_js=T.load("overview.js"),
-        title="agent-workflow · runs",
-        project_root=_e(project_root or "."),
-        total=len(runs),
-        status_options=status_options,
-        run_rows=run_rows,
-        generated_at=_utc_iso(),
-    )
+def _install_static(views_dir: Path) -> None:
+    """把 skill 内的 HTML/CSS/JS 模板拷贝到 ``views_dir``。每次都覆盖。"""
+    src_dir = T.TEMPLATES_DIR
+    for name in STATIC_HTML_FILES:
+        src = src_dir / name
+        if src.exists():
+            shutil.copyfile(src, views_dir / name)
+
+    assets_dir = views_dir / ASSETS_DIRNAME
+    assets_dir.mkdir(parents=True, exist_ok=True)
+    for name in STATIC_ASSET_FILES:
+        src = src_dir / name
+        if src.exists():
+            shutil.copyfile(src, assets_dir / name)
+
+
+def _write_data_js(views_dir: Path, payload: dict[str, Any]) -> Path:
+    assets_dir = views_dir / ASSETS_DIRNAME
+    assets_dir.mkdir(parents=True, exist_ok=True)
+    out = assets_dir / "data.js"
+    out.write_text(_serialize_data_js(payload), encoding="utf-8")
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -379,103 +365,81 @@ def render_overview_html(runs: list[dict[str, Any]], *, project_root: str | None
 
 
 def view_action(params: dict[str, Any]) -> dict[str, Any]:
-    """生成可视化 HTML。
+    """生成可视化输出。
+
+    输出固定到 ``.agent-workflow/views/``（每次覆盖），结构:
+        index.html
+        workflow.html
+        _assets/{base,overview,run}.css
+        _assets/{theme,overview,workflow}.js
+        _assets/data.js
 
     params:
-        run_id: 可选；若不传则生成总览 + 每个 run 一份详情页
-        out:    可选；输出路径；不传则放在 .agent-workflow/views/ 下
-        open:   可选 bool，默认 true；是否自动用系统命令打开生成的 HTML
-        scope:  可选 'current'|'all'，仅 overview 模式使用，默认 'current'
-        limit:  可选 int，仅 overview 模式使用，默认 50
+        run_id : 可选，指定后打开 ``workflow.html#<run_id>``
+        out    : 可选，指定输出根目录（默认 ``.agent-workflow/views/``）
+        open   : 可选 bool，默认 true
+        scope  : 'current'|'all'，默认 'current'
+        limit  : int，默认 50
     """
     run_id = params.get("run_id")
     out_param = params.get("out")
     auto_open = params.get("open")
     auto_open = True if auto_open is None else bool(auto_open)
-
-    if run_id:
-        run_dir = get_run_dir(run_id)
-        state = read_state(run_dir)
-        workflow_path = run_dir / "workflow.yaml"
-        if not workflow_path.exists():
-            raise WorkflowError(
-                ErrorCode.WORKFLOW_SNAPSHOT_CORRUPTED,
-                f"workflow snapshot missing for run {run_id}",
-                location={"run_id": run_id, "expected": str(workflow_path)},
-            )
-        import yaml
-        workflow = yaml.safe_load(workflow_path.read_text("utf-8")) or {}
-        events = read_events(run_dir, limit=200)
-        html_text = render_run_detail_html(state, workflow, events)
-        out_path = _resolve_out_path(out_param, default=run_dir / "view.html")
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(html_text, encoding="utf-8")
-        opened = _open_in_browser(out_path) if auto_open else False
-        return {
-            "mode": "run",
-            "run_id": run_id,
-            "path": str(out_path),
-            "opened": opened,
-        }
-
     scope = params.get("scope") or "current"
     limit = int(params.get("limit") or 50)
-    runs = list_runs(scope=scope, limit=limit)
+
+    views_dir = _resolve_views_dir(out_param)
+    views_dir.mkdir(parents=True, exist_ok=True)
+
+    runs_meta = list_runs(scope=scope, limit=limit)
     project_root = str(detect_project_root() or "")
 
-    default_dir = runs_root().parent / "views" / time.strftime("view-%Y%m%d-%H%M%S")
-    out_path = _resolve_out_path(out_param, default=default_dir / "index.html")
-    out_dir = out_path.parent
-    out_dir.mkdir(parents=True, exist_ok=True)
+    extra_ids = [run_id] if run_id else None
+    payload = build_data_payload(
+        runs_meta, project_root=project_root, extra_run_ids=extra_ids
+    )
 
-    detail_files: list[str] = []
-    for r in runs:
-        rid = r.get("run_id")
-        if not rid:
-            continue
-        try:
-            run_dir = get_run_dir(rid)
-            state = read_state(run_dir)
-            workflow_path = run_dir / "workflow.yaml"
-            import yaml
-            workflow = (
-                yaml.safe_load(workflow_path.read_text("utf-8")) if workflow_path.exists() else {}
-            )
-            events = read_events(run_dir, limit=200)
-            html_text = render_run_detail_html(state, workflow or {}, events)
-            detail_path = out_dir / f"{_slugify(rid)}.html"
-            detail_path.write_text(html_text, encoding="utf-8")
-            detail_files.append(detail_path.name)
-        except WorkflowError:
-            continue
+    _install_static(views_dir)
+    data_path = _write_data_js(views_dir, payload)
 
-    overview = render_overview_html(runs, project_root=project_root)
-    out_path.write_text(overview, encoding="utf-8")
-    opened = _open_in_browser(out_path) if auto_open else False
+    if run_id:
+        target_path = views_dir / "workflow.html"
+        url = f"file://{target_path.as_posix()}#{run_id}"
+    else:
+        target_path = views_dir / "index.html"
+        url = f"file://{target_path.as_posix()}"
+
+    opened = _open_url(url) if auto_open else False
     return {
-        "mode": "overview",
-        "run_count": len(runs),
-        "path": str(out_path),
-        "detail_count": len(detail_files),
+        "mode": "run" if run_id else "overview",
+        "run_id": run_id,
+        "run_count": len(payload["runs"]),
+        "views_dir": str(views_dir),
+        "path": str(target_path),
+        "data_path": str(data_path),
+        "url": url,
         "opened": opened,
     }
 
 
-def _resolve_out_path(out_param: Any, *, default: Path) -> Path:
+def _resolve_views_dir(out_param: Any) -> Path:
     if out_param:
-        p = Path(out_param).expanduser()
+        p = Path(str(out_param)).expanduser()
         if not p.is_absolute():
             p = Path.cwd() / p
         return p
-    return default
+    return _safe_runs_root().parent / "views"
 
 
 def _safe_runs_root() -> Path:
-    """兼容测试环境 runs_root() 失败的场景。"""
     try:
         return runs_root()
     except Exception:  # noqa: BLE001
         return Path.cwd() / DEFAULT_RUNS_DIRNAME / RUNS_SUBDIR
 
 
-__all__ = ["render_overview_html", "render_run_detail_html", "view_action"]
+__all__ = [
+    "build_run_data",
+    "build_data_payload",
+    "view_action",
+]

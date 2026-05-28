@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>agent-workflow · run</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./_assets/base.css">
+<link rel="stylesheet" href="./_assets/run.css">
+<script src="./_assets/data.js"></script>
+<script src="./_assets/theme.js"></script>
+</head>
+<body>
+<div class="shell" data-view="workflow">
+  <header class="cmdbar">
+    <a class="brand" href="./index.html" title="back to console">agent-workflow</a>
+    <span class="brand-sep">/</span>
+    <span class="brand-wf" data-bind="workflow-name">workflow</span>
+    <span class="brand-id" data-bind="run-id">—</span>
+    <span data-slot="status-pill"></span>
+    <div class="grow"></div>
+    <div class="meta">
+      <span class="kv"><label>caller</label><b data-bind="caller">—</b></span>
+      <span class="kv"><label>started</label><b data-bind="created-at">—</b></span>
+      <span class="kv"><label>updated</label><b data-bind="updated-at">—</b></span>
+    </div>
+    <button class="icon-btn" id="theme-toggle" aria-label="toggle theme">
+      <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+      </svg>
+    </button>
+  </header>
+
+  <div data-slot="error-block"></div>
+
+  <div class="run-grid">
+    <main class="timeline-wrap">
+      <div class="section">
+        <div class="section-head">
+          <span class="section-title">Topology</span>
+          <span class="section-count"><span data-bind="node-count">0</span> nodes · <span data-bind="history-count">0</span> executions</span>
+        </div>
+        <div class="timeline" data-slot="timeline"></div>
+      </div>
+    </main>
+
+    <aside class="side">
+      <div class="panel">
+        <div class="panel-head">
+          <span>Telemetry</span>
+          <span class="panel-meta" data-bind="telemetry-meta">snapshot</span>
+        </div>
+        <div class="panel-body no-pad">
+          <div class="metric-grid" data-slot="metric-blocks"></div>
+        </div>
+      </div>
+
+      <div data-slot="last-payload"></div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span>State vars</span>
+          <span class="panel-meta">json</span>
+        </div>
+        <div class="panel-body no-pad">
+          <pre data-slot="vars-pretty">{}</pre>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <section class="event-stream">
+    <div class="event-stream-head">
+      <span class="label">Event log</span>
+      <span class="count"><span data-bind="event-count">0</span> entries</span>
+    </div>
+    <div class="event-list" data-slot="events"></div>
+  </section>
+
+  <footer class="footer">
+    <span><span class="pulse-dot"></span>agent-workflow · v1.5.3</span>
+    <span>generated <span data-bind="generated-at">—</span></span>
+  </footer>
+</div>
+<script defer src="./_assets/workflow.js"></script>
+</body>
+</html>

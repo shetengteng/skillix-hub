@@ -1,0 +1,310 @@
+/* ============================================================================
+ * overview — runs console
+ *
+ * Top: 4 stat blocks (total / completed / failed / running) styled like
+ * mission-control telemetry readouts. Then a filter toolbar, then a dense
+ * runs table that reads like an ATC log.
+ * ============================================================================ */
+
+.stat-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+  margin-bottom: var(--gap-6);
+  overflow: hidden;
+}
+@media (max-width: 720px) {
+  .stat-strip { grid-template-columns: repeat(2, 1fr); }
+}
+
+.stat {
+  padding: 18px 22px;
+  border-right: 1px solid var(--line-soft);
+  position: relative;
+}
+.stat:last-child { border-right: 0; }
+@media (max-width: 720px) {
+  .stat:nth-child(2n) { border-right: 0; }
+  .stat:nth-child(-n+2) { border-bottom: 1px solid var(--line-soft); }
+}
+
+.stat .label {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--t-xxs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-dim);
+  margin-bottom: 8px;
+  line-height: 1;
+}
+.stat .value {
+  font-family: var(--font-mono);
+  font-size: var(--t-2xl);
+  line-height: 1;
+  color: var(--ink);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.stat .value.accent { color: var(--accent); }
+.stat .value.ok     { color: var(--ok); }
+.stat .value.warn   { color: var(--warn); }
+.stat .value.bad    { color: var(--bad); }
+.stat .value.dim    { color: var(--ink-low); }
+
+.stat .delta {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--t-xxs);
+  color: var(--ink-dim);
+  letter-spacing: 0.04em;
+}
+
+/* ---- toolbar -------------------------------------------------------------- */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.toolbar .input  { max-width: 360px; }
+.toolbar .select { max-width: 200px; }
+.toolbar .grow   { flex: 1; }
+.toolbar .match-count {
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+  color: var(--ink-dim);
+  letter-spacing: 0.04em;
+}
+.toolbar .match-count b {
+  color: var(--ink-mid);
+  font-weight: 500;
+}
+
+/* ---- runs table ---------------------------------------------------------- */
+
+.runs-table-wrap {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.runs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--t-sm);
+}
+.runs-table thead th {
+  text-align: left;
+  padding: 11px 16px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: var(--t-xxs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-0);
+  white-space: nowrap;
+}
+.runs-table tbody td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: middle;
+  font-family: var(--font-mono);
+  color: var(--ink-mid);
+}
+.runs-table tbody tr:last-child td { border-bottom: 0; }
+.runs-table tbody tr[data-row] {
+  cursor: pointer;
+  transition: background 120ms;
+  position: relative;
+}
+.runs-table tbody tr[data-row]:hover {
+  background: color-mix(in oklch, var(--surface-2) 60%, transparent);
+}
+.runs-table tbody tr[data-row]:hover td:first-child {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.runs-table tbody tr[data-row] a {
+  color: var(--accent);
+  font-weight: 500;
+}
+.runs-table tbody tr[data-row] a:hover {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.runs-table .wf-name {
+  font-family: var(--font-sans);
+  color: var(--ink);
+  font-weight: 500;
+  font-size: var(--t-sm);
+}
+.runs-table .last-alias code {
+  background: var(--surface-0);
+  border-color: var(--line-soft);
+  color: var(--ink);
+}
+.runs-table .ts {
+  color: var(--ink-dim);
+  font-size: var(--t-xs);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.runs-empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--ink-dim);
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+}
+.runs-empty::before {
+  content: "○";
+  display: block;
+  font-size: 28px;
+  color: var(--line);
+  margin-bottom: 12px;
+  line-height: 1;
+}
+
+/* ============================================================================
+ * Workflows aggregation (above the runs table)
+ * ============================================================================ */
+
+.wf-section { margin-bottom: 28px; }
+.wf-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--line-soft);
+  gap: 12px;
+}
+.wf-section-title {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: var(--t-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-mid);
+}
+.wf-section-count {
+  font-family: var(--font-mono);
+  font-size: var(--t-xxs);
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+}
+
+.wf-list {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.wf-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 8ch auto 15ch;
+  gap: 18px;
+  align-items: center;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line-soft);
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+.wf-row:last-child { border-bottom: 0; }
+.wf-row:hover { background: color-mix(in oklch, var(--surface-2) 70%, transparent); }
+.wf-row.is-active {
+  background: color-mix(in oklch, var(--accent) 9%, var(--surface-1));
+}
+.wf-row.is-active .wf-name {
+  color: var(--accent);
+}
+
+.wf-row .wf-name {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: var(--t-base);
+  color: var(--ink);
+  letter-spacing: -0.005em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wf-row .wf-runs {
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+  color: var(--ink-low);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.wf-row .wf-breakdown {
+  display: inline-flex;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+  align-items: center;
+  white-space: nowrap;
+}
+.wf-row .bd {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-sm);
+  font-weight: 500;
+}
+.wf-row .bd .m {
+  font-size: var(--t-sm);
+  line-height: 1;
+  font-weight: 400;
+}
+.wf-row .bd.ok   { color: var(--ok); }
+.wf-row .bd.bad  { color: var(--bad); }
+.wf-row .bd.warn { color: var(--warn); }
+.wf-row .bd.dim  { color: var(--ink-dim); }
+.wf-row .bd.live .m {
+  animation: ph-pulse 1.2s ease-in-out infinite;
+}
+
+.wf-row .wf-last {
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+  color: var(--ink-dim);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.wf-empty {
+  padding: 32px 24px;
+  text-align: center;
+  color: var(--ink-dim);
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+}
+
+@media (max-width: 720px) {
+  .wf-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .wf-row .wf-runs,
+  .wf-row .wf-breakdown,
+  .wf-row .wf-last {
+    text-align: left;
+  }
+}

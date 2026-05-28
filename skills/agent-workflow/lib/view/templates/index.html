@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>agent-workflow · console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./_assets/base.css">
+<link rel="stylesheet" href="./_assets/overview.css">
+<script src="./_assets/data.js"></script>
+<script src="./_assets/theme.js"></script>
+</head>
+<body>
+<div class="shell" data-view="overview">
+  <header class="cmdbar">
+    <span class="brand">agent-workflow</span>
+    <span class="brand-id">// console</span>
+    <div class="grow"></div>
+    <div class="meta">
+      <span class="kv"><label>scope</label><b><span data-bind="total-runs">0</span> runs</b></span>
+      <span class="kv"><label>project</label><b data-bind="project-root">·</b></span>
+    </div>
+    <button class="icon-btn" id="theme-toggle" aria-label="toggle theme">
+      <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+      </svg>
+    </button>
+  </header>
+
+  <div class="stat-strip" data-slot="stat-blocks"></div>
+
+  <section class="wf-section">
+    <div class="wf-section-head">
+      <span class="wf-section-title">Workflows</span>
+      <span class="wf-section-count"><span data-bind="workflow-count">0</span> distinct · click to filter</span>
+    </div>
+    <div class="wf-list" data-slot="workflow-rows"></div>
+  </section>
+
+  <div class="toolbar">
+    <input id="q" class="input" type="search" placeholder="filter: run_id, workflow, caller, last alias">
+    <select id="status-filter" class="select">
+      <option value="">all status</option>
+    </select>
+    <button id="clear-filter" class="icon-btn" type="button" title="clear filter" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="6" y1="6" x2="18" y2="18"/>
+        <line x1="6" y1="18" x2="18" y2="6"/>
+      </svg>
+    </button>
+    <div class="grow"></div>
+    <span class="match-count">matching <b id="match-count">0 / 0</b></span>
+  </div>
+
+  <div class="runs-table-wrap">
+    <table class="runs-table">
+      <thead>
+        <tr>
+          <th style="width: 32%;">Run ID</th>
+          <th>Workflow</th>
+          <th>Status</th>
+          <th>Steps</th>
+          <th>Last alias</th>
+          <th>Updated</th>
+        </tr>
+      </thead>
+      <tbody data-slot="run-rows"></tbody>
+    </table>
+  </div>
+
+  <footer class="footer">
+    <span><span class="pulse-dot"></span>agent-workflow · v1.5.3 · single-run detail at <code>workflow.html?run=&lt;id&gt;</code></span>
+    <span>generated <span data-bind="generated-at">—</span></span>
+  </footer>
+</div>
+<script defer src="./_assets/overview.js"></script>
+</body>
+</html>
