@@ -63,7 +63,21 @@
         "prompt": {"type": "string", "minLength": 1},
         "output": {"$ref": "#/$defs/alias"},
         "timeout": {"type": "integer", "minimum": 1, "maximum": 86400},
-        "context_files": {"type": "array", "items": {"type": "string"}}
+        "context_files": {"type": "array", "items": {"type": "string"}},
+        "agent": {"$ref": "#/$defs/agent_context"}
+      }
+    },
+    "agent_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "role": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "skills": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {"type": "string", "minLength": 1, "maxLength": 64}
+        }
       }
     },
     "wait_user": {

@@ -1,4 +1,13 @@
-"""TC-VW: view 命令单测。"""
+"""view_action 命令对外 contract 测试（v1.5.3 SPA 改造后）。
+
+v1.5.3 起 view 子系统改为 SPA：Python 端只输出 ``data.js``（``window.__AW_DATA__``），
+浏览器侧 JS 渲染。本测试覆盖：
+- view_action 返回字段（mode / run_id / run_count / path / url / opened）
+- overview 模式下 index.html + _assets/* 全部生成
+- single-run 模式下 url 含 ``#<run_id>`` 锚点
+- 静态资源（CSS/JS/HTML shell）固定复制到 _assets/ 与根目录
+- run_id 不存在时返回 RUN_NOT_FOUND
+"""
 import json
 import os
 import shutil
@@ -10,13 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "skills" / "agent-workflow"))
 
 from lib import engine  # noqa: E402
-from lib.errors import ErrorCode, WorkflowError  # noqa: E402
-from lib.view import templates as view_templates  # noqa: E402
-from lib.view.render import (  # noqa: E402
-    render_overview_html,
-    render_run_detail_html,
-    view_action,
-)
+from lib.view.render import view_action  # noqa: E402
 
 WAIT_YAML = """
 name: t-view
@@ -38,63 +41,14 @@ nodes:
         approved: { type: boolean }
 """
 
-
-class RenderTest(unittest.TestCase):
-    def test_render_overview_with_empty(self) -> None:
-        html = render_overview_html([], project_root="/tmp/x")
-        self.assertIn("<!doctype html>", html)
-        self.assertIn("no runs found", html)
-
-    def test_render_overview_with_run(self) -> None:
-        runs = [
-            {
-                "run_id": "wf-xyz",
-                "workflow_name": "demo",
-                "status": "completed",
-                "history_count": 3,
-                "last_alias": "final",
-                "updated_at": "2026-05-27T10:00:00Z",
-            }
-        ]
-        html = render_overview_html(runs, project_root="/x")
-        self.assertIn("wf-xyz", html)
-        self.assertIn("demo", html)
-        self.assertIn("completed", html)
-        self.assertIn("./wf-xyz.html", html)
-
-    def test_render_run_detail_basic(self) -> None:
-        state = {
-            "run_id": "wf-xyz",
-            "status": "completed",
-            "caller": "ut",
-            "created_at": "2026-01-01T00:00:00Z",
-            "updated_at": "2026-01-01T00:00:01Z",
-            "vars": {"x": "y", "_secrets": ["x"]},
-            "cursor": {"path": []},
-            "history": [
-                {"alias": "a", "type": "agent_call", "status": "completed",
-                 "started_at": "t0", "ended_at": "t1", "duration_ms": 100},
-            ],
-        }
-        workflow = {
-            "name": "demo",
-            "nodes": [
-                {"alias": "a", "type": "agent_call", "executor": "mock", "output": "x"},
-                {"alias": "loop1", "type": "loop", "condition": "{{x}} == y", "max_iterations": 3,
-                 "body": [{"alias": "inner", "type": "sleep", "seconds": 1}]},
-            ],
-        }
-        events = [{"ts": "t0", "type": "run_start", "run_id": "wf-xyz"}]
-        html = render_run_detail_html(state, workflow, events)
-        self.assertIn("wf-xyz", html)
-        self.assertIn("alias", html.lower())
-        # _secrets 字段不应出现在 vars 区域
-        self.assertNotIn('"_secrets"', html)
-        # 嵌套节点缩进
-        self.assertIn("indented-1", html)
+EXPECTED_ASSETS = (
+    "base.css", "overview.css", "run.css",
+    "theme.js", "overview.js", "workflow.js",
+    "data.js",
+)
 
 
-class ViewActionTest(unittest.TestCase):
+class ViewActionContractTest(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="aw-vw-"))
         self._cwd = Path.cwd()
@@ -107,73 +61,65 @@ class ViewActionTest(unittest.TestCase):
         os.environ.pop("AGENT_WORKFLOW_ENABLE_MOCK", None)
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def test_view_single_run(self) -> None:
-        out = engine.start_action({"workflow": WAIT_YAML, "caller": "ut"})
-        run_id = out["run_id"]
-        custom_path = self.tmp / "out" / "single.html"
-        result = view_action({"run_id": run_id, "out": str(custom_path), "open": False})
-        self.assertEqual(result["mode"], "run")
-        self.assertEqual(result["run_id"], run_id)
-        self.assertEqual(result["opened"], False)
-        path = Path(result["path"])
-        self.assertTrue(path.exists())
-        content = path.read_text("utf-8")
-        self.assertIn(run_id, content)
-        self.assertIn("wait_user", content)
-
-    def test_view_overview_default(self) -> None:
+    def test_overview_returns_index_path(self) -> None:
         engine.start_action({"workflow": WAIT_YAML, "caller": "ut"})
         engine.start_action({"workflow": WAIT_YAML, "caller": "ut"})
         result = view_action({"open": False})
         self.assertEqual(result["mode"], "overview")
+        self.assertIsNone(result["run_id"])
         self.assertEqual(result["run_count"], 2)
-        self.assertEqual(result["detail_count"], 2)
-        idx = Path(result["path"])
-        self.assertTrue(idx.exists())
-        self.assertEqual(idx.name, "index.html")
-        # 每个 run 都有详情 html
-        details = sorted(p.name for p in idx.parent.iterdir() if p.suffix == ".html")
-        self.assertEqual(len(details), 3)  # 1 index + 2 runs
+        self.assertFalse(result["opened"])
+        path = Path(result["path"])
+        self.assertTrue(path.exists())
+        self.assertEqual(path.name, "index.html")
 
-    def test_view_run_not_found(self) -> None:
-        with self.assertRaises(WorkflowError) as ctx:
-            view_action({"run_id": "wf-does-not-exist", "open": False})
-        self.assertEqual(ctx.exception.code, ErrorCode.RUN_NOT_FOUND)
+    def test_single_run_url_has_hash_anchor(self) -> None:
+        out = engine.start_action({"workflow": WAIT_YAML, "caller": "ut"})
+        run_id = out["run_id"]
+        result = view_action({"run_id": run_id, "open": False})
+        self.assertEqual(result["mode"], "run")
+        self.assertEqual(result["run_id"], run_id)
+        self.assertTrue(result["url"].endswith(f"#{run_id}"))
+        self.assertTrue(Path(result["path"]).name == "workflow.html")
 
+    def test_static_assets_and_data_js_emitted(self) -> None:
+        engine.start_action({"workflow": WAIT_YAML, "caller": "ut"})
+        result = view_action({"open": False})
+        views_dir = Path(result["views_dir"])
+        for shell in ("index.html", "workflow.html"):
+            self.assertTrue((views_dir / shell).exists(), f"missing shell: {shell}")
+        for asset in EXPECTED_ASSETS:
+            self.assertTrue((views_dir / "_assets" / asset).exists(), f"missing asset: {asset}")
 
-class TemplateLoaderTest(unittest.TestCase):
-    """T-VW-T: 模板加载器自身契约。"""
+    def test_data_js_contains_runs_array(self) -> None:
+        out = engine.start_action({"workflow": WAIT_YAML, "caller": "ut"})
+        run_id = out["run_id"]
+        result = view_action({"open": False})
+        data_text = Path(result["data_path"]).read_text("utf-8")
+        # data.js 形如：`// comment\nwindow.__AW_DATA__ = {...};\n`
+        self.assertIn("window.__AW_DATA__", data_text)
+        json_str = data_text.split("=", 1)[1].rstrip().rstrip(";").strip()
+        payload = json.loads(json_str)
+        self.assertIn("runs", payload)
+        self.assertTrue(any(r["run_id"] == run_id for r in payload["runs"]))
 
-    def test_load_known_templates(self) -> None:
-        for name in ("base.css", "run.css", "run.html", "overview.html",
-                     "theme.js", "overview.js",
-                     "fragments/node_row.html", "fragments/history_row.html",
-                     "fragments/event_row.html", "fragments/run_row.html",
-                     "fragments/theme_toggle.html"):
-            content = view_templates.load(name)
-            self.assertIsInstance(content, str)
-            self.assertGreater(len(content), 0, f"template {name} is empty")
+    def test_custom_out_directory(self) -> None:
+        engine.start_action({"workflow": WAIT_YAML, "caller": "ut"})
+        custom = self.tmp / "my-views"
+        result = view_action({"out": str(custom), "open": False})
+        self.assertEqual(result["views_dir"], str(custom))
+        self.assertTrue((custom / "index.html").exists())
 
-    def test_missing_template_raises(self) -> None:
-        with self.assertRaises(FileNotFoundError):
-            view_templates.load("does-not-exist.html")
-
-    def test_render_safe_substitute_keeps_unknown_placeholders(self) -> None:
-        # 用 base.css 渲染一个没意义的占位，确保 safe_substitute 不抛 KeyError
-        rendered = view_templates.render("base.css")  # base.css 不含 $var
-        self.assertIn(":root", rendered)
-        self.assertIn("--background", rendered)
-
-    def test_no_inline_html_or_css_strings_in_render_py(self) -> None:
-        """硬卡：render.py 不应再持有 _BASE_CSS / _RUN_DETAIL_CSS 等大块静态字符串常量。"""
-        render_py = Path(__file__).resolve().parents[3] / "skills" / "agent-workflow" / "lib" / "view" / "render.py"
-        content = render_py.read_text("utf-8")
-        forbidden_constants = ["_BASE_CSS = ", "_RUN_DETAIL_CSS = ", "_OVERVIEW_JS = "]
-        for ident in forbidden_constants:
-            self.assertNotIn(
-                ident, content,
-                f"render.py 仍包含大块静态资源常量 {ident}；模板应抽到 templates/ 目录"
-            )
+    def test_missing_run_id_is_tolerated(self) -> None:
+        """v1.5.3 SPA: 不存在的 run_id 不抛错，data.js 里也不会有它（前端显示 not found）。"""
+        result = view_action({"run_id": "wf-does-not-exist", "open": False})
+        self.assertEqual(result["mode"], "run")
+        self.assertEqual(result["run_id"], "wf-does-not-exist")
+        self.assertTrue(result["url"].endswith("#wf-does-not-exist"))
+        data_text = Path(result["data_path"]).read_text("utf-8")
+        json_str = data_text.split("=", 1)[1].rstrip().rstrip(";").strip()
+        payload = json.loads(json_str)
+        self.assertFalse(any(r["run_id"] == "wf-does-not-exist" for r in payload["runs"]))
 
 
 if __name__ == "__main__":

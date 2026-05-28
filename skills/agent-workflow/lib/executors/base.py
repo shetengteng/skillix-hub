@@ -50,6 +50,7 @@ class BaseExecutor:
         node: dict[str, Any],
         vars_: dict[str, Any],
         run_context: dict[str, Any],
+        agent: dict[str, Any] | None = None,
     ) -> ExecutionOutcome:  # pragma: no cover - abstract
         raise NotImplementedError(f"executor {self.name!r} must implement execute()")
 
@@ -85,6 +86,40 @@ def _resolve_context_files(prompt: str, context_files: list[str] | None, cwd: Pa
             continue
         blocks.append(f"=== {raw} ===\n{text}")
     return "\n\n".join([*blocks, prompt]) if blocks else prompt
+
+
+def _apply_agent_prefix(prompt: str, agent: dict[str, Any] | None) -> str:
+    """SpawnExecutor 专用：把 agent.role + agent.skills 拼成 system prompt 前缀。
+
+    输出格式（segment 之间空行分隔）：
+        === Role ===
+        <role 文本>
+
+        === Skills (advisory) ===
+        - skill_a
+        - skill_b
+
+        === Task ===
+        <原 prompt>
+
+    role/skills 都没有 → 直接返回原 prompt。
+    skills 为空列表 → 跳过该段，仅拼 role。
+    """
+    if not agent:
+        return prompt
+    parts: list[str] = []
+    role = agent.get("role")
+    if isinstance(role, str) and role.strip():
+        parts.append(f"=== Role ===\n{role.strip()}")
+    skills = agent.get("skills") or []
+    if isinstance(skills, list) and skills:
+        joined = "\n".join(f"- {s}" for s in skills if isinstance(s, str) and s)
+        if joined:
+            parts.append(f"=== Skills (advisory) ===\n{joined}")
+    if not parts:
+        return prompt
+    parts.append(f"=== Task ===\n{prompt}")
+    return "\n\n".join(parts)
 
 
 def _terminate_process(proc: subprocess.Popen) -> None:
@@ -155,9 +190,11 @@ class SpawnExecutor(BaseExecutor):
         node: dict[str, Any],
         vars_: dict[str, Any],
         run_context: dict[str, Any],
+        agent: dict[str, Any] | None = None,
     ) -> ExecutionOutcome:
         cwd = self.cwd or Path(run_context.get("project_root") or Path.cwd())
         full_prompt = _resolve_context_files(prompt, node.get("context_files"), cwd)
+        full_prompt = _apply_agent_prefix(full_prompt, agent)
         cmd = list(self.cmd)
         stdin_bytes: bytes | None = None
         if self.input_mode == "stdin":

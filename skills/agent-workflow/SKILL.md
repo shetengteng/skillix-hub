@@ -149,7 +149,36 @@ while True:
   output: research_result          # 必填；推理结果写入 vars.<output>
   timeout_ms: 60000                # 可选（仅外部 executor 生效）
   context_files: ["./README.md"]   # 可选；spawn 时把文件内容拼入 prompt
+  agent:                           # 可选；v1.5.4+ agent 上下文配置
+    role: |                        # system prompt 文本（支持 {{var}} 渲染）
+      You are a senior architect. Focus on scalability and security.
+    skills:                        # 建议性 skill 列表（caller 自由解读，CLI 不强制）
+      - "knowledge-compiler"
+      - "swagger-api-reader"
 ```
+
+**`agent` 字段在两种 executor 下的行为**：
+
+| executor | 行为 |
+|---|---|
+| `caller` | CLI 把 `agent: {role, skills}` 原样放进 `payload.agent`，caller agent 自己决定怎么用（典型：把 role 设为本次推理的 system prompt，参考 skills 决定加载哪些工具） |
+| 任意 spawn（claude/codex/custom） | CLI 自动把 role + skills 拼成 stdin 前缀（格式见下），无 `--system` 等原生 flag |
+
+spawn executor 实际收到的 stdin（agent.role + agent.skills 均存在时）：
+
+```
+=== Role ===
+You are a senior architect. Focus on scalability and security.
+
+=== Skills (advisory) ===
+- knowledge-compiler
+- swagger-api-reader
+
+=== Task ===
+<原 prompt 内容>
+```
+
+注意：`agent.role` 中可写 `{{var}}` 占位，按 vars 渲染；`agent.skills` 不渲染，按字面透传。空 role / 空 skills / 整个 `agent` 缺失 → 行为完全等价于老节点（向后兼容）。
 
 ### `wait_user` — 用户阻塞节点
 
@@ -202,6 +231,38 @@ while True:
 - v1 同步实现：调 advance 的那次 CLI 调用会阻塞 N 秒后才返回
 - 不写 vars / 不允许 output
 - 典型用法：loop.body 末尾插 `sleep` 做轮询，或两次 LLM 调用之间限流
+
+---
+
+## 外部 LLM CLI executor 已知 caveats
+
+各 LLM CLI 有各自的"防呆"行为，spawn 时可能需要显式 flag 才能跑通。CLI **不**替你加这些 flag——`cmd` 怎么写，子进程就怎么跑。
+
+| CLI | 现象 | 必加 flag / 解法 | 示例 |
+|---|---|---|---|
+| **codex** | 在非 git repo 跑会 exit=1，`stderr_tail` 含 `Not inside a trusted directory and --skip-git-repo-check was not specified` | `--skip-git-repo-check` | `cmd: ["codex", "exec", "--skip-git-repo-check"]` |
+| **claude** | 默认行为 OK；首次跑可能弹登录 | 先在终端跑一次 `claude` 完成 OAuth | `cmd: ["claude", "-p"]` |
+| **任意 spawn** | 子进程不继承 zsh function 包装的环境变量（如代理、自定义 alias） | 真依赖代理时，在 workflow 启动前 `export HTTP_PROXY=...`，或在 `executors` 段用 `env: { HTTP_PROXY: "..." }` 显式注入 | — |
+
+**最小推荐起步模板（zero-friction 跑通）**：
+
+```yaml
+executors:
+  codex:
+    kind: spawn
+    cmd: ["codex", "exec", "--skip-git-repo-check"]   # ← 关键 flag
+    input_mode: stdin
+    output_parser: text
+    stall_timeout_ms: 30000
+    timeout_ms: 90000
+  claude:
+    kind: spawn
+    cmd: ["claude", "-p"]
+    input_mode: stdin
+    output_parser: text
+    stall_timeout_ms: 30000
+    timeout_ms: 60000
+```
 
 ---
 
@@ -347,7 +408,8 @@ view '{"out":"./report.html"}'
 | 用户说 | 你做 |
 |---|---|
 | 跑一下 / 启动 workflow X | `validate` → 校验通过 → `start` |
-| 我想做一个 workflow / 创建一个 workflow | `create '{"action":"list_templates"}'` → 推荐合适模板 → `from_template` |
+| 我想做一个 workflow / 创建一个 workflow | 走「协作创作 Authoring Protocol」章节：先 `create '{"action":"list_templates"}'` 列模板 → 不合适才进入白板创作 |
+| 不用模板 / 全新 workflow / 独有的 workflow / 自定义 workflow | 直接进入「Authoring Protocol §2 白板创作」，**必问 3 题**后再写一行 YAML |
 | 检查 / 校验 / lint 一下 YAML | `validate` |
 | workflow 跑到哪了 / 进度 / 状态 | `status` 或 `view '{"run_id":"..."}'` |
 | 列一下我的 workflow / 都有哪些 run | 用户视角用 `list '{"format":"table"}'` 把 `result.table` 透传；caller 自己用默认 JSON |
@@ -361,6 +423,106 @@ view '{"out":"./report.html"}'
 | 收到 `error.retryable=false` | 展示 `message` + `suggestion`，结束 |
 | 昨天那个 workflow 接着跑 | `list '{"status":["waiting_user","awaiting_agent"]}'` → 选一个 → `status` 拿 last_payload → `resume` |
 | 看下 events / 实时跟进 | `tail -f .agent-workflow/runs/<run_id>/events.ndjson \| jq .` |
+
+---
+
+## 协作创作新 workflow 的提问协议（Authoring Protocol）
+
+> **触发**：用户说"创建/我想做一个 workflow"、"全新一个 workflow"、"不用模板，自己设计"、"帮我设计流程"。
+> **目标**：用**最少的提问**产出**首次 `validate` 即通过**的 YAML，**禁止**凭空推断关键字段。
+
+### §1 先穷举可用模板（避免重复造轮子）
+
+```
+create '{"action":"list_templates"}'
+```
+
+把每个模板的 `name` / `description` / `node_count` 透传给用户，明确问：
+
+> 这 4 个模板里有近似你需求的吗？  
+> ① 有 → `from_template` 拷一份，再用 §3 节点细化做局部调整  
+> ② 没有 → 进入白板创作（§2）
+
+### §2 白板创作 — 必问 3 题（缺一不可，禁止替用户决定）
+
+```
+1. 一句话描述：这个 workflow 解决什么具体问题？（≤30 字）
+2. 主流程粗略环节：用 → 连起来，每环节 3-7 个字
+   示例：调研 → 写摘要 → 用户审阅 → 发布
+3. 每个环节交给谁：
+   - caller（IDE 里的我）
+   - claude（独立 spawn）
+   - codex（独立 spawn）
+   - wait_user（阻塞等用户）
+   - sleep（限流 / 排程）
+```
+
+未拿到这 3 个答案前**禁止生成任何 YAML 字节**——否则 `VAR_NOT_IN_SCOPE` / alias 冲突 / executor 不存在等错误必现。
+
+### §3 逐节点细化（按 type 分支问）
+
+每个节点根据 type 决定再问哪几题：
+
+| type | **必确认**（不问则不要替用户决定） | 可推断（无需问） |
+|---|---|---|
+| `agent_call` | ① prompt 大意（一两句话，列出引用的前置 vars） ② `output` 名（蛇形命名，唯一） | `executor` 缺省 = caller；`description` 可由 prompt 摘要 |
+| `wait_user` | ① 给用户看的 `message` ② 用户回填的 schema：每个字段名 + 类型（string/boolean/number/integer） + 是否 required | `schema.type=object`；非 required 字段可给 `default` |
+| `loop` | ① `condition` 表达式（先用直白英文描述，agent 翻成 `==`/`!=` 形式） ② `max_iterations` 上限 | `step_sleep_ms` 默认 0；`body` 内节点递归走 §3 |
+| `sleep` | ① `seconds` 值（0-300） | 仅推荐为限流/排程，独立用很少见；若用户没要求别加 |
+
+**`loop.condition` 写法陷阱**（必须主动提醒用户）：
+
+- 条件基于**上一轮 body 跑完后的状态**：典型 `"{{review.approved}} == false"`
+- 第一次迭代变量可能未定义；引擎对未定义变量宽松判定 → body 至少跑一次
+- 嵌套 wait_user 字段引用：`{{<alias>.<field>}}`，如 `{{review.approved}}`
+
+### §4 变量 & secrets 确认（可省略，默认空）
+
+```
+- 启动 (start) 时要从外部传哪些初始 vars？（无→不写 vars: 段）
+- 有没有 API key / token？
+  无 → 不写 _secrets
+  有 → 用 $ENV:<UPPER_NAME> 引用，并把字段名列入 _secrets: [...]
+```
+
+### §5 集成 & 容错（可选；用户不提就用默认）
+
+| 维度 | 默认 | 何时问用户 |
+|---|---|---|
+| `caller` 字段 | `"manual"` | 用户提到 cron / CI / bot 时确认填 `"cron"` / `"ci"` / `"slack-bot"` |
+| 单节点 `timeout_ms` | 600000（10 分钟） | 用户提到"快"或"慢"等关键词时确认 |
+| `stall_timeout_ms` | 300000（5 分钟无 stdout） | 涉及长跑外部 LLM 才确认 |
+| 节点级 retry | v1 不支持 | 用户提及 retry → 告知 v1.5+ 才有，先用 caller 侧重试 |
+
+### §6 产出 → validate → 修（强制闭环）
+
+按 §1-§5 收集到的答案直接生成 YAML，写到 `<workspace>/flows/<name>.yaml`（或用户指定路径），**立即**调用：
+
+```
+validate '{"workflow":"<path>"}'
+```
+
+- `violations: []` → 进入 §7
+- `violations: [...]`：**逐条**贴给用户 + 给修复建议（不要让用户看错误码原文，要翻译成"哪个节点的哪个字段缺/错"）
+
+修完再次 `validate`，循环直到 `valid: true`。
+
+### §7 试跑建议（强烈推荐，可由用户决定跳过）
+
+- **全 caller 节点**：直接 `start` → 进主循环（§ "主循环骨架"）
+- **含外部 executor（claude/codex/spawn）**：建议先用 mock 验骨架
+  - 把节点 `executor` 临时改为 `mock`
+  - 启动加环境变量：`AGENT_WORKFLOW_ENABLE_MOCK=1 AGENT_WORKFLOW_MOCK_<ALIAS>=<fake_text>`
+  - 状态流转无误后再切回真实 executor
+
+### §8 禁止事项（防 AI 拍脑袋）
+
+- ❌ 不要替用户决定 `wait_user.schema` 的字段类型 / required（必须确认）
+- ❌ 不要凭空创造 executor 名 — 必须从 `executors '{}'` 看到的列表里选，或在 `executors:` 段显式声明 spawn
+- ❌ 不要在用户没要求时主动加 `sleep` 节点
+- ❌ 不要超过 10 个节点不和用户确认（v1 无 sub_workflow；>10 时主动提示"建议拆"）
+- ❌ 不要在 `executors:` 段写 `mock: {}` — 会被强制要求 `cmd` 字段（v1.5.3 边界 case），mock 改用 env 变量启用
+- ❌ 不要在没 `validate` 的情况下交付 YAML
 
 ---
 
@@ -379,6 +541,7 @@ view '{"out":"./report.html"}'
 | 现象 | 可能原因 | 处理 |
 |---|---|---|
 | `EXECUTOR_NOT_FOUND` | 外部 CLI 没装 / 不在 PATH | `which claude` / `which codex`；或加 `allow_missing_executors:true` |
+| `EXECUTOR_NONZERO_EXIT` + `stderr_tail` 含 `Not inside a trusted directory` | **codex 默认拒绝在非 git repo 跑** | 在 `cmd` 加 `--skip-git-repo-check`：`cmd: ["codex", "exec", "--skip-git-repo-check"]`；或把 workflow 放进 git 仓库内运行 |
 | `EXECUTOR_STALLED` | 子进程 300s+ 无 stdout | 增大 `stall_timeout_ms`；或检查 LLM CLI 是否真的卡 |
 | `NODE_TIMEOUT` | prompt 过大或外部 CLI 卡住 | 增大 `timeout_ms` / 拆 prompt |
 | `VAR_NOT_IN_SCOPE` | 引用了未来节点 output | 修 nodes 顺序或 alias 拼写 |

@@ -213,6 +213,8 @@ nodes:
 | `output` | 推荐 | 把 result 写到 `vars.<name>` |
 | `description` | 可选 | 给 caller 看的节点说明 |
 | `timeout_ms` | 可选 | 单节点超时（覆盖 executor 默认） |
+| `context_files` | 可选 | spawn 时把文件内容拼到 prompt 前 |
+| `agent` | 可选 | v1.5.4+ agent 上下文：`{role: "...", skills: [...]}`，caller payload 透传 / spawn 自动拼 stdin 前缀（详见 SKILL.md「节点类型速查」） |
 
 ### `wait_user` — 阻塞等用户输入
 

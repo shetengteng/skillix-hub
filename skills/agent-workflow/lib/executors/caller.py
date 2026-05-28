@@ -24,6 +24,7 @@ class CallerExecutor(BaseExecutor):
         node: dict[str, Any],
         vars_: dict[str, Any],
         run_context: dict[str, Any],
+        agent: dict[str, Any] | None = None,
     ) -> ExecutionOutcome:
         payload = {
             "prompt": prompt,
@@ -33,6 +34,8 @@ class CallerExecutor(BaseExecutor):
             "expected_output": node.get("output"),
             "context_files": node.get("context_files") or [],
         }
+        if agent:
+            payload["agent"] = agent
         return ExecutionOutcome(
             kind="needs_caller",
             payload=payload,

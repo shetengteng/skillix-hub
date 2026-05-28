@@ -103,5 +103,96 @@ class RealSpawnTest(unittest.TestCase):
         self.assertIn("PONG", answer.upper())
 
 
+AGENT_CTX_FLOW = """
+name: it-agent-ctx-spawn
+description: 用 cat 作 echo-back spawn executor，验证 stdin 是否真拼了 agent 前缀。
+executors:
+  echo_cat:
+    kind: spawn
+    cmd: ["cat"]
+    input_mode: stdin
+    output_parser: text
+    stall_timeout_ms: 10000
+
+nodes:
+  - alias: roleonly
+    type: agent_call
+    executor: echo_cat
+    agent:
+      role: "You are SENIOR ARCHITECT."
+    prompt: "the original task"
+    output: out_role_only
+
+  - alias: roleandskills
+    type: agent_call
+    executor: echo_cat
+    agent:
+      role: "You are CODE REVIEWER."
+      skills:
+        - "kb-search"
+        - "git-diff"
+    prompt: "review the code"
+    output: out_role_skills
+
+  - alias: noagent
+    type: agent_call
+    executor: echo_cat
+    prompt: "no agent here"
+    output: out_no_agent
+"""
+
+
+@unittest.skipUnless(
+    shutil.which("cat"),
+    "本测试用 POSIX `cat` 作 echo-back spawn executor；非 POSIX 平台跳过",
+)
+class AgentContextSpawnE2ETest(unittest.TestCase):
+    """v1.5.4 agent 上下文真实 spawn 集成：
+    把 stdin 用 cat 原样回吐，验证 SpawnExecutor 确实把 agent.role/skills 拼到 stdin 前。
+    覆盖 3 个 case：仅 role / role+skills / 无 agent（向后兼容）。
+    """
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="aw-it-ag-"))
+        (self.tmp / "pyproject.toml").write_text("[project]\nname='it'\n", "utf-8")
+        self._cwd = Path.cwd()
+        os.chdir(self.tmp)
+
+    def tearDown(self) -> None:
+        os.chdir(self._cwd)
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_spawn_receives_agent_prefix(self) -> None:
+        out = subprocess.run(
+            ["python3", str(TOOL), "start",
+             json.dumps({"workflow": AGENT_CTX_FLOW, "caller": "it-ag"})],
+            cwd=str(self.tmp),
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        self.assertEqual(out.returncode, 0, msg=out.stderr)
+        resp = json.loads(out.stdout)
+        self.assertIsNone(resp.get("error"))
+        result = resp["result"]
+        self.assertEqual(result["action"], "completed")
+        v = result["vars"]
+
+        role_only = v["out_role_only"]
+        self.assertIn("=== Role ===\nYou are SENIOR ARCHITECT.", role_only)
+        self.assertIn("=== Task ===\nthe original task", role_only)
+        self.assertNotIn("=== Skills", role_only)
+
+        role_skills = v["out_role_skills"]
+        self.assertIn("=== Role ===\nYou are CODE REVIEWER.", role_skills)
+        self.assertIn("=== Skills (advisory) ===\n- kb-search\n- git-diff", role_skills)
+        self.assertIn("=== Task ===\nreview the code", role_skills)
+
+        no_agent = v["out_no_agent"]
+        self.assertEqual(no_agent, "no agent here")
+        self.assertNotIn("=== Role", no_agent)
+        self.assertNotIn("=== Task", no_agent)
+
+
 if __name__ == "__main__":
     unittest.main()

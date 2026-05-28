@@ -1,0 +1,64 @@
+name: agent-with-role
+version: "1.0"
+description: |
+  演示 agent_call 节点的 agent 上下文配置：
+  - role: system prompt（caller 透传；spawn 自动拼接到 stdin 前）
+  - skills: 建议性 skill 列表（caller 透传；spawn 拼成 advisory 段）
+
+  此 workflow 三节点：
+    architect_design (caller 角色=后端架构师)
+      → code_review   (caller 角色=代码评审专家，含 skills 建议)
+      → publish       (caller 兜底节点，无 agent 配置)
+
+vars:
+  topic: "OAuth 登录"
+
+nodes:
+  - alias: architect_design
+    type: agent_call
+    description: 用「后端架构师」角色生成方案
+    executor: caller
+    agent:
+      role: |
+        You are a senior backend architect at Zoom.
+        Focus on scalability, security and observability.
+        Always include a "trade-offs" section in your answer.
+    prompt: |
+      请为 {{topic}} 设计一份高层 API 方案：
+      - 关键端点
+      - 鉴权策略
+      - 失败处理
+    output: design_doc
+
+  - alias: code_review
+    type: agent_call
+    description: 用「代码评审专家」角色对 design_doc 做 review，并建议参考的 skill
+    executor: caller
+    agent:
+      role: |
+        You are a code reviewer specialized in API surface design.
+        Question every implicit assumption.
+      skills:
+        - "knowledge-compiler"
+        - "swagger-api-reader"
+    prompt: |
+      请评审以下设计：
+
+      {{design_doc}}
+
+      指出 3 个最大风险点 + 各自的 mitigation。
+    output: review_report
+
+  - alias: publish
+    type: agent_call
+    description: 兜底节点，无 agent 配置，验证向后兼容
+    executor: caller
+    prompt: |
+      把以下 design + review 整理成最终发布稿（≤500 字）：
+
+      === design ===
+      {{design_doc}}
+
+      === review ===
+      {{review_report}}
+    output: final_doc

@@ -37,6 +37,7 @@ class MockExecutor(BaseExecutor):
         node: dict[str, Any],
         vars_: dict[str, Any],
         run_context: dict[str, Any],
+        agent: dict[str, Any] | None = None,
     ) -> ExecutionOutcome:
         alias = node.get("alias") or node.get("_internal_id") or "anon"
         if _read_env(alias, "_STALL") == "1":
