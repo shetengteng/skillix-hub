@@ -96,15 +96,15 @@ python3 skills/agent-workflow/tool.py create '{"action":"list_templates"}'
 python3 skills/agent-workflow/tool.py create '{
   "action":"from_template",
   "template":"iterative-refine",
-  "out":"./flows/demo.yaml"
+  "out":".agent-workflow/workflows/demo.yaml"
 }'
 
 # 3) 4 级校验
-python3 skills/agent-workflow/tool.py validate '{"workflow":"./flows/demo.yaml"}'
+python3 skills/agent-workflow/tool.py validate '{"workflow":".agent-workflow/workflows/demo.yaml"}'
 # → {"result": {"valid": true, "stats": {...}}}
 
 # 4) 启动 run
-python3 skills/agent-workflow/tool.py start '{"workflow":"./flows/demo.yaml","caller":"manual"}'
+python3 skills/agent-workflow/tool.py start '{"workflow":".agent-workflow/workflows/demo.yaml","caller":"manual"}'
 # → {"result": {"action": "execute_agent" | "wait_user" | "continue" | "done", ...}}
 
 # 5) 浏览器查看进度
@@ -283,7 +283,7 @@ def call(action, params):
     return json.loads(r.stdout)
 
 # 1) 启动
-resp = call("start", {"workflow": "./flows/demo.yaml", "caller": "my-agent"})
+resp = call("start", {"workflow": ".agent-workflow/workflows/demo.yaml", "caller": "my-agent"})
 
 while True:
     data = resp.get("result")

@@ -21,6 +21,7 @@ import yaml
 
 from lib.errors import ErrorCode, WorkflowError
 from lib.parser import load_workflow, validate_action
+from lib.store import workflows_root
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "examples"
 
@@ -77,7 +78,8 @@ def _from_template(params: dict[str, Any]) -> dict[str, Any]:
             location={"template": template, "templates_dir": str(TEMPLATES_DIR)},
         )
     src = candidates[0]
-    out_path = _resolve_out(params.get("out") or f"./{src.name}")
+    default_out = str(workflows_root() / src.name)
+    out_path = _resolve_out(params.get("out") or default_out)
     overwrite = bool(params.get("overwrite", False))
     if out_path.exists() and not overwrite:
         raise WorkflowError(
@@ -115,7 +117,8 @@ def _scaffold(params: dict[str, Any]) -> dict[str, Any]:
         "vars": params.get("vars") or {},
         "nodes": cleaned_nodes,
     }
-    out_path = _resolve_out(params.get("out") or f"./{name}.yaml")
+    default_out = str(workflows_root() / f"{name}.yaml")
+    out_path = _resolve_out(params.get("out") or default_out)
     overwrite = bool(params.get("overwrite", False))
     if out_path.exists() and not overwrite:
         raise WorkflowError(

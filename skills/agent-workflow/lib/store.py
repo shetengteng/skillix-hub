@@ -1,18 +1,21 @@
-"""Run 持久化层：state.json + workflow.yaml 快照 + outputs/ + filelock。
+"""持久化层：workflow 定义 + run 状态，统一存放于 .agent-workflow/ 下。
 
 目录布局：
-    <runs_root>/
-    └── <run_id>/
-        ├── state.json          # 唯一可变状态（带 filelock）
-        ├── workflow.yaml       # 启动时快照（含分配的 _internal_id）
-        ├── events.ndjson       # logger.py 维护
-        ├── audit.log           # logger.py 维护
-        └── outputs/
-            └── <uuid>.txt      # 大 result 落盘
+    <project_root>/.agent-workflow/
+    ├── workflows/              # 用户自定义 workflow 定义（YAML）
+    │   └── <name>.yaml
+    └── runs/                   # 运行实例
+        └── <run_id>/
+            ├── state.json      # 唯一可变状态（带 filelock）
+            ├── workflow.yaml   # 启动时快照（含分配的 _internal_id）
+            ├── events.ndjson   # logger.py 维护
+            ├── audit.log       # logger.py 维护
+            └── outputs/
+                └── <uuid>.txt  # 大 result 落盘
 
-runs_root 选择：
-    1. params.runs_root（绝对路径）覆盖一切
-    2. 否则 <project_root>/.agent-workflow/runs/
+路径选择：
+    1. 显式 override（绝对路径）覆盖一切
+    2. 否则 <project_root>/.agent-workflow/{workflows,runs}/
     3. project_root 自动检测：从 cwd 向上找 .git / pyproject.toml / package.json / Cargo.toml / go.mod
        找不到 → 用 cwd
 """
@@ -33,6 +36,7 @@ from lib.errors import ErrorCode, WorkflowError
 
 DEFAULT_RUNS_DIRNAME = ".agent-workflow"
 RUNS_SUBDIR = "runs"
+WORKFLOWS_SUBDIR = "workflows"
 LARGE_RESULT_BYTES = 10 * 1024  # >10KB 自动落盘到 outputs/
 PROJECT_MARKERS = (".git", "pyproject.toml", "package.json", "Cargo.toml", "go.mod")
 
@@ -66,6 +70,14 @@ def runs_root(project_root: Path | None = None, *, override: Path | None = None)
         return Path(override).expanduser().resolve()
     root = project_root or detect_project_root()
     return (root / DEFAULT_RUNS_DIRNAME / RUNS_SUBDIR).resolve()
+
+
+def workflows_root(project_root: Path | None = None, *, override: Path | None = None) -> Path:
+    """返回 workflow 定义文件的存储目录：<project_root>/.agent-workflow/workflows/"""
+    if override is not None:
+        return Path(override).expanduser().resolve()
+    root = project_root or detect_project_root()
+    return (root / DEFAULT_RUNS_DIRNAME / WORKFLOWS_SUBDIR).resolve()
 
 
 def get_run_dir(run_id: str, *, runs_root_override: Path | None = None) -> Path:
@@ -363,6 +375,7 @@ def write_state_force(run_dir: Path, state: dict[str, Any]) -> None:
 __all__ = [
     "DEFAULT_RUNS_DIRNAME",
     "RUNS_SUBDIR",
+    "WORKFLOWS_SUBDIR",
     "LARGE_RESULT_BYTES",
     "StateTransaction",
     "append_history",
@@ -374,6 +387,7 @@ __all__ = [
     "read_state",
     "render_runs_table",
     "runs_root",
+    "workflows_root",
     "write_state",
     "write_state_force",
 ]

@@ -46,7 +46,7 @@ description: |
 按 `result.action` 分 4 种情况处理（**不要遗漏 `continue`**）：
 
 ```python
-response = cli("start", {"workflow": "./flow.yaml", "vars": {...}, "caller": "my-agent"})
+response = cli("start", {"workflow": ".agent-workflow/workflows/flow.yaml", "vars": {...}, "caller": "my-agent"})
 persist(response["result"]["run_id"])   # 立刻持久化 run_id，避免会话丢失
 
 while True:
@@ -126,9 +126,9 @@ while True:
 
 | Action | 何时用 | 最小调用示例 |
 |---|---|---|
-| `create` | 用户要新 workflow / 看模板 | `create '{"action":"list_templates"}'` 然后 `create '{"action":"from_template","template":"...","out":"./flows/x.yaml"}'` |
-| `validate` | YAML 改后启动前必跑 | `validate '{"workflow":"./flows/x.yaml"}'` |
-| `start` | 启动一个 run | `start '{"workflow":"./flows/x.yaml","vars":{"topic":"..."},"caller":"my-agent"}'` |
+| `create` | 用户要新 workflow / 看模板 | `create '{"action":"list_templates"}'` 然后 `create '{"action":"from_template","template":"...","out":".agent-workflow/workflows/x.yaml"}'` |
+| `validate` | YAML 改后启动前必跑 | `validate '{"workflow":".agent-workflow/workflows/x.yaml"}'` |
+| `start` | 启动一个 run | `start '{"workflow":".agent-workflow/workflows/x.yaml","vars":{"topic":"..."},"caller":"my-agent"}'` |
 | `advance` | 主循环里推理完上报 / 收到 continue 后重发 | `advance '{"run_id":"wf-...","result":{"output":"..."}}'` 或 `advance '{"run_id":"wf-..."}'` |
 | `resume` | wait_user 收到用户输入 | `resume '{"run_id":"wf-...","input":{"approved":true}}'` |
 | `status` | 用户问"workflow 跑到哪了" | `status '{"run_id":"wf-...","include_events":true,"event_limit":50}'` |
@@ -501,7 +501,7 @@ create '{"action":"list_templates"}'
 
 ### §6 产出 → validate → 修（强制闭环）
 
-按 §1-§5 收集到的答案直接生成 YAML，写到 `<workspace>/flows/<name>.yaml`（或用户指定路径），**立即**调用：
+按 §1-§5 收集到的答案直接生成 YAML，写到 `<workspace>/.agent-workflow/workflows/<name>.yaml`（或用户指定路径），**立即**调用：
 
 ```
 validate '{"workflow":"<path>"}'
@@ -562,12 +562,15 @@ validate '{"workflow":"<path>"}'
 ## 调试
 
 ```bash
-.agent-workflow/runs/<run_id>/
-├── state.json         # 当前游标 + history + vars + last_payload + error
-├── workflow.yaml      # start 时的快照
-├── events.ndjson      # 结构化事件流
-├── audit.log          # 可读时间线
-└── outputs/           # 节点 result >10KB 时落盘
+.agent-workflow/
+├── workflows/             # 用户自定义 workflow 定义（YAML）
+│   └── <name>.yaml
+└── runs/<run_id>/
+    ├── state.json         # 当前游标 + history + vars + last_payload + error
+    ├── workflow.yaml      # start 时的快照
+    ├── events.ndjson      # 结构化事件流
+    ├── audit.log          # 可读时间线
+    └── outputs/           # 节点 result >10KB 时落盘
 ```
 
 常用命令：
