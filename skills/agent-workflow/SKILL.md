@@ -56,7 +56,7 @@ while True:
         if err["retryable"]:
             show_to_user(err["message"] + "\n" + err.get("suggestion", ""))
             new_input = ask_user_again()
-            response = cli("resume", {"run_id": run_id, "user_input": new_input})
+            response = cli("resume", {"run_id": run_id, "input": new_input})
             continue
         show_to_user(f"Workflow 失败：{err['message']}\n建议：{err.get('suggestion')}")
         break
@@ -81,7 +81,7 @@ while True:
         # 展示 payload.message 给用户，按 payload.schema 收集输入
         show_to_user(r["payload"]["message"])
         user_input = collect_input(schema=r["payload"].get("schema"))
-        response = cli("resume", {"run_id": run_id, "user_input": user_input})
+        response = cli("resume", {"run_id": run_id, "input": user_input})
 
     elif r["action"] == "done":
         show_to_user(f"Workflow 完成：{r.get('vars', {})}")
@@ -110,7 +110,7 @@ while True:
 | `result.action` | 含义 | 你的下一步 |
 |---|---|---|
 | `execute_agent` | CLI 要 caller 推理 | 读 `payload.prompt` → 推理 → `advance({run_id, result: {output}})` |
-| `wait_user` | CLI 要 caller 问用户 | 展示 `payload.message` → 按 `payload.schema` 收集 → `resume({run_id, user_input})` |
+| `wait_user` | CLI 要 caller 问用户 | 展示 `payload.message` → 按 `payload.schema` 收集 → `resume({run_id, input})` |
 | `continue` | CLI 长链保活返回 | **立即** `advance({run_id})`，**不**带 result |
 | `done` | workflow 完成 | 展示 `result.vars` 中的最终结果 |
 
@@ -130,7 +130,7 @@ while True:
 | `validate` | YAML 改后启动前必跑 | `validate '{"workflow":"./flows/x.yaml"}'` |
 | `start` | 启动一个 run | `start '{"workflow":"./flows/x.yaml","vars":{"topic":"..."},"caller":"my-agent"}'` |
 | `advance` | 主循环里推理完上报 / 收到 continue 后重发 | `advance '{"run_id":"wf-...","result":{"output":"..."}}'` 或 `advance '{"run_id":"wf-..."}'` |
-| `resume` | wait_user 收到用户输入 | `resume '{"run_id":"wf-...","user_input":{"approved":true}}'` |
+| `resume` | wait_user 收到用户输入 | `resume '{"run_id":"wf-...","input":{"approved":true}}'` |
 | `status` | 用户问"workflow 跑到哪了" | `status '{"run_id":"wf-...","include_events":true,"event_limit":50}'` |
 | `list` | 用户问"我有哪些 workflow" / 接力查未完成 | `list '{"status":["waiting_user","awaiting_agent"]}'` 或 `list '{"format":"table"}'` |
 | `abort` | 用户说"停 / 取消 / 算了" | `abort '{"run_id":"wf-..."}'` |
@@ -278,7 +278,7 @@ executors:
 ```json
 {
   "code": "SCHEMA_VIOLATION",
-  "message": "user_input.approved is required",
+  "message": "wait_user input does not match schema: 'approved' is a required property",
   "retryable": true,
   "suggestion": "请用户提供 approved 字段（boolean）",
   "location": { "alias": "review", "field": "approved" }
@@ -323,7 +323,7 @@ if runs["result"]:
                 # last_payload 含原 message/schema，可直接重建提问
                 show_to_user(s["result"]["last_payload"]["message"])
                 user_input = collect_input(schema=s["result"]["last_payload"].get("schema"))
-                response = cli("resume", {"run_id": run["run_id"], "user_input": user_input})
+                response = cli("resume", {"run_id": run["run_id"], "input": user_input})
                 # 进入主循环
 ```
 
