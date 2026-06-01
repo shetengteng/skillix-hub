@@ -1,8 +1,8 @@
-"""持久化层：workflow 定义 + run 状态，统一存放于 .agent-workflow/ 下。
+"""持久化层：workflow 定义 + run 状态，统一存放于全局目录下。
 
-目录布局：
-    <project_root>/.agent-workflow/
-    ├── workflows/              # 用户自定义 workflow 定义（YAML）
+目录布局（全局，跨项目共享）：
+    ~/.config/agent-workflow/
+    ├── workflows/              # workflow 定义（YAML）
     │   └── <name>.yaml
     └── runs/                   # 运行实例
         └── <run_id>/
@@ -15,9 +15,7 @@
 
 路径选择：
     1. 显式 override（绝对路径）覆盖一切
-    2. 否则 <project_root>/.agent-workflow/{workflows,runs}/
-    3. project_root 自动检测：从 cwd 向上找 .git / pyproject.toml / package.json / Cargo.toml / go.mod
-       找不到 → 用 cwd
+    2. 否则 ~/.config/agent-workflow/{workflows,runs}/
 """
 from __future__ import annotations
 
@@ -34,11 +32,10 @@ from filelock import FileLock, Timeout
 
 from lib.errors import ErrorCode, WorkflowError
 
-DEFAULT_RUNS_DIRNAME = ".agent-workflow"
+GLOBAL_BASE = Path.home() / ".config" / "agent-workflow"
 RUNS_SUBDIR = "runs"
 WORKFLOWS_SUBDIR = "workflows"
 LARGE_RESULT_BYTES = 10 * 1024  # >10KB 自动落盘到 outputs/
-PROJECT_MARKERS = (".git", "pyproject.toml", "package.json", "Cargo.toml", "go.mod")
 
 
 def _utc_iso() -> str:
@@ -49,35 +46,17 @@ def _utc_compact() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
 
 
-def detect_project_root(start: Path | None = None) -> Path:
-    """从 start 向上找项目根，找不到返回 start（默认 cwd）。"""
-    cur = (start or Path.cwd()).resolve()
-    seen: set[Path] = set()
-    while True:
-        if cur in seen:
-            return start.resolve() if start else Path.cwd().resolve()
-        seen.add(cur)
-        for marker in PROJECT_MARKERS:
-            if (cur / marker).exists():
-                return cur
-        if cur.parent == cur:
-            return (start or Path.cwd()).resolve()
-        cur = cur.parent
-
-
-def runs_root(project_root: Path | None = None, *, override: Path | None = None) -> Path:
+def runs_root(*, override: Path | None = None) -> Path:
     if override is not None:
         return Path(override).expanduser().resolve()
-    root = project_root or detect_project_root()
-    return (root / DEFAULT_RUNS_DIRNAME / RUNS_SUBDIR).resolve()
+    return (GLOBAL_BASE / RUNS_SUBDIR).resolve()
 
 
-def workflows_root(project_root: Path | None = None, *, override: Path | None = None) -> Path:
-    """返回 workflow 定义文件的存储目录：<project_root>/.agent-workflow/workflows/"""
+def workflows_root(*, override: Path | None = None) -> Path:
+    """返回全局 workflow 定义文件的存储目录：~/.config/agent-workflow/workflows/"""
     if override is not None:
         return Path(override).expanduser().resolve()
-    root = project_root or detect_project_root()
-    return (root / DEFAULT_RUNS_DIRNAME / WORKFLOWS_SUBDIR).resolve()
+    return (GLOBAL_BASE / WORKFLOWS_SUBDIR).resolve()
 
 
 def get_run_dir(run_id: str, *, runs_root_override: Path | None = None) -> Path:
@@ -124,12 +103,10 @@ def create_run(
     workflow_source: str | None,
     initial_vars: dict[str, Any],
     caller: str | None,
-    project_root: Path | None = None,
     runs_root_override: Path | None = None,
 ) -> tuple[str, Path]:
     """创建 run 目录 + state.json + workflow.yaml 快照。返回 (run_id, run_dir)。"""
-    project = (project_root or detect_project_root()).resolve()
-    root = runs_root(project, override=runs_root_override)
+    root = runs_root(override=runs_root_override)
     root.mkdir(parents=True, exist_ok=True)
     run_id = _new_run_id()
     run_dir = root / run_id
@@ -145,7 +122,6 @@ def create_run(
         "run_id": run_id,
         "workflow_name": workflow.get("name", "<unknown>"),
         "workflow_source": workflow_source or "",
-        "project_root": str(project),
         "caller": caller or "",
         "status": "awaiting_agent",
         "cursor": {"path": [0], "iteration_counts": {}},
@@ -271,28 +247,15 @@ def append_history(
     return entry
 
 
-def _gather_run_dirs(scope: str = "current") -> list[Path]:
-    """收集 run 目录。
-
-    scope:
-        "current"  — 当前 project_root 下
-        "all"      — 当前用户能看到的所有项目（v1：先扫当前 + 父目录）
-    """
-    roots: list[Path] = []
+def _gather_run_dirs() -> list[Path]:
+    """收集全局 runs 目录下所有 run。"""
     here = runs_root()
-    if here.exists():
-        roots.append(here)
-    if scope == "all":
-        cur = Path.cwd().resolve()
-        for ancestor in [cur, *cur.parents]:
-            candidate = ancestor / DEFAULT_RUNS_DIRNAME / RUNS_SUBDIR
-            if candidate.exists() and candidate not in roots:
-                roots.append(candidate)
+    if not here.exists():
+        return []
     run_dirs: list[Path] = []
-    for root in roots:
-        for child in root.iterdir():
-            if child.is_dir() and (child / "state.json").exists():
-                run_dirs.append(child)
+    for child in here.iterdir():
+        if child.is_dir() and (child / "state.json").exists():
+            run_dirs.append(child)
     return sorted(run_dirs, key=lambda p: p.stat().st_mtime, reverse=True)
 
 
@@ -300,11 +263,10 @@ def list_runs(
     *,
     status: list[str] | None = None,
     workflow_name: str | None = None,
-    scope: str = "current",
     limit: int = 50,
 ) -> list[dict[str, Any]]:
     runs: list[dict[str, Any]] = []
-    for run_dir in _gather_run_dirs(scope):
+    for run_dir in _gather_run_dirs():
         try:
             state = read_state(run_dir)
         except WorkflowError:
@@ -320,7 +282,6 @@ def list_runs(
                 "workflow_name": state.get("workflow_name"),
                 "status": state.get("status"),
                 "caller": state.get("caller"),
-                "project_root": state.get("project_root"),
                 "created_at": state.get("created_at"),
                 "updated_at": state.get("updated_at"),
                 "history_count": len(history),
@@ -361,6 +322,73 @@ def render_runs_table(runs: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def list_workflows(*, query: str | None = None) -> list[dict[str, Any]]:
+    """列出全局 workflows 目录中所有 workflow 定义的元数据。
+
+    query: 可选关键词过滤（匹配 name / description / triggers）。
+    """
+    wf_root = workflows_root()
+    if not wf_root.exists():
+        return []
+    results: list[dict[str, Any]] = []
+    for path in sorted(wf_root.glob("*.yaml")):
+        try:
+            data = yaml.safe_load(path.read_text("utf-8"))
+        except (yaml.YAMLError, OSError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        name = data.get("name") or path.stem
+        description = (data.get("description") or "").strip()
+        triggers = data.get("triggers") or []
+
+        if query:
+            q = query.lower()
+            searchable = f"{name} {description} {' '.join(triggers)}".lower()
+            if q not in searchable:
+                continue
+
+        nodes = data.get("nodes") or []
+        results.append({
+            "name": name,
+            "description": description.split("\n")[0] if description else "",
+            "triggers": triggers,
+            "node_count": _count_workflow_nodes(nodes),
+            "path": str(path),
+        })
+    return results
+
+
+def resolve_workflow_by_name(name: str) -> Path | None:
+    """按 name 从全局 workflows 目录查找 YAML 文件。
+
+    匹配优先级：YAML 内 name 字段完全匹配 > 文件名（不含 .yaml）完全匹配。
+    """
+    wf_root = workflows_root()
+    if not wf_root.exists():
+        return None
+    for path in wf_root.glob("*.yaml"):
+        if path.stem == name:
+            return path
+    for path in wf_root.glob("*.yaml"):
+        try:
+            data = yaml.safe_load(path.read_text("utf-8"))
+        except (yaml.YAMLError, OSError):
+            continue
+        if isinstance(data, dict) and data.get("name") == name:
+            return path
+    return None
+
+
+def _count_workflow_nodes(nodes: list[dict[str, Any]]) -> int:
+    total = 0
+    for node in nodes:
+        total += 1
+        if node.get("type") == "loop":
+            total += _count_workflow_nodes(node.get("body") or [])
+    return total
+
+
 def purge_run(run_dir: Path) -> None:
     """删除整个 run 目录（abort 后清理用，v1 暂不开放给 CLI）。"""
     if run_dir.exists():
@@ -373,19 +401,20 @@ def write_state_force(run_dir: Path, state: dict[str, Any]) -> None:
 
 
 __all__ = [
-    "DEFAULT_RUNS_DIRNAME",
+    "GLOBAL_BASE",
     "RUNS_SUBDIR",
     "WORKFLOWS_SUBDIR",
     "LARGE_RESULT_BYTES",
     "StateTransaction",
     "append_history",
     "create_run",
-    "detect_project_root",
     "get_run_dir",
     "list_runs",
+    "list_workflows",
     "load_workflow_snapshot",
     "read_state",
     "render_runs_table",
+    "resolve_workflow_by_name",
     "runs_root",
     "workflows_root",
     "write_state",
@@ -394,5 +423,8 @@ __all__ = [
 
 
 if __name__ == "__main__":  # pragma: no cover
-    print(json.dumps({"runs_root": str(runs_root())}, ensure_ascii=False))
+    print(json.dumps({
+        "workflows_root": str(workflows_root()),
+        "runs_root": str(runs_root()),
+    }, ensure_ascii=False))
     sys.exit(0)

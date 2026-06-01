@@ -32,9 +32,9 @@ from lib.store import (
     StateTransaction,
     append_history,
     create_run,
-    detect_project_root,
     get_run_dir,
     list_runs,
+    list_workflows,
     load_workflow_snapshot,
     read_state,
     render_runs_table,
@@ -536,9 +536,7 @@ def start_action(params: dict[str, Any]) -> dict[str, Any]:
     )
     assign_internal_ids(workflow)
 
-    project_root = detect_project_root()
     merged_vars = {**(workflow.get("vars") or {}), **(initial_vars or {})}
-    # ENV 展开（$ENV:NAME → 实际值）+ 收集敏感字段值
     from lib.template import collect_secret_values, expand_env_in_vars
     merged_vars = expand_env_in_vars(merged_vars)
     secrets = collect_secret_values(merged_vars)
@@ -548,7 +546,6 @@ def start_action(params: dict[str, Any]) -> dict[str, Any]:
         workflow_source=workflow_raw if isinstance(workflow_raw, str) else None,
         initial_vars=merged_vars,
         caller=caller,
-        project_root=project_root,
     )
     with StateTransaction(run_dir) as state:
         if secrets:
@@ -765,16 +762,14 @@ def list_action(params: dict[str, Any]) -> dict[str, Any]:
     if isinstance(status_filter, str):
         status_filter = [status_filter]
     workflow_name = params.get("workflow_name")
-    scope = params.get("scope") or "current"
     limit = int(params.get("limit", 50))
     fmt = params.get("format") or "json"
     runs = list_runs(
         status=status_filter,
         workflow_name=workflow_name,
-        scope=scope,
         limit=limit,
     )
-    out: dict[str, Any] = {"runs": runs, "count": len(runs), "scope": scope}
+    out: dict[str, Any] = {"runs": runs, "count": len(runs)}
     if fmt == "table":
         out["table"] = render_runs_table(runs)
     return out
@@ -803,3 +798,16 @@ def abort_action(params: dict[str, Any]) -> dict[str, Any]:
             "status": "aborted",
             "reason": reason,
         }
+
+
+def flows_action(params: dict[str, Any]) -> dict[str, Any]:
+    """列出全局可用的 workflow 定义（渐进式披露入口）。"""
+    from lib.store import workflows_root
+
+    query = params.get("query")
+    workflows = list_workflows(query=query)
+    return {
+        "workflows": workflows,
+        "count": len(workflows),
+        "workflows_root": str(workflows_root()),
+    }

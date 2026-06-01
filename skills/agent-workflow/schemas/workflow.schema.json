@@ -14,6 +14,12 @@
     },
     "version": {"type": "string"},
     "description": {"type": "string"},
+    "triggers": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1, "maxLength": 128},
+      "maxItems": 20,
+      "description": "自然语言触发短语列表，AI 通过匹配用户输入决定是否使用此 workflow"
+    },
     "vars": {"type": "object"},
     "executors": {"type": "object"},
     "config": {

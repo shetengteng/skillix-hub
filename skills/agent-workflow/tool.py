@@ -5,9 +5,10 @@
     python3 skills/agent-workflow/tool.py <action> '<JSON params>'
 
 action 列表：
+    flows      列出全局可用的 workflow 定义（渐进式披露入口）
     create     创建 workflow（list_templates / from_template / scaffold）
     validate   4 级校验 workflow
-    start      启动新 run
+    start      启动新 run（支持路径或 workflow name）
     advance    推进 run（caller 返回 agent 输出后调用）
     resume     恢复 wait_user 节点
     status     查询 run 状态
@@ -44,6 +45,7 @@ VALID_ACTIONS = {
     "abort",
     "executors",
     "view",
+    "flows",
 }
 
 
@@ -111,6 +113,10 @@ def dispatch(action: str, params: dict) -> dict:
         from lib.view.render import view_action
 
         return view_action(params)
+    if action == "flows":
+        from lib.engine import flows_action
+
+        return flows_action(params)
     raise RuntimeError(f"unhandled action: {action}")
 
 

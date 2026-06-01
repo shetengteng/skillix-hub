@@ -8,11 +8,42 @@ description: |
 
 跨 IDE / 跨 LLM 工作流引擎。你（caller）通过 shell spawn 调用 CLI，CLI 推动 workflow 在节点间流转。**CLI 不内嵌 LLM** — 所有推理动作要么由你完成，要么 CLI spawn 外部 LLM CLI。
 
+**全局存储**：所有 workflow 定义和 run 状态统一存放于 `~/.config/agent-workflow/`，跨项目共享。
+
 **CLI 入口**（按优先级尝试）：
 1. `agent-workflow <action> '<JSON>'` — pip 安装后全局可用（推荐）
 2. `python3 skills/agent-workflow/tool.py <action> '<JSON>'` — 仓库根目录内直接调用
 
 完整用户文档（含安装、QuickStart、配方、FAQ）：见同目录 `README.md`。
+
+---
+
+## 渐进式披露（Progressive Disclosure）
+
+**核心流程**：用户说了一句话 → 你先 `flows` 发现已注册 workflow → 按 `triggers` / `description` 判断是否匹配 → 匹配则 `start` 运行 → 不匹配则走正常推理或创建新 workflow。
+
+```
+用户输入 → flows '{}' → 有匹配？ ─ 是 → start '{"workflow":"<name>"}'
+                                   └─ 否 → 正常推理 / 创建新 workflow
+```
+
+每个 workflow YAML 顶层可声明 `triggers` 字段（字符串数组），描述触发该 workflow 的自然语言模式：
+
+```yaml
+name: code-review
+triggers:
+  - "代码审查"
+  - "review 这个 MR"
+  - "帮我看看这段代码"
+description: 调研 → 代码审查 → 用户确认 → 输出报告
+```
+
+**你的判断逻辑**：
+1. 调用 `flows '{}'` 获取所有可用 workflow
+2. 遍历每个 workflow 的 `triggers` 和 `description`
+3. 如果用户的意图与某个 workflow 匹配度高 → 直接 `start` 该 workflow
+4. 如果不确定 → 把匹配到的 workflow 列给用户选择
+5. 如果完全不匹配 → 走正常推理或走 Authoring Protocol 创建新 workflow
 
 ---
 
@@ -46,7 +77,7 @@ description: |
 按 `result.action` 分 4 种情况处理（**不要遗漏 `continue`**）：
 
 ```python
-response = cli("start", {"workflow": ".agent-workflow/workflows/flow.yaml", "vars": {...}, "caller": "my-agent"})
+response = cli("start", {"workflow": "research-and-implement", "vars": {...}, "caller": "my-agent"})
 persist(response["result"]["run_id"])   # 立刻持久化 run_id，避免会话丢失
 
 while True:
@@ -122,20 +153,26 @@ while True:
 
 ---
 
-## CLI 命令速查（10 个 action）
+## CLI 命令速查（11 个 action）
 
 | Action | 何时用 | 最小调用示例 |
 |---|---|---|
-| `create` | 用户要新 workflow / 看模板 | `create '{"action":"list_templates"}'` 然后 `create '{"action":"from_template","template":"...","out":".agent-workflow/workflows/x.yaml"}'` |
-| `validate` | YAML 改后启动前必跑 | `validate '{"workflow":".agent-workflow/workflows/x.yaml"}'` |
-| `start` | 启动一个 run | `start '{"workflow":".agent-workflow/workflows/x.yaml","vars":{"topic":"..."},"caller":"my-agent"}'` |
+| `flows` | **渐进式披露入口**：发现全局可用 workflow | `flows '{}'` 或 `flows '{"query":"review"}'` |
+| `create` | 用户要新 workflow / 看模板 | `create '{"action":"list_templates"}'` 然后 `create '{"action":"from_template","template":"...","out":"..."}'` |
+| `validate` | YAML 改后启动前必跑 | `validate '{"workflow":"research-and-implement"}'` |
+| `start` | 启动一个 run（支持 name 或路径） | `start '{"workflow":"research-and-implement","vars":{"topic":"..."},"caller":"my-agent"}'` |
 | `advance` | 主循环里推理完上报 / 收到 continue 后重发 | `advance '{"run_id":"wf-...","result":{"output":"..."}}'` 或 `advance '{"run_id":"wf-..."}'` |
 | `resume` | wait_user 收到用户输入 | `resume '{"run_id":"wf-...","input":{"approved":true}}'` |
 | `status` | 用户问"workflow 跑到哪了" | `status '{"run_id":"wf-...","include_events":true,"event_limit":50}'` |
-| `list` | 用户问"我有哪些 workflow" / 接力查未完成 | `list '{"status":["waiting_user","awaiting_agent"]}'` 或 `list '{"format":"table"}'` |
+| `list` | 用户问"我有哪些 run" / 接力查未完成 | `list '{"status":["waiting_user","awaiting_agent"]}'` 或 `list '{"format":"table"}'` |
 | `abort` | 用户说"停 / 取消 / 算了" | `abort '{"run_id":"wf-..."}'` |
 | `executors` | 用户问"有哪些可用 executor" | `executors '{}'` |
 | `view` | 用户说"看一下 workflow"/"可视化" | `view '{}'`（总览） / `view '{"run_id":"wf-..."}'`（单 run），默认自动开浏览器 |
+
+**`start` 的 `workflow` 参数**支持三种形式：
+1. workflow name（如 `"research-and-implement"`）→ 从 `~/.config/agent-workflow/workflows/` 自动查找
+2. 文件路径（如 `"/path/to/flow.yaml"`）→ 按路径加载
+3. 内联 YAML 字符串 → 直接解析
 
 完整参数表与返回结构见 README §10。
 
@@ -412,12 +449,14 @@ view '{"out":"./report.html"}'
 
 | 用户说 | 你做 |
 |---|---|
-| 跑一下 / 启动 workflow X | `validate` → 校验通过 → `start` |
-| 我想做一个 workflow / 创建一个 workflow | 走「协作创作 Authoring Protocol」章节：先 `create '{"action":"list_templates"}'` 列模板 → 不合适才进入白板创作 |
-| 不用模板 / 全新 workflow / 独有的 workflow / 自定义 workflow | 直接进入「Authoring Protocol §2 白板创作」，**必问 3 题**后再写一行 YAML |
+| （任意复杂任务） | **先 `flows '{}'` 发现可用 workflow** → 匹配到则 `start`；未匹配则正常推理或创建新 workflow |
+| 跑一下 / 启动 workflow X | `validate '{"workflow":"X"}'` → 校验通过 → `start '{"workflow":"X"}'` |
+| 我想做一个 workflow / 创建一个 workflow | 走「协作创作 Authoring Protocol」章节 |
+| 有哪些 workflow / 列一下可用的 workflow | `flows '{}'` → 把 workflow 列表展示给用户 |
+| 搜一下关于 review 的 workflow | `flows '{"query":"review"}'` |
 | 检查 / 校验 / lint 一下 YAML | `validate` |
 | workflow 跑到哪了 / 进度 / 状态 | `status` 或 `view '{"run_id":"..."}'` |
-| 列一下我的 workflow / 都有哪些 run | 用户视角用 `list '{"format":"table"}'` 把 `result.table` 透传；caller 自己用默认 JSON |
+| 列一下我的 run / 都有哪些 run | `list '{"format":"table"}'` |
 | 可视化 / 看一下流程 / 打开浏览器看 | `view '{}'` 或 `view '{"run_id":"..."}'` |
 | 停 / 中止 / cancel | `abort` |
 | 收到 `execute_agent` | 推理后 → `advance` |
@@ -427,7 +466,7 @@ view '{"out":"./report.html"}'
 | 收到 `error.retryable=true` | 引导用户调整输入 → 重发 resume |
 | 收到 `error.retryable=false` | 展示 `message` + `suggestion`，结束 |
 | 昨天那个 workflow 接着跑 | `list '{"status":["waiting_user","awaiting_agent"]}'` → 选一个 → `status` 拿 last_payload → `resume` |
-| 看下 events / 实时跟进 | `tail -f .agent-workflow/runs/<run_id>/events.ndjson \| jq .` |
+| 看下 events / 实时跟进 | `tail -f ~/.config/agent-workflow/runs/<run_id>/events.ndjson \| jq .` |
 
 ---
 
@@ -444,7 +483,7 @@ create '{"action":"list_templates"}'
 
 把每个模板的 `name` / `description` / `node_count` 透传给用户，明确问：
 
-> 这 4 个模板里有近似你需求的吗？  
+> 这些模板里有近似你需求的吗？  
 > ① 有 → `from_template` 拷一份，再用 §3 节点细化做局部调整  
 > ② 没有 → 进入白板创作（§2）
 
@@ -490,7 +529,14 @@ create '{"action":"list_templates"}'
   有 → 用 $ENV:<UPPER_NAME> 引用，并把字段名列入 _secrets: [...]
 ```
 
-### §5 集成 & 容错（可选；用户不提就用默认）
+### §5 triggers 字段（推荐填写）
+
+```
+- 给 3-5 个自然语言触发短语，描述什么场景下应该自动使用这个 workflow
+- 示例：["代码审查", "review MR", "帮我看看代码"]
+```
+
+### §6 集成 & 容错（可选；用户不提就用默认）
 
 | 维度 | 默认 | 何时问用户 |
 |---|---|---|
@@ -499,28 +545,28 @@ create '{"action":"list_templates"}'
 | `stall_timeout_ms` | 300000（5 分钟无 stdout） | 涉及长跑外部 LLM 才确认 |
 | 节点级 retry | v1 不支持 | 用户提及 retry → 告知 v1.5+ 才有，先用 caller 侧重试 |
 
-### §6 产出 → validate → 修（强制闭环）
+### §7 产出 → validate → 修（强制闭环）
 
-按 §1-§5 收集到的答案直接生成 YAML，写到 `<workspace>/.agent-workflow/workflows/<name>.yaml`（或用户指定路径），**立即**调用：
+按 §1-§6 收集到的答案直接生成 YAML，写到 `~/.config/agent-workflow/workflows/<name>.yaml`（全局目录），**立即**调用：
 
 ```
-validate '{"workflow":"<path>"}'
+validate '{"workflow":"<name>"}'
 ```
 
-- `violations: []` → 进入 §7
+- `violations: []` → 进入 §8
 - `violations: [...]`：**逐条**贴给用户 + 给修复建议（不要让用户看错误码原文，要翻译成"哪个节点的哪个字段缺/错"）
 
 修完再次 `validate`，循环直到 `valid: true`。
 
-### §7 试跑建议（强烈推荐，可由用户决定跳过）
+### §8 试跑建议（强烈推荐，可由用户决定跳过）
 
-- **全 caller 节点**：直接 `start` → 进主循环（§ "主循环骨架"）
+- **全 caller 节点**：直接 `start '{"workflow":"<name>"}'` → 进主循环（§ "主循环骨架"）
 - **含外部 executor（claude/codex/spawn）**：建议先用 mock 验骨架
   - 把节点 `executor` 临时改为 `mock`
   - 启动加环境变量：`AGENT_WORKFLOW_ENABLE_MOCK=1 AGENT_WORKFLOW_MOCK_<ALIAS>=<fake_text>`
   - 状态流转无误后再切回真实 executor
 
-### §8 禁止事项（防 AI 拍脑袋）
+### §9 禁止事项（防 AI 拍脑袋）
 
 - ❌ 不要替用户决定 `wait_user.schema` 的字段类型 / required（必须确认）
 - ❌ 不要凭空创造 executor 名 — 必须从 `executors '{}'` 看到的列表里选，或在 `executors:` 段显式声明 spawn
@@ -562,8 +608,8 @@ validate '{"workflow":"<path>"}'
 ## 调试
 
 ```bash
-.agent-workflow/
-├── workflows/             # 用户自定义 workflow 定义（YAML）
+~/.config/agent-workflow/
+├── workflows/             # 全局 workflow 定义（YAML）
 │   └── <name>.yaml
 └── runs/<run_id>/
     ├── state.json         # 当前游标 + history + vars + last_payload + error
@@ -576,6 +622,9 @@ validate '{"workflow":"<path>"}'
 常用命令：
 
 ```bash
+# 列出所有可用 workflow
+flows '{}'
+
 # 最近 50 条事件
 status '{"run_id":"wf-...","include_events":true,"event_limit":50}'
 
@@ -583,5 +632,5 @@ status '{"run_id":"wf-...","include_events":true,"event_limit":50}'
 view '{"run_id":"wf-..."}'
 
 # 实时跟事件流
-tail -f .agent-workflow/runs/wf-.../events.ndjson | jq .
+tail -f ~/.config/agent-workflow/runs/wf-.../events.ndjson | jq .
 ```

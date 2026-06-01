@@ -51,17 +51,26 @@ def parse_yaml(text: str) -> Any:
 
 
 def load_workflow(raw: str | dict[str, Any]) -> dict[str, Any]:
-    """统一入口：支持 dict / 文件路径 / 内联 YAML 字符串。"""
+    """统一入口：支持 dict / 文件路径 / workflow name / 内联 YAML 字符串。
+
+    解析优先级：
+        1. dict → 直接返回
+        2. 路径字符串（含 / 或 .yaml/.yml 后缀）→ 按路径加载
+        3. 短字符串（无换行、无 / 、无 .yaml）→ 尝试按 name 从全局目录查找
+        4. 多行字符串 → 当作内联 YAML 解析
+    """
     if isinstance(raw, dict):
         return raw
     if not isinstance(raw, str):
         raise WorkflowError(
             ErrorCode.PARAMS_INVALID, "workflow must be dict or string"
         )
+
     looks_like_path = (
         ("\n" not in raw)
         and (raw.endswith(".yaml") or raw.endswith(".yml") or "/" in raw)
     )
+
     if looks_like_path:
         path = Path(raw).expanduser()
         if not path.is_absolute():
@@ -73,8 +82,20 @@ def load_workflow(raw: str | dict[str, Any]) -> dict[str, Any]:
                 location={"path": str(path)},
             )
         text = path.read_text("utf-8")
+    elif "\n" not in raw and not raw.strip().startswith("{"):
+        from lib.store import resolve_workflow_by_name
+        resolved = resolve_workflow_by_name(raw.strip())
+        if resolved is not None:
+            text = resolved.read_text("utf-8")
+        else:
+            raise WorkflowError(
+                ErrorCode.PARAMS_INVALID,
+                f"workflow not found by name: {raw!r}. Use 'flows' to list available workflows.",
+                suggestion="agent-workflow flows '{}'",
+            )
     else:
         text = raw
+
     data = parse_yaml(text)
     if not isinstance(data, dict):
         raise WorkflowError(

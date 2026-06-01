@@ -6,25 +6,25 @@ window.SKILL_DATA_AGENT_WORKFLOW = {
     name: 'agent-workflow',
     icon: 'chart',
     description: {
-        zh: 'Agent 驱动的跨 IDE / 跨 LLM 工作流引擎。声明式 YAML 描述节点串行 / 用户阻塞 / 条件循环 / 跨 LLM CLI 协作，CLI 状态机持久化、崩溃可恢复。Claude Code / Cursor / Codex / OpenCode 通用，Python 3.10+ 实现。',
-        en: 'Agent-driven cross-IDE / cross-LLM workflow engine. Declarative YAML describes serial nodes, user-blocking, conditional loops and cross-LLM CLI collaboration; CLI state machine with disk persistence and crash recovery. Works with Claude Code, Cursor, Codex and OpenCode. Python 3.10+.'
+        zh: 'Agent 驱动的跨 IDE / 跨 LLM 工作流引擎。全局存储（~/.config/agent-workflow/）、渐进式披露 — AI 通过 flows 命令自动发现 workflow 并按 triggers 匹配用户意图。声明式 YAML、CLI 状态机持久化、崩溃可恢复。Claude Code / Cursor / Codex / OpenCode 通用，Python 3.10+。',
+        en: 'Agent-driven cross-IDE / cross-LLM workflow engine. Global storage (~/.config/agent-workflow/) with progressive disclosure — AI discovers workflows via `flows` command and matches user intent against `triggers`. Declarative YAML, CLI state machine with disk persistence and crash recovery. Works with Claude Code, Cursor, Codex and OpenCode. Python 3.10+.'
     },
     tags: [
         { zh: '工作流', en: 'Workflow' },
         { zh: '跨 LLM', en: 'Cross-LLM' },
-        { zh: '状态机', en: 'State Machine' },
-        { zh: 'YAML 配置', en: 'YAML Config' },
+        { zh: '渐进式披露', en: 'Progressive Disclosure' },
+        { zh: '全局存储', en: 'Global Storage' },
         { zh: 'HTML 可视化', en: 'HTML Visualization' }
     ],
     features: [
+        { zh: '渐进式披露：flows 命令 + triggers 字段，AI 自动发现并匹配 workflow', en: 'Progressive disclosure: `flows` command + `triggers` field, AI auto-discovers and matches workflows' },
+        { zh: '全局存储：~/.config/agent-workflow/，跨项目共享 workflow 和 run', en: 'Global storage: ~/.config/agent-workflow/, workflows and runs shared across projects' },
+        { zh: '按 name 启动：start 支持 workflow 名称（无需完整路径）', en: 'Start by name: `start` accepts workflow name (no full path needed)' },
         { zh: '4 种节点：agent_call / wait_user / loop / sleep', en: '4 node types: agent_call / wait_user / loop / sleep' },
-        { zh: '10 个 CLI 命令（create/validate/start/advance/resume/status/list/abort/executors/view）', en: '10 CLI actions (create/validate/start/advance/resume/status/list/abort/executors/view)' },
-        { zh: '4 级校验：YAML 语法 / JSON Schema / 引用一致性 / executor PATH', en: '4-layer validation: YAML / JSON Schema / reference / executor PATH' },
-        { zh: '长链稳定性：chain_timeout + stall watchdog + caller handoff', en: 'Long-run stability: chain_timeout + stall watchdog + caller handoff' },
-        { zh: '$ENV 展开 + _secrets 自动脱敏（events/audit/history）', en: '$ENV expansion + _secrets auto-redact (events/audit/history)' },
+        { zh: '11 个 CLI 命令（新增 flows 发现入口）', en: '11 CLI actions (new: flows for discovery)' },
+        { zh: '4 级校验 + 长链稳定性 + secrets 脱敏', en: '4-layer validation + long-run stability + secrets redaction' },
         { zh: '运行状态可视化：view 命令一键生成自包含 HTML', en: 'Visualize runs: `view` command generates self-contained HTML' },
-        { zh: 'filelock 并发安全 + state.json 原子写盘', en: 'filelock concurrency safe + atomic state.json writes' },
-        { zh: '内置 4 个模板（research / cross-llm / code-review / iterative-refine）', en: 'Built-in templates (research / cross-llm / code-review / iterative-refine)' }
+        { zh: '内置模板 + triggers 让 AI 反向匹配用户意图', en: 'Built-in templates + triggers for AI intent matching' }
     ],
     scripts: [
         'tool.py',
@@ -42,7 +42,7 @@ window.SKILL_DATA_AGENT_WORKFLOW = {
         'lib/builder/scaffold.py',
         'lib/view/render.py'
     ],
-    version: '1.5.3',
+    version: '1.6.0',
     author: 'shetengteng',
     repo: 'https://github.com/shetengteng/skillix-hub/tree/main/skills/agent-workflow',
     useCases: [
@@ -53,8 +53,8 @@ window.SKILL_DATA_AGENT_WORKFLOW = {
                 en: 'Install agent-workflow skill from https://github.com/shetengteng/skillix-hub'
             },
             aiResponse: {
-                zh: '正在安装 agent-workflow...\n\n1. 克隆仓库\n2. 复制 skills/agent-workflow/ 到 ~/.cursor/skills/\n3. 安装依赖：pip3 install -r requirements.txt\n   • PyYAML>=6.0\n   • jsonschema>=4.20\n   • filelock>=3.13\n\n✅ 安装完成！调用约定：\n\npython3 skills/agent-workflow/tool.py <action> \'<JSON params>\'\n\nactions: create / validate / start / advance / resume / status / list / abort / executors / view',
-                en: 'Installing agent-workflow...\n\n1. Clone repo\n2. Copy skills/agent-workflow/ to ~/.cursor/skills/\n3. Install dependencies: pip3 install -r requirements.txt\n   • PyYAML>=6.0\n   • jsonschema>=4.20\n   • filelock>=3.13\n\n✅ Done. Invocation:\n\npython3 skills/agent-workflow/tool.py <action> \'<JSON params>\'\n\nactions: create / validate / start / advance / resume / status / list / abort / executors / view'
+                zh: '正在安装 agent-workflow...\n\n1. 克隆仓库\n2. pip3 install -e skills/agent-workflow/\n\n✅ 安装完成！全局可用：\n\nagent-workflow <action> \'<JSON params>\'\n\nactions: flows / create / validate / start / advance / resume / status / list / abort / executors / view\n\n渐进式披露入口：\nagent-workflow flows \'{}\' → 列出全局可用 workflow',
+                en: 'Installing agent-workflow...\n\n1. Clone repo\n2. pip3 install -e skills/agent-workflow/\n\n✅ Done. Globally available:\n\nagent-workflow <action> \'<JSON params>\'\n\nactions: flows / create / validate / start / advance / resume / status / list / abort / executors / view\n\nDiscovery entry:\nagent-workflow flows \'{}\' → list globally available workflows'
             }
         },
         {
@@ -64,8 +64,8 @@ window.SKILL_DATA_AGENT_WORKFLOW = {
                 en: 'Let me try a built-in example'
             },
             aiResponse: {
-                zh: '走起：\n\n# 1) 列出内置模板\npython3 skills/agent-workflow/tool.py create \'{"action":"list_templates"}\'\n→ research-and-implement / cross-llm-pipeline / code-review / iterative-refine\n\n# 2) 从模板拷一份\npython3 skills/agent-workflow/tool.py create \'{\n  "action":"from_template",\n  "template":"iterative-refine",\n  "out":".agent-workflow/workflows/demo.yaml"\n}\'\n\n# 3) 校验（L1 语法 + L2 schema + L3 引用 + L4 executor）\npython3 skills/agent-workflow/tool.py validate \'{"workflow":".agent-workflow/workflows/demo.yaml"}\'\n\n# 4) 启动\npython3 skills/agent-workflow/tool.py start \'{"workflow":".agent-workflow/workflows/demo.yaml","caller":"manual"}\'\n→ 返回 action: "execute_agent" / "wait_user" / "continue" / "done"\n\n# 5) 可视化看进度\npython3 skills/agent-workflow/tool.py view \'{}\'   # 浏览器自动打开总览页',
-                en: 'Go:\n\n# 1) List built-in templates\npython3 skills/agent-workflow/tool.py create \'{"action":"list_templates"}\'\n→ research-and-implement / cross-llm-pipeline / code-review / iterative-refine\n\n# 2) Copy from template\npython3 skills/agent-workflow/tool.py create \'{\n  "action":"from_template",\n  "template":"iterative-refine",\n  "out":".agent-workflow/workflows/demo.yaml"\n}\'\n\n# 3) Validate (L1 syntax + L2 schema + L3 reference + L4 executor)\npython3 skills/agent-workflow/tool.py validate \'{"workflow":".agent-workflow/workflows/demo.yaml"}\'\n\n# 4) Start\npython3 skills/agent-workflow/tool.py start \'{"workflow":".agent-workflow/workflows/demo.yaml","caller":"manual"}\'\n→ Returns action: "execute_agent" / "wait_user" / "continue" / "done"\n\n# 5) Visualize\npython3 skills/agent-workflow/tool.py view \'{}\'   # opens overview page in browser'
+                zh: '走起：\n\n# 1) 列出全局可用 workflow\nagent-workflow flows \'{}\'\n\n# 2) 从模板创建（自动存到全局目录）\nagent-workflow create \'{"action":"from_template","template":"iterative-refine"}\'\n\n# 3) 按 name 校验\nagent-workflow validate \'{"workflow":"iterative-refine"}\'\n\n# 4) 按 name 启动\nagent-workflow start \'{"workflow":"iterative-refine","caller":"manual"}\'\n→ 返回 action: "execute_agent" / "wait_user" / "continue" / "done"\n\n# 5) 可视化看进度\nagent-workflow view \'{}\'   # 浏览器自动打开总览页',
+                en: 'Go:\n\n# 1) List globally available workflows\nagent-workflow flows \'{}\'\n\n# 2) Create from template (auto-saved to global dir)\nagent-workflow create \'{"action":"from_template","template":"iterative-refine"}\'\n\n# 3) Validate by name\nagent-workflow validate \'{"workflow":"iterative-refine"}\'\n\n# 4) Start by name\nagent-workflow start \'{"workflow":"iterative-refine","caller":"manual"}\'\n→ Returns action: "execute_agent" / "wait_user" / "continue" / "done"\n\n# 5) Visualize\nagent-workflow view \'{}\'   # opens overview page in browser'
             }
         },
         {
