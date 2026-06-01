@@ -123,13 +123,85 @@ async function init(params) {
   });
 }
 
-const COMMANDS = { init };
+const INSTALL_TARGETS = [
+  { label: 'cursor', dir: path.join(PROJECT_ROOT, '.cursor', 'skills'), relative: true },
+  { label: 'codex', dir: path.join(require('os').homedir(), '.codex', 'skills'), relative: false },
+  { label: 'claude', dir: path.join(require('os').homedir(), '.claude', 'skills'), relative: false },
+];
+
+async function install(params) {
+  const { name, targets } = params;
+  if (!name) return error('name is required');
+
+  const skillSrc = path.join(PROJECT_ROOT, 'skills', name);
+  if (!fs.existsSync(path.join(skillSrc, 'SKILL.md'))) {
+    return error(`skills/${name}/SKILL.md not found. Build the skill first.`);
+  }
+
+  const results = [];
+  const selectedTargets = targets
+    ? INSTALL_TARGETS.filter(t => targets.includes(t.label))
+    : INSTALL_TARGETS;
+
+  for (const target of selectedTargets) {
+    const linkPath = path.join(target.dir, name);
+
+    if (!fs.existsSync(target.dir)) {
+      results.push({ target: target.label, status: 'skipped', reason: `${target.dir} does not exist` });
+      continue;
+    }
+
+    if (fs.existsSync(linkPath)) {
+      const stat = fs.lstatSync(linkPath);
+      if (stat.isSymbolicLink()) {
+        fs.unlinkSync(linkPath);
+      } else {
+        fs.rmSync(linkPath, { recursive: true, force: true });
+      }
+    }
+
+    const linkTarget = target.relative
+      ? path.relative(target.dir, skillSrc)
+      : skillSrc;
+
+    fs.symlinkSync(linkTarget, linkPath);
+
+    const verified = fs.existsSync(path.join(linkPath, 'SKILL.md'));
+    results.push({ target: target.label, status: verified ? 'installed' : 'error', path: linkPath, link: linkTarget });
+  }
+
+  return success({ name, installed: results });
+}
+
+async function uninstall(params) {
+  const { name } = params;
+  if (!name) return error('name is required');
+
+  const results = [];
+  for (const target of INSTALL_TARGETS) {
+    const linkPath = path.join(target.dir, name);
+    if (fs.existsSync(linkPath)) {
+      const stat = fs.lstatSync(linkPath);
+      if (stat.isSymbolicLink()) {
+        fs.unlinkSync(linkPath);
+        results.push({ target: target.label, status: 'removed' });
+      } else {
+        results.push({ target: target.label, status: 'skipped', reason: 'not a symlink' });
+      }
+    } else {
+      results.push({ target: target.label, status: 'not_found' });
+    }
+  }
+  return success({ name, uninstalled: results });
+}
+
+const COMMANDS = { init, install, uninstall };
 
 async function main() {
   const [command, argsJson] = [process.argv[2], process.argv[3]];
 
   if (!command) {
-    console.log(JSON.stringify(error("Usage: node scaffold.js init '{\"name\":\"my-skill\"}'")));
+    console.log(JSON.stringify(error("Usage: node scaffold.js <init|install|uninstall> '{\"name\":\"my-skill\"}'")));
     process.exit(1);
   }
 

@@ -6,7 +6,11 @@ description: |
 
 # Agent Workflow
 
-跨 IDE / 跨 LLM 工作流引擎。你（caller）通过 shell spawn 调用 `tool.py`，CLI 推动 workflow 在节点间流转。**CLI 不内嵌 LLM** — 所有推理动作要么由你完成，要么 CLI spawn 外部 LLM CLI。
+跨 IDE / 跨 LLM 工作流引擎。你（caller）通过 shell spawn 调用 CLI，CLI 推动 workflow 在节点间流转。**CLI 不内嵌 LLM** — 所有推理动作要么由你完成，要么 CLI spawn 外部 LLM CLI。
+
+**CLI 入口**（按优先级尝试）：
+1. `agent-workflow <action> '<JSON>'` — pip 安装后全局可用（推荐）
+2. `python3 skills/agent-workflow/tool.py <action> '<JSON>'` — 仓库根目录内直接调用
 
 完整用户文档（含安装、QuickStart、配方、FAQ）：见同目录 `README.md`。
 
@@ -84,7 +88,8 @@ while True:
         break
 ```
 
-`cli(action, params)` = `subprocess.run(["python3","skills/agent-workflow/tool.py",action,json.dumps(params)]) → json.loads(stdout)`
+`cli(action, params)` = `subprocess.run(["agent-workflow",action,json.dumps(params)]) → json.loads(stdout)`
+（若 `agent-workflow` 不在 PATH，退回 `python3 skills/agent-workflow/tool.py`）
 
 ---
 
