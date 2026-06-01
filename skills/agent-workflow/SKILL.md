@@ -145,9 +145,12 @@ while True:
 | `continue` | CLI 长链保活返回 | **立即** `advance({run_id})`，**不**带 result |
 | `done` | workflow 完成 | 展示 `result.vars` 中的最终结果 |
 
-`payload` 还会带：
-- `node.alias` / `node.type` / `node.description`（给用户的提示文案可用）
-- `node_description`（如设了，可展示"正在执行：xxx"）
+`payload` 还会带（均为顶层字段）：
+- `alias` — 节点别名（可用于日志 / 展示当前步骤）
+- `internal_id` — 节点内部 ID
+- `expected_output` — 该节点的 `output` 变量名
+- `node_description` — 如节点设了 `description`，可展示"正在执行：xxx"
+- `context_files` — 若节点配了外部文件引用
 
 `vars` 在 `done` 时包含 workflow 累计写入的所有命名变量（每个 `agent_call.output` 都会写一条）。
 
