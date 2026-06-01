@@ -226,7 +226,7 @@ nodes:
 | `schema` | 可选 | JSON Schema，CLI 自动校验用户输入 |
 | `default` | 可选 | 用户跳过时的默认值 |
 
-resume 时 CLI 会用 `schema` 校验 `user_input`，失败返回 `SCHEMA_VIOLATION`（retryable=true）。
+resume 时 CLI 会用 `schema` 校验 `input`，失败返回 `SCHEMA_VIOLATION`（retryable=true）。
 
 ### `loop` — 条件循环
 
@@ -309,7 +309,7 @@ while True:
     elif action == "wait_user":
         # 把 payload.message 显示给用户，按 schema 收集输入
         user_input = ask_user(data["payload"]["message"], data["payload"].get("schema"))
-        resp = call("resume", {"run_id": run_id, "user_input": user_input})
+        resp = call("resume", {"run_id": run_id, "input": user_input})
 
     elif action == "continue":
         # CLI 内部 chain 超时主动返回，立即再发一次 advance（不带 result）
@@ -444,7 +444,7 @@ vars:
 ```json
 {
   "code": "SCHEMA_VIOLATION",
-  "message": "user_input.approved is required",
+  "message": "wait_user input does not match schema: 'approved' is a required property",
   "retryable": true,
   "suggestion": "ask user to provide a boolean for 'approved'",
   "location": { "alias": "review", "field": "approved" }

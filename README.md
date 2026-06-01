@@ -998,7 +998,7 @@ while True:
         response = cli("advance", {"run_id": r["run_id"]})
     elif r["action"] == "wait_user":      # 问用户
         user_input = collect(r["payload"]["message"], schema=r["payload"].get("schema"))
-        response = cli("resume", {"run_id": r["run_id"], "user_input": user_input})
+        response = cli("resume", {"run_id": r["run_id"], "input": user_input})
     elif r["action"] == "done":
         break
 ```
