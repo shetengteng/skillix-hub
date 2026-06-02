@@ -273,7 +273,7 @@ Key points:
 
 ---
 
-## 11 CLI Commands
+## 12 CLI Commands
 
 | Action | Purpose |
 |---|---|
@@ -283,6 +283,7 @@ Key points:
 | `start` | Create run (by name or path), enter first node |
 | `advance` | Caller reports reasoning result, continue |
 | `resume` | Resume wait_user with user input |
+| `retry` | **v1.7** Caller explicitly resumes from breakpoint / specified alias (supports vars_patch / skip) |
 | `status` | Query single run state / history / events |
 | `list` | List runs (JSON or table) |
 | `abort` | Abort a run |
@@ -290,6 +291,38 @@ Key points:
 | `view` | Generate self-contained HTML visualization |
 
 Full parameter and return specs in `SKILL.md`.
+
+### `retry` — Resume from a breakpoint after a node fails / stalls
+
+Use cases: a node failed, `execute_agent` timed out, the user wants to rewind and re-run after seeing intermediate output, or they want to skip a stuck node.
+
+```jsonc
+// Default: re-run from the last failed node
+retry '{"run_id":"wf-..."}'
+
+// Rewind to a specific alias
+retry '{"run_id":"wf-...","alias":"step_a"}'
+
+// Patch vars before retry (deep-merged into state.vars)
+retry '{"run_id":"wf-...","vars_patch":{"topic":"new"}}'
+
+// Skip the failing node: supply the output manually, jump to the next node
+retry '{"run_id":"wf-...","skip":true,"vars_patch":{"step_b_output":"manually-filled"}}'
+```
+
+Behavior:
+
+1. Reset `cursor.path` to the target node (resolved by alias; without `alias`, inferred from history → pending → cursor in order)
+2. Trim `history` entries from the target node onward (events.ndjson keeps full audit)
+3. Clear `error / last_payload / pending_node`, flip `status` back to `awaiting_agent`
+4. With `skip=true`, write `vars_patch` as the node's output, append a `status: skipped` history entry, advance cursor
+5. Emit `retry_invoked` event/audit with `target_alias / target_path / skip / vars_patch_keys`
+
+Constraints:
+
+- Only allowed when `status ∈ {failed, awaiting_agent, waiting_user, executing_external}`; `completed / aborted` runs are immutable
+- `skip=true` only makes sense for `agent_call / wait_user` nodes
+- `retry` is the *only* action that can reset the cursor; `advance / resume` always move forward
 
 ---
 
@@ -317,8 +350,11 @@ while True:
             # show err.message / err.suggestion to user, get fix, resume
             ...
             continue
-        else:
-            raise RuntimeError(err["message"])
+        # Non-retryable: optionally offer the user a `retry` from the failed node
+        if user_wants_retry():
+            resp = call("retry", {"run_id": data["run_id"]})  # default: last failed node
+            continue
+        raise RuntimeError(err["message"])
 
     action = data["action"]
     run_id = data["run_id"]
@@ -410,10 +446,14 @@ All errors: `{ code, message, retryable, suggestion, location }`.
 | `RUN_BUSY` | ✅ | Wait 1s, retry |
 | `WORKFLOW_INVALID` | ❌ | Terminal — fix YAML |
 | `EXECUTOR_NOT_FOUND` | ❌ | Terminal — install CLI |
-| `EXECUTOR_STALLED` | ❌ | Terminal — check external CLI |
+| `EXECUTOR_STALLED` | ❌ | Terminal — check external CLI → **can offer `retry`** |
+| `EXECUTOR_NONZERO_EXIT` | ❌ | Terminal — inspect `stderr_tail` → **can offer `retry`** |
+| `NODE_TIMEOUT` / `NODE_EMPTY_OUTPUT` | ❌ | Terminal → **can offer `retry`** |
 | `LOOP_EXCEEDED` | ❌ | Terminal — adjust condition/max |
 
 Full error code table in `SKILL.md`.
+
+> For non-retryable *execution* errors (executor / timeout / empty output), the caller can ask the user whether to run `retry` from the failed node. See the `retry` section above for details.
 
 ---
 

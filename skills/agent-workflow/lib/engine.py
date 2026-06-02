@@ -106,9 +106,7 @@ def _advance_cursor(
                 # exit loop：检查 LOOP_EXCEEDED
                 if iters[loop_id] >= max_iter:
                     try:
-                        condition_still_true = loop_node.evaluate_condition_safely(
-                            loop.get("condition"), vars_
-                        )
+                        condition_still_true = _loop_condition_safe(loop, vars_)
                     except Exception:  # noqa: BLE001
                         condition_still_true = False
                     if condition_still_true:
@@ -133,11 +131,6 @@ def _loop_condition_safe(loop: dict[str, Any], vars_: dict[str, Any]) -> bool:
         return loop_node.should_continue(loop, vars_, current_iteration=0, max_iterations=10**9)
     except WorkflowError:
         return False
-
-
-loop_node.evaluate_condition_safely = lambda condition, vars_: _loop_condition_safe(  # type: ignore[attr-defined]
-    {"condition": condition}, vars_
-)
 
 
 def _loop_should_continue(
@@ -811,3 +804,237 @@ def flows_action(params: dict[str, Any]) -> dict[str, Any]:
         "count": len(workflows),
         "workflows_root": str(workflows_root()),
     }
+
+
+# ---------------------------------------------------------------------------
+# retry：caller 显式从断点续跑
+# ---------------------------------------------------------------------------
+
+
+def _walk_nodes_with_path(
+    nodes: list[dict[str, Any]],
+    prefix: list[int] | None = None,
+):
+    """深度优先遍历 nodes，yield (path, node)。
+
+    loop 节点同时 yield 其 body 内子节点（path 多一层）。
+    """
+    prefix = list(prefix or [])
+    for idx, node in enumerate(nodes or []):
+        path = prefix + [idx]
+        yield path, node
+        if node.get("type") == "loop":
+            yield from _walk_nodes_with_path(node.get("body") or [], path)
+
+
+def _cursor_path_for_alias(workflow: dict[str, Any], alias: str) -> list[int]:
+    """按 alias 查找节点 path（最左匹配；alias 在 v1 已经强制同层唯一）。
+
+    找不到 → 抛 PARAMS_INVALID。
+    """
+    nodes = workflow.get("nodes") or []
+    for path, node in _walk_nodes_with_path(nodes):
+        if node.get("alias") == alias:
+            return path
+    raise WorkflowError(
+        ErrorCode.PARAMS_INVALID,
+        f"workflow 中找不到 alias={alias!r}",
+        location={"alias": alias},
+    )
+
+
+def _last_failed_alias(state: dict[str, Any]) -> tuple[str | None, list[int] | None]:
+    """从 history / cursor / pending_node 推断"上一次失败 / 卡住的节点"。
+
+    优先级：
+        1. history 中最后一条 status == "failed" 的节点
+        2. state["pending_node"]（awaiting_agent / waiting_user 卡住）
+        3. cursor.path 当前指向（兜底）
+    """
+    history = state.get("history") or []
+    for entry in reversed(history):
+        if entry.get("status") == "failed" and entry.get("alias"):
+            return entry["alias"], None
+    pending = state.get("pending_node")
+    if pending and pending.get("alias"):
+        return pending["alias"], None
+    cursor = state.get("cursor") or {}
+    path = cursor.get("path") or []
+    return None, list(path) if path else None
+
+
+def _trim_history_from(state: dict[str, Any], alias: str) -> int:
+    """删除 history 中从 alias 节点（含）开始的所有记录。
+
+    返回被裁掉的条数。仅删 state 内存中的，不动 events.ndjson（审计保留）。
+    """
+    history: list[dict[str, Any]] = state.get("history") or []
+    cut_index = None
+    for idx, entry in enumerate(history):
+        if entry.get("alias") == alias:
+            cut_index = idx
+            break
+    if cut_index is None:
+        return 0
+    removed = len(history) - cut_index
+    state["history"] = history[:cut_index]
+    return removed
+
+
+def _deep_merge_vars(target: dict[str, Any], patch: dict[str, Any]) -> None:
+    """vars_patch 合并到 vars：dict 深合并；其他类型直接覆盖。"""
+    for key, value in (patch or {}).items():
+        if (
+            isinstance(value, dict)
+            and isinstance(target.get(key), dict)
+        ):
+            _deep_merge_vars(target[key], value)
+        else:
+            target[key] = value
+
+
+def retry_action(params: dict[str, Any]) -> dict[str, Any]:
+    """caller 显式从断点 / 指定 alias 重新执行。
+
+    params:
+        run_id: 必填
+        alias: 可选；不传则自动从最后失败节点恢复
+        vars_patch: 可选；合并到当前 vars
+        skip: 可选；True 时不重跑该节点，直接把 vars_patch 当 output 写入并跳到下一节点
+    """
+    run_id = params.get("run_id")
+    if not run_id:
+        raise WorkflowError(ErrorCode.PARAMS_INVALID, "缺少必填参数 run_id")
+    target_alias = params.get("alias")
+    vars_patch = params.get("vars_patch") or {}
+    skip = bool(params.get("skip", False))
+    if vars_patch and not isinstance(vars_patch, dict):
+        raise WorkflowError(
+            ErrorCode.PARAMS_INVALID,
+            "vars_patch 必须是 JSON 对象（dict）",
+        )
+
+    run_dir, workflow = _ensure_run(run_id)
+    assign_internal_ids(workflow)
+
+    with StateTransaction(run_dir) as state:
+        _bind_secrets(state)
+        cur_status = state.get("status")
+        if cur_status not in (
+            "failed",
+            "awaiting_agent",
+            "waiting_user",
+            "executing_external",
+        ):
+            raise WorkflowError(
+                ErrorCode.PARAMS_INVALID,
+                f"retry 仅支持 failed / awaiting_agent / waiting_user / executing_external 状态的 run；当前 status={cur_status!r}",
+                location={"run_id": run_id, "status": cur_status},
+            )
+
+        # 1) 决定目标 cursor.path
+        if target_alias:
+            new_path = _cursor_path_for_alias(workflow, target_alias)
+            resolved_alias = target_alias
+        else:
+            inferred_alias, inferred_path = _last_failed_alias(state)
+            if inferred_alias:
+                new_path = _cursor_path_for_alias(workflow, inferred_alias)
+                resolved_alias = inferred_alias
+            elif inferred_path:
+                new_path = inferred_path
+                node_at = _find_node_at(workflow, new_path)
+                resolved_alias = node_at.get("alias") or ""
+            else:
+                raise WorkflowError(
+                    ErrorCode.PARAMS_INVALID,
+                    "无法自动推断 retry 目标节点，请显式传入 alias 参数",
+                    location={"run_id": run_id},
+                )
+
+        target_node = _find_node_at(workflow, new_path)
+        target_type = target_node.get("type")
+
+        # 2) skip 语义校验：只对 agent_call / wait_user 有意义
+        if skip and target_type not in ("agent_call", "wait_user"):
+            raise WorkflowError(
+                ErrorCode.PARAMS_INVALID,
+                f"skip=true 仅适用于 agent_call / wait_user 类型节点；目标节点 type={target_type!r}",
+                location={"alias": resolved_alias, "type": target_type},
+            )
+
+        # 3) 合并 vars_patch
+        if vars_patch:
+            _deep_merge_vars(state.setdefault("vars", {}), vars_patch)
+
+        # 4) 裁剪 history（从该节点开始的旧记录全部丢弃，避免审计串位）
+        removed = _trim_history_from(state, resolved_alias)
+
+        # 5) 重置 cursor / 清理 in-flight 状态
+        state["cursor"] = {
+            "path": list(new_path),
+            "iteration_counts": (state.get("cursor") or {}).get("iteration_counts") or {},
+        }
+        state["error"] = None
+        state["last_payload"] = None
+        state["pending_node"] = None
+        # 把状态翻回未完成 — skip/非skip 都需要，否则 _chain 入口会立刻 finalise
+        state["status"] = "awaiting_agent"
+
+        write_event(
+            run_dir,
+            "retry_invoked",
+            target_alias=resolved_alias,
+            target_path=list(new_path),
+            skip=skip,
+            vars_patch_keys=sorted(vars_patch.keys()) if vars_patch else [],
+            history_trimmed=removed,
+            previous_status=cur_status,
+        )
+        write_audit(
+            run_dir,
+            "retry_invoked",
+            alias=resolved_alias,
+            skip=skip,
+            previous_status=cur_status,
+        )
+
+        # 6) skip 分支：把 vars_patch 当 output 写回 + 推进 cursor，然后再 chain
+        if skip:
+            output_name = target_node.get("output") or target_node.get("alias")
+            output_value: Any = None
+            if vars_patch and output_name and output_name in vars_patch:
+                output_value = vars_patch[output_name]
+            elif vars_patch and len(vars_patch) == 1:
+                output_value = next(iter(vars_patch.values()))
+            if output_name and output_value is not None:
+                state.setdefault("vars", {})[output_name] = output_value
+            append_history(
+                state,
+                {
+                    "internal_id": target_node.get("_internal_id"),
+                    "alias": resolved_alias,
+                    "type": target_type,
+                    "executor": target_node.get("executor") or "caller",
+                    "status": "skipped",
+                    "started_at": _utc_iso(),
+                    "ended_at": _utc_iso(),
+                    "duration_ms": 0,
+                    "output": output_name,
+                    "result": output_value,
+                    "via": "retry_skip",
+                },
+                run_dir=run_dir,
+            )
+            try:
+                still = _advance_cursor(workflow, state["cursor"], state.get("vars") or {})
+            except WorkflowError as exc:
+                return _fail(state, run_dir, exc)
+            if not still:
+                state["status"] = "completed"
+                write_event(run_dir, "run_end", status="completed", via="retry_skip")
+                return _finalise_result(state)
+            return _chain(workflow, state, run_dir)
+
+        # 7) 非 skip：进入 _chain 重新执行该节点
+        return _chain(workflow, state, run_dir)

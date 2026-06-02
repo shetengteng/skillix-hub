@@ -89,7 +89,11 @@ while True:
             new_input = ask_user_again()
             response = cli("resume", {"run_id": run_id, "input": new_input})
             continue
+        # 非 retryable：可询问用户是否走 retry 入口从断点续跑
         show_to_user(f"Workflow 失败：{err['message']}\n建议：{err.get('suggestion')}")
+        if user_wants_retry():  # 用户说"重试 / 再来一次 / 从断点继续"
+            response = cli("retry", {"run_id": run_id})  # 默认从最后失败节点
+            continue
         break
 
     r = response["result"]
@@ -156,7 +160,7 @@ while True:
 
 ---
 
-## CLI 命令速查（11 个 action）
+## CLI 命令速查（12 个 action）
 
 | Action | 何时用 | 最小调用示例 |
 |---|---|---|
@@ -166,6 +170,7 @@ while True:
 | `start` | 启动一个 run（支持 name 或路径） | `start '{"workflow":"research-and-implement","vars":{"topic":"..."},"caller":"my-agent"}'` |
 | `advance` | 主循环里推理完上报 / 收到 continue 后重发 | `advance '{"run_id":"wf-...","result":{"output":"..."}}'` 或 `advance '{"run_id":"wf-..."}'` |
 | `resume` | wait_user 收到用户输入 | `resume '{"run_id":"wf-...","input":{"approved":true}}'` |
+| `retry` | **失败 / 超时后用户决定从断点续跑** | `retry '{"run_id":"wf-..."}'`（默认从最后失败节点）或 `retry '{"run_id":"wf-...","alias":"step_b","vars_patch":{"topic":"new"},"skip":false}'` |
 | `status` | 用户问"workflow 跑到哪了" | `status '{"run_id":"wf-...","include_events":true,"event_limit":50}'` |
 | `list` | 用户问"我有哪些 run" / 接力查未完成 | `list '{"status":["waiting_user","awaiting_agent"]}'` 或 `list '{"format":"table"}'` |
 | `abort` | 用户说"停 / 取消 / 算了" | `abort '{"run_id":"wf-..."}'` |
@@ -408,6 +413,43 @@ view '{"out":"./report.html"}'
 
 输出为 self-contained HTML（vanilla CSS+内嵌 JS），离线可读可分享。
 
+### 5. retry — 失败 / 卡住后由 caller 显式从断点续跑
+
+适用场景：
+- 节点 executor 临时故障（外部 LLM 超时 / 限流 / 非 0 退出），用户决定重试
+- caller 拿到 `execute_agent` 后超时未响应，用户希望再来一次
+- 推理已完成但输出明显错了，希望改 `vars` 后从某个节点回退重跑
+- 某个节点反复跑不通，但中间产物可手动给出，希望"跳过"
+
+**触发**：仅在 `status ∈ {failed, awaiting_agent, waiting_user, executing_external}` 时可用，`completed / aborted` 终态不可重试（需要 `start` 新 run）。
+
+```jsonc
+// 1) 默认：从最后失败节点重跑
+retry '{"run_id":"wf-..."}'
+
+// 2) 倒回更早节点（caller 认为前面也错了）
+retry '{"run_id":"wf-...","alias":"step_a"}'
+
+// 3) 改 vars 后重跑（vars_patch 深合并到 state.vars）
+retry '{"run_id":"wf-...","vars_patch":{"topic":"new-topic","retry_count":2}}'
+
+// 4) 跳过失败节点：手动给出该节点的 output 后直接进入下一节点
+retry '{"run_id":"wf-...","skip":true,"vars_patch":{"step_b_output":"manually-filled"}}'
+```
+
+**行为细节**：
+1. 重置 `cursor.path` 到目标节点（按 alias 解析；不传 alias 时按 `history → pending → cursor` 顺序推断）
+2. 裁剪 `history` 中从目标节点开始的所有旧记录（events.ndjson 不动，保留完整审计）
+3. 清空 `error / last_payload / pending_node`，`status` 翻回 `awaiting_agent`
+4. `skip=true` 时把 `vars_patch` 当作该节点的 output 写入 vars（取 `output` 字段名，或 patch 单键），并向 history 写一条 `status: skipped` 的 entry
+5. 写 `retry_invoked` event + audit，包含 `target_alias / target_path / skip / vars_patch_keys / previous_status`
+6. 进入正常 `_chain` 链式推进
+
+**和 advance/resume 的关系**：
+- `advance` / `resume` 永远沿 cursor 向前推；不能跳回
+- `retry` 是唯一允许**重置 cursor**的入口
+- failed run 调 `advance/resume` 仍会被 `RUN_ALREADY_TERMINAL` 拒；必须先 `retry`
+
 ---
 
 ## 输出格式（统一）
@@ -469,6 +511,7 @@ view '{"out":"./report.html"}'
 | 收到 `error.retryable=true` | 引导用户调整输入 → 重发 resume |
 | 收到 `error.retryable=false` | 展示 `message` + `suggestion`，结束 |
 | 昨天那个 workflow 接着跑 | `list '{"status":["waiting_user","awaiting_agent"]}'` → 选一个 → `status` 拿 last_payload → `resume` |
+| 失败了 / 卡住了 / 中间节点出错 / 这里重试 | `retry` —— 默认从最后失败节点重跑；可传 `alias` 倒回更早节点；可传 `vars_patch` 改输入；可传 `skip:true` 跳过失败节点 |
 | 看下 events / 实时跟进 | `tail -f ~/.config/agent-workflow/runs/<run_id>/events.ndjson \| jq .` |
 
 ---
@@ -546,7 +589,7 @@ create '{"action":"list_templates"}'
 | `caller` 字段 | `"manual"` | 用户提到 cron / CI / bot 时确认填 `"cron"` / `"ci"` / `"slack-bot"` |
 | 单节点 `timeout_ms` | 600000（10 分钟） | 用户提到"快"或"慢"等关键词时确认 |
 | `stall_timeout_ms` | 300000（5 分钟无 stdout） | 涉及长跑外部 LLM 才确认 |
-| 节点级 retry | v1 不支持 | 用户提及 retry → 告知 v1.5+ 才有，先用 caller 侧重试 |
+| 节点级 retry | caller 触发式：用户说"重试" → 调 `retry` action（支持 alias / vars_patch / skip）；YAML 自动重试 v1 仍不支持 | — |
 
 ### §7 产出 → validate → 修（强制闭环）
 

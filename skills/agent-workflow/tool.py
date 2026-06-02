@@ -11,6 +11,7 @@ action 列表：
     start      启动新 run（支持路径或 workflow name）
     advance    推进 run（caller 返回 agent 输出后调用）
     resume     恢复 wait_user 节点
+    retry      从断点 / 指定 alias 续跑（支持 vars_patch / skip）
     status     查询 run 状态
     list       列出 runs（支持 format=table）
     abort      中止 run
@@ -40,6 +41,7 @@ VALID_ACTIONS = {
     "start",
     "advance",
     "resume",
+    "retry",
     "status",
     "list",
     "abort",
@@ -97,6 +99,10 @@ def dispatch(action: str, params: dict) -> dict:
         from lib.engine import resume_action
 
         return resume_action(params)
+    if action == "retry":
+        from lib.engine import retry_action
+
+        return retry_action(params)
     if action == "status":
         from lib.engine import status_action
 
