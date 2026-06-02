@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent-workflow"
-version = "1.5.2-dev"
+version = "1.7.0"
 description = "Agent 驱动的跨 IDE / 跨 LLM 工作流引擎。支持串行节点、阻塞节点、循环节点、原子 sleep；YAML 配置 + CLI 状态机实现 Cursor / Claude Code / Codex / OpenCode 通用。"
 readme = "SKILL.md"
 requires-python = ">=3.10"
