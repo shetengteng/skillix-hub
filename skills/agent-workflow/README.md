@@ -356,6 +356,80 @@ retry '{"run_id":"wf-...","skip":true,"vars_patch":{"step_b_output":"manually-fi
 
 ---
 
+## project_root 解析优先级（v1.7+）
+
+`agent-workflow` 是**全局共享**资产（workflow YAML 放在 `~/.config/agent-workflow/workflows/`），但每次 run 必须绑定到一个**具体的项目根**，否则 spawn 出来的 LLM CLI（claude / codex / opencode / cursor-agent）会读到错误的项目规则文件（`CLAUDE.md` / `AGENTS.md` / `.cursor/rules`），导致同一份 workflow 在不同项目跑出来的产物不一致、不可复现。
+
+v1.7 引入 `project_root` 机制——`start` 时按 6 级 fallback 解析最终 cwd，写入 `state.project_root` + `state.project_root_source` 持久化锁定。后续 `advance / resume / retry` 永远复用，**不再重新检测**，跨会话接力也不会跑歪。
+
+### 解析优先级（高 → 低）
+
+| # | 来源 | 触发条件 | source 标签 |
+|---|---|---|---|
+| 1 | `start params.project_root` | caller 显式传入（最强意图） | `caller_explicit` |
+| 2 | `workflow.project_root` | YAML 顶层字段（workflow 自声明） | `workflow_yaml` |
+| 3 | `AGENT_WORKFLOW_PROJECT_ROOT` env | CI/cron 场景 | `env` |
+| 4 | `CURSOR_WORKSPACE_LABEL` / `VSCODE_WORKSPACE_FOLDERS` | IDE 自动注入 | `ide_label` |
+| 5 | 从 cwd 向上找 marker | git/工程项目 | `marker:<filename>` |
+| 6 | `Path.cwd()` | 兜底（= 老行为） | `fallback_cwd` |
+
+Layer 5 的 marker 按**权威性排序**（找到第一个即停）：
+
+```
+.git → .agent-workflow → CLAUDE.md → AGENTS.md → .cursorrules → .cursor
+     → pyproject.toml → package.json → Cargo.toml → go.mod
+```
+
+`.git` 排第一保证 monorepo 子模块里有 `package.json` 但 `.git` 在更上层时不会误判。
+
+### 使用方式（三档体验）
+
+```bash
+# ① 最常用：caller 不传，自动检测（99% 场景命中 .git 或 IDE label）
+agent-workflow start '{"workflow":"pilot-task-full-cycle"}'
+
+# ② 跨项目调用：caller 显式传
+agent-workflow start '{
+  "workflow":"pilot-task-full-cycle",
+  "project_root":"/Users/me/projects/other-repo"
+}'
+
+# ③ CI/cron 远程跑：env 变量
+AGENT_WORKFLOW_PROJECT_ROOT=/repo agent-workflow start '{"workflow":"X"}'
+
+# ④ workflow 自锁定（极少用）：YAML 写
+# name: my-flow
+# project_root: /opt/sandbox/lab
+# nodes: [...]
+
+# 跨会话接力：直接 resume，自动复用第一次决定的 project_root
+agent-workflow resume '{"run_id":"wf-...","input":{...}}'
+```
+
+### 审计与回看
+
+`status` 直接返回 `project_root` + `project_root_source`：
+
+```bash
+$ agent-workflow status '{"run_id":"wf-..."}'
+{
+  "result": {
+    "run_id": "wf-...",
+    "project_root": "/Users/me/projects/data-governance-metadata",
+    "project_root_source": "marker:.git",
+    ...
+  }
+}
+```
+
+`events.ndjson` 和 `audit.log` 在 `run_start` 事件里也记录这两个字段，跨进程追溯无歧义。
+
+### 与 executors.cmd 的协作
+
+`executors.<name>.cmd` 数组里可以写 `{{cwd}}` 或 `{{project_root}}` 占位符，registry 在构造 SpawnExecutor 时自动替换为解析出的 project_root。这是 codex `--cd` / cursor-agent `--workspace` 等"内部 working-root flag"的标准用法（详见 SKILL.md "外部 LLM CLI executor 已知 caveats"段）。
+
+---
+
 ## 集成到 IDE Agent：caller 主循环
 
 把 agent-workflow 嵌入你自己 Agent 的最小骨架（伪代码）：
@@ -436,7 +510,16 @@ executors:
     timeout_ms: 60000
   codex:
     kind: spawn
-    cmd: ["codex", "exec"]         # codex exec：headless 模式
+    # v1.7+ 双通道：subprocess cwd + --cd 同步，避免 sandbox 边界细微脱钩
+    cmd: ["codex", "exec", "--skip-git-repo-check", "--cd", "{{cwd}}"]
+    input_mode: stdin
+    stall_timeout_ms: 30000
+    timeout_ms: 60000
+  cursor-agent:
+    kind: spawn
+    # headless 必须三件套：-p（print）+ --force（非交互）+ --trust（绕过 approval prompt）
+    # 不加这些会卡在 trust 弹窗导致 EXECUTOR_STALLED
+    cmd: ["cursor-agent", "-p", "--force", "--trust", "--workspace", "{{cwd}}", "--output-format", "text"]
     input_mode: stdin
     stall_timeout_ms: 30000
     timeout_ms: 60000
@@ -449,7 +532,7 @@ nodes:
     output: result
 ```
 
-实测：`claude -p` 平均回包 8–12s，`codex exec` 类似。如需全局生效：写入 `~/.config/agent-workflow/config.yaml` 的 `executors:` 段，所有 workflow 都会继承。
+实测：`claude -p` 平均回包 8–12s，`codex exec` 类似。`{{cwd}}` 占位符会被 registry 自动替换为本次 run 的 `state.project_root`（参见 §project_root 解析优先级）。如需全局生效：写入 `~/.config/agent-workflow/config.yaml` 的 `executors:` 段，所有 workflow 都会继承。
 
 ---
 

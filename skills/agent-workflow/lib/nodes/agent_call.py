@@ -44,6 +44,7 @@ def execute_agent_call(
         executor_name,
         workflow_executors=workflow_executors,
         config=config,
+        run_context=run_context,
     )
     vars_map = state.get("vars") or {}
     prompt = render(node.get("prompt") or "", vars_map, strict_vars=True)

@@ -518,6 +518,7 @@ def start_action(params: dict[str, Any]) -> dict[str, Any]:
         raise WorkflowError(ErrorCode.PARAMS_INVALID, "workflow is required")
     initial_vars = params.get("vars") or {}
     caller = params.get("caller") or ""
+    caller_project_root = params.get("project_root")
     allow_missing = bool(params.get("allow_missing_executors", False))
 
     workflow = load_workflow(workflow_raw)
@@ -534,18 +535,40 @@ def start_action(params: dict[str, Any]) -> dict[str, Any]:
     merged_vars = expand_env_in_vars(merged_vars)
     secrets = collect_secret_values(merged_vars)
 
+    from lib.project_root import resolve_project_root
+    pr_decision = resolve_project_root(
+        caller_param=caller_project_root,
+        workflow=workflow,
+    )
+
     run_id, run_dir = create_run(
         workflow=workflow,
         workflow_source=workflow_raw if isinstance(workflow_raw, str) else None,
         initial_vars=merged_vars,
         caller=caller,
+        project_root=str(pr_decision.path),
+        project_root_source=pr_decision.source,
     )
     with StateTransaction(run_dir) as state:
         if secrets:
             state["_secrets_values"] = secrets
         _bind_secrets(state)
-        write_event(run_dir, "run_start", run_id=run_id, workflow_name=workflow.get("name"))
-        write_audit(run_dir, "run_start", caller=caller, workflow=workflow.get("name"))
+        write_event(
+            run_dir,
+            "run_start",
+            run_id=run_id,
+            workflow_name=workflow.get("name"),
+            project_root=str(pr_decision.path),
+            project_root_source=pr_decision.source,
+        )
+        write_audit(
+            run_dir,
+            "run_start",
+            caller=caller,
+            workflow=workflow.get("name"),
+            project_root=str(pr_decision.path),
+            project_root_source=pr_decision.source,
+        )
         return _chain(workflow, state, run_dir)
 
 
@@ -733,6 +756,7 @@ def status_action(params: dict[str, Any]) -> dict[str, Any]:
         "status": state.get("status"),
         "caller": state.get("caller"),
         "project_root": state.get("project_root"),
+        "project_root_source": state.get("project_root_source"),
         "created_at": state.get("created_at"),
         "updated_at": state.get("updated_at"),
         "history_count": len(state.get("history") or []),

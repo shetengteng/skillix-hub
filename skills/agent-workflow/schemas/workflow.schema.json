@@ -14,6 +14,11 @@
     },
     "version": {"type": "string"},
     "description": {"type": "string"},
+    "project_root": {
+      "type": "string",
+      "minLength": 1,
+      "description": "可选；workflow 自声明的项目根（绝对路径），优先级低于 caller 显式传入的 project_root。用于把某 workflow 锁定到某个 sandbox / 固定项目目录。"
+    },
     "triggers": {
       "type": "array",
       "items": {"type": "string", "minLength": 1, "maxLength": 128},

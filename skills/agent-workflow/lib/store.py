@@ -103,9 +103,16 @@ def create_run(
     workflow_source: str | None,
     initial_vars: dict[str, Any],
     caller: str | None,
+    project_root: str | None = None,
+    project_root_source: str | None = None,
     runs_root_override: Path | None = None,
 ) -> tuple[str, Path]:
-    """创建 run 目录 + state.json + workflow.yaml 快照。返回 (run_id, run_dir)。"""
+    """创建 run 目录 + state.json + workflow.yaml 快照。返回 (run_id, run_dir)。
+
+    project_root / project_root_source 是可选字段（v1.7 引入），用于把
+    本次 run 绑定到一个确定的项目根（决定所有 spawn executor 的 cwd）。
+    不传时写空字符串，executor 运行时 fallback 到 Path.cwd()（向后兼容）。
+    """
     root = runs_root(override=runs_root_override)
     root.mkdir(parents=True, exist_ok=True)
     run_id = _new_run_id()
@@ -123,6 +130,8 @@ def create_run(
         "workflow_name": workflow.get("name", "<unknown>"),
         "workflow_source": workflow_source or "",
         "caller": caller or "",
+        "project_root": project_root or "",
+        "project_root_source": project_root_source or "",
         "status": "awaiting_agent",
         "cursor": {"path": [0], "iteration_counts": {}},
         "vars": dict(initial_vars or {}),

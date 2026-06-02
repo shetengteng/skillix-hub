@@ -8,6 +8,13 @@
 mock executor 仅在以下情况启用：
     - workflow.executors.mock 存在
     - 或环境变量 AGENT_WORKFLOW_ENABLE_MOCK=1
+
+cwd 解析（spawn kind 专属）：
+    - spec.cwd 显式声明 → 用于锁死特定 executor 的 cwd（YAML 层）
+    - 未声明 → SpawnExecutor 运行时 fallback 到 run_context.project_root
+    cmd 字段中的 ``{{cwd}}`` / ``{{project_root}}`` 占位符也会被替换为
+    最终决议的 cwd（让 codex --cd / cursor-agent --workspace 等双通道
+    CLI 能在外部 cwd 与内部 working-root 之间保持一致）。
 """
 from __future__ import annotations
 
@@ -22,6 +29,30 @@ from lib.errors import ErrorCode, WorkflowError
 from lib.executors.base import BaseExecutor, SpawnExecutor
 from lib.executors.caller import CallerExecutor
 from lib.executors.mock import MockExecutor
+
+
+_CWD_PLACEHOLDERS = ("{{cwd}}", "{{project_root}}")
+
+
+def _render_cmd_cwd(cmd: list[Any], cwd_value: str | None) -> list[Any]:
+    """把 cmd 数组里的 {{cwd}} / {{project_root}} 占位符替换为 cwd_value。
+
+    - cwd_value 为 None 或空字符串时，原样返回（占位符保留，运行时多半会
+      报参数错误，但这是显式的，便于排查）。
+    - 仅处理字符串元素；非字符串元素（极少见）直接保留。
+    """
+    if not cwd_value:
+        return list(cmd)
+    rendered: list[Any] = []
+    for arg in cmd:
+        if isinstance(arg, str):
+            new_arg = arg
+            for placeholder in _CWD_PLACEHOLDERS:
+                new_arg = new_arg.replace(placeholder, cwd_value)
+            rendered.append(new_arg)
+        else:
+            rendered.append(arg)
+    return rendered
 
 USER_CONFIG_PATH = Path.home() / ".agent-workflow" / "config.yaml"
 
@@ -110,8 +141,16 @@ def get_executor(
     *,
     workflow_executors: dict[str, Any] | None = None,
     config: dict[str, Any] | None = None,
+    run_context: dict[str, Any] | None = None,
 ) -> BaseExecutor:
-    """名字 → 实例。允许 caller / mock / spawn 三种 kind。"""
+    """名字 → 实例。允许 caller / mock / spawn 三种 kind。
+
+    run_context（可选）携带本 run 的上下文，目前只用其 project_root 字段：
+        - 优先级：spec.cwd > run_context.project_root（在 SpawnExecutor 内部 fallback）
+        - cmd 模板渲染：{{cwd}} / {{project_root}} 一律替换为最终决议的 cwd
+          (spec.cwd 存在用 spec.cwd，否则用 run_context.project_root；都空则
+          占位符原样保留)
+    """
     workflow_executors = workflow_executors or {}
     if name == "mock" and not _mock_enabled(workflow_executors):
         raise WorkflowError(
@@ -135,14 +174,25 @@ def get_executor(
         return MockExecutor()
     if kind == "spawn":
         cfg = config or {}
+        spec_cwd = spec.get("cwd")
+        resolved_cwd: Path | None = None
+        if spec_cwd:
+            try:
+                resolved_cwd = Path(spec_cwd).expanduser()
+            except (TypeError, ValueError):
+                resolved_cwd = None
+        ctx_root = (run_context or {}).get("project_root") if run_context else None
+        cmd_cwd_value = str(resolved_cwd) if resolved_cwd is not None else (ctx_root or None)
+        cmd_rendered = _render_cmd_cwd(spec["cmd"], cmd_cwd_value)
         return SpawnExecutor(
             name=name,
-            cmd=spec["cmd"],
+            cmd=cmd_rendered,
             input_mode=spec.get("input_mode", "stdin"),
             output_parser=spec.get("output_parser", "text"),
             stall_timeout_ms=int(spec.get("stall_timeout_ms") or cfg.get("stall_timeout_ms") or 300_000),
             total_timeout_ms=int(spec.get("timeout_ms") or cfg.get("total_timeout_ms") or 600_000),
             env=spec.get("env") or None,
+            cwd=resolved_cwd,
         )
     raise WorkflowError(
         ErrorCode.PARAMS_INVALID,

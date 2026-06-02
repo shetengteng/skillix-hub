@@ -182,7 +182,20 @@ while True:
 2. 文件路径（如 `"/path/to/flow.yaml"`）→ 按路径加载
 3. 内联 YAML 字符串 → 直接解析
 
-完整参数表与返回结构见 README §10。
+**`start` 的 `project_root` 参数（v1.7+，可选）**：把本次 run 绑定到一个项目根，所有 spawn 子进程（claude/codex/opencode/cursor-agent 等）都以此为 cwd 启动。**caller 不传时**，CLI 按以下 6 级 fallback 自动解析（结果写入 `state.project_root` 与 `state.project_root_source` 用于审计）：
+
+| 优先级 | 来源 | 触发条件 |
+|---|---|---|
+| 1 | `start params.project_root` | caller 显式传入 |
+| 2 | `workflow.project_root`（YAML 顶层字段） | workflow 自声明（极少用） |
+| 3 | `AGENT_WORKFLOW_PROJECT_ROOT` env | CI/cron 场景 |
+| 4 | `CURSOR_WORKSPACE_LABEL` / `VSCODE_WORKSPACE_FOLDERS` | Cursor / VSCode 自动注入 |
+| 5 | 从 cwd 向上找 marker：`.git` > `.agent-workflow` > `CLAUDE.md` > `AGENTS.md` > `.cursorrules` > `.cursor` > `pyproject.toml` > `package.json` > `Cargo.toml` > `go.mod` | git 工作区 |
+| 6 | `Path.cwd()`（向后兼容兜底） | 都没命中 |
+
+**关键不变性**：一旦写入 state，`advance` / `resume` / `retry` 永远复用同一个 `project_root`——跨会话接力（A 启 → B 续）时 B 不需要再传，自动锁定到 A 的项目根。
+
+**完整参数表与返回结构见 README §10。**
 
 ---
 
@@ -291,27 +304,41 @@ You are a senior architect. Focus on scalability and security.
 | CLI | 现象 | 必加 flag / 解法 | 示例 |
 |---|---|---|---|
 | **codex** | 在非 git repo 跑会 exit=1，`stderr_tail` 含 `Not inside a trusted directory and --skip-git-repo-check was not specified` | `--skip-git-repo-check` | `cmd: ["codex", "exec", "--skip-git-repo-check"]` |
+| **codex** | `--cd` 内部 working-root 与 subprocess cwd 脱钩时 sandbox 边界异常 | 推荐双通道 `--cd {{cwd}}`，让 registry 自动注入 project_root | `cmd: ["codex", "exec", "--skip-git-repo-check", "--cd", "{{cwd}}"]` |
 | **claude** | 默认行为 OK；首次跑可能弹登录 | 先在终端跑一次 `claude` 完成 OAuth | `cmd: ["claude", "-p"]` |
+| **cursor-agent** | headless 下卡在 approval prompt → `EXECUTOR_STALLED` | 必加 `-p --force --trust`，推荐 `--workspace {{cwd}}` 双通道 | `cmd: ["cursor-agent", "-p", "--force", "--trust", "--workspace", "{{cwd}}"]` |
+| **opencode** | 默认 OK；如需禁止上行越界读 AGENTS.md | 在项目根放 `opencode.json: {"permission":{"external_directory":"deny"}}` | `cmd: ["opencode", "run", "--format", "json", "--dangerously-skip-permissions"]` |
 | **任意 spawn** | 子进程不继承 zsh function 包装的环境变量（如代理、自定义 alias） | 真依赖代理时，在 workflow 启动前 `export HTTP_PROXY=...`，或在 `executors` 段用 `env: { HTTP_PROXY: "..." }` 显式注入 | — |
 
-**最小推荐起步模板（zero-friction 跑通）**：
+**v1.7+ cmd 模板占位符**：在 `executors.<name>.cmd` 数组里写 `{{cwd}}` 或 `{{project_root}}`，registry 在构造 SpawnExecutor 时会自动替换为本次 run 的 `project_root`（解析优先级见上文 §start 的 `project_root` 参数）。这是 codex `--cd` / cursor-agent `--workspace` 等"内部 working-root flag"的标准用法，让 subprocess cwd 和 CLI 自己的 working-root 双通道对齐，避免 sandbox 边界细微脱钩。
+
+**最小推荐起步模板（zero-friction 跑通 — 四家通用）**：
 
 ```yaml
 executors:
-  codex:
-    kind: spawn
-    cmd: ["codex", "exec", "--skip-git-repo-check"]   # ← 关键 flag
-    input_mode: stdin
-    output_parser: text
-    stall_timeout_ms: 30000
-    timeout_ms: 90000
+  # 推荐默认：四家都遵循"subprocess cwd = project_root"约定，
+  # 不写 cwd 字段也能跑（CLI 会自动注入 state.project_root）。
   claude:
     kind: spawn
     cmd: ["claude", "-p"]
     input_mode: stdin
-    output_parser: text
-    stall_timeout_ms: 30000
-    timeout_ms: 60000
+
+  codex:
+    kind: spawn
+    # 双通道：subprocess cwd + --cd flag 同步，避免 sandbox 边界脱钩
+    cmd: ["codex", "exec", "--skip-git-repo-check", "--cd", "{{cwd}}"]
+    input_mode: stdin
+
+  opencode:
+    kind: spawn
+    cmd: ["opencode", "run", "--format", "json", "--dangerously-skip-permissions"]
+    input_mode: stdin
+
+  cursor-agent:
+    kind: spawn
+    # headless 必须 -p --force --trust；双通道用 --workspace {{cwd}}
+    cmd: ["cursor-agent", "-p", "--force", "--trust", "--workspace", "{{cwd}}", "--output-format", "text"]
+    input_mode: stdin
 ```
 
 ---
