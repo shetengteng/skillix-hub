@@ -42,16 +42,19 @@ nodes:
 class EngineE2ETest(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="aw-test-"))
-        # 把项目根锚定到 tmp（detect 会找 .git 之类，没有则 fallback 到 cwd），所以直接 chdir
         self._original_cwd = Path.cwd()
-        # 创建一个 marker 让 project root 落在 tmp
         (self.tmp / "pyproject.toml").write_text("[project]\nname='ut'\n", "utf-8")
         os.chdir(self.tmp)
+        # 把 store 全局 base 重定向到 tmp，让 run 落在 self.tmp/.agent-workflow/runs/
+        # 而不是污染用户真实的 ~/.config/agent-workflow/runs/
+        self._original_global_base = store.GLOBAL_BASE
+        store.GLOBAL_BASE = self.tmp / ".agent-workflow"
         os.environ["AGENT_WORKFLOW_ENABLE_MOCK"] = "1"
         os.environ["AGENT_WORKFLOW_MOCK_RESEARCH"] = "n1 n2"
         os.environ["AGENT_WORKFLOW_MOCK_FINAL"] = "FINAL_OK"
 
     def tearDown(self) -> None:
+        store.GLOBAL_BASE = self._original_global_base
         os.chdir(self._original_cwd)
         for key in [
             "AGENT_WORKFLOW_ENABLE_MOCK",

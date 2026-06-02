@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "skills" / "agent-workflow"))
 
-from lib import engine  # noqa: E402
+from lib import engine, store  # noqa: E402
 from lib.view.render import view_action  # noqa: E402
 
 WAIT_YAML = """
@@ -54,9 +54,13 @@ class ViewActionContractTest(unittest.TestCase):
         self._cwd = Path.cwd()
         (self.tmp / "pyproject.toml").write_text("[project]\nname='ut'\n", "utf-8")
         os.chdir(self.tmp)
+        # 把 store 全局 base 重定向到 tmp，防止 list_runs 扫到用户真实的 ~/.config 历史 run
+        self._original_global_base = store.GLOBAL_BASE
+        store.GLOBAL_BASE = self.tmp / ".agent-workflow"
         os.environ["AGENT_WORKFLOW_ENABLE_MOCK"] = "1"
 
     def tearDown(self) -> None:
+        store.GLOBAL_BASE = self._original_global_base
         os.chdir(self._cwd)
         os.environ.pop("AGENT_WORKFLOW_ENABLE_MOCK", None)
         shutil.rmtree(self.tmp, ignore_errors=True)

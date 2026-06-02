@@ -27,10 +27,10 @@ from typing import Any
 
 from lib.errors import WorkflowError
 from lib.logger import read_events
+from lib.project_root import resolve_project_root
 from lib.store import (
-    DEFAULT_RUNS_DIRNAME,
+    GLOBAL_BASE,
     RUNS_SUBDIR,
-    detect_project_root,
     get_run_dir,
     list_runs,
     read_state,
@@ -385,14 +385,13 @@ def view_action(params: dict[str, Any]) -> dict[str, Any]:
     out_param = params.get("out")
     auto_open = params.get("open")
     auto_open = True if auto_open is None else bool(auto_open)
-    scope = params.get("scope") or "current"
     limit = int(params.get("limit") or 50)
 
     views_dir = _resolve_views_dir(out_param)
     views_dir.mkdir(parents=True, exist_ok=True)
 
-    runs_meta = list_runs(scope=scope, limit=limit)
-    project_root = str(detect_project_root() or "")
+    runs_meta = list_runs(limit=limit)
+    project_root = str(resolve_project_root().path)
 
     extra_ids = [run_id] if run_id else None
     payload = build_data_payload(
@@ -435,7 +434,7 @@ def _safe_runs_root() -> Path:
     try:
         return runs_root()
     except Exception:  # noqa: BLE001
-        return Path.cwd() / DEFAULT_RUNS_DIRNAME / RUNS_SUBDIR
+        return GLOBAL_BASE / RUNS_SUBDIR
 
 
 __all__ = [

@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "skills" / "agent-workflow"))
 
-from lib import engine  # noqa: E402
+from lib import engine, store  # noqa: E402
 from lib.errors import ErrorCode, WorkflowError  # noqa: E402
 from lib.template import collect_secret_values, expand_env_in_vars  # noqa: E402
 
@@ -69,12 +69,15 @@ class SecretsE2ETest(unittest.TestCase):
         self._cwd = Path.cwd()
         (self.tmp / "pyproject.toml").write_text("[project]\nname='ut'\n", "utf-8")
         os.chdir(self.tmp)
+        # 把 store 全局 base 重定向到 tmp（避免污染用户真实的 ~/.config/agent-workflow/）
+        self._original_global_base = store.GLOBAL_BASE
+        store.GLOBAL_BASE = self.tmp / ".agent-workflow"
         os.environ["AGENT_WORKFLOW_ENABLE_MOCK"] = "1"
         os.environ["UT_SECRET_API_KEY"] = "sk-supersecret-XYZ"
-        # 让 mock executor stdout 中包含 secret，验证 events/audit/history 被脱敏
         os.environ["AGENT_WORKFLOW_MOCK_CALL"] = "got sk-supersecret-XYZ ok"
 
     def tearDown(self) -> None:
+        store.GLOBAL_BASE = self._original_global_base
         os.chdir(self._cwd)
         for k in (
             "AGENT_WORKFLOW_ENABLE_MOCK",
